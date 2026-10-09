@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!-- Double Outer Rings -->
+  <circle cx="120" cy="120" r="108" fill="none" stroke="#024966" stroke-width="4"/>
+  <circle cx="120" cy="120" r="101" fill="none" stroke="#024966" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <circle cx="120" cy="120" r="68" fill="none" stroke="#024966" stroke-width="2"/>
+  <circle cx="120" cy="120" r="65" fill="none" stroke="#024966" stroke-width="0.8"/>
+  <!-- Top Arc Text: UNIVERSIDAD MAYOR DE SAN ANDRÉS -->
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-75.000000, 120.000000, 120.000000)">U</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-70.000000, 120.000000, 120.000000)">N</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-65.000000, 120.000000, 120.000000)">I</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-60.000000, 120.000000, 120.000000)">V</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-55.000000, 120.000000, 120.000000)">E</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-50.000000, 120.000000, 120.000000)">R</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-45.000000, 120.000000, 120.000000)">S</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-40.000000, 120.000000, 120.000000)">I</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-35.000000, 120.000000, 120.000000)">D</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-30.000000, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-25.000000, 120.000000, 120.000000)">D</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-15.000000, 120.000000, 120.000000)">M</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-10.000000, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-5.000000, 120.000000, 120.000000)">Y</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(0.000000, 120.000000, 120.000000)">O</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(5.000000, 120.000000, 120.000000)">R</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(15.000000, 120.000000, 120.000000)">D</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(20.000000, 120.000000, 120.000000)">E</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(30.000000, 120.000000, 120.000000)">S</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(35.000000, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(40.000000, 120.000000, 120.000000)">N</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(50.000000, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(55.000000, 120.000000, 120.000000)">N</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(60.000000, 120.000000, 120.000000)">D</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(65.000000, 120.000000, 120.000000)">R</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(70.000000, 120.000000, 120.000000)">É</text>
+  <text x="120.000000" y="36.000000" font-family="Helvetica, Arial, sans-serif" font-size="10.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(75.000000, 120.000000, 120.000000)">S</text>
+  <!-- Bottom Arc Text: VICEDECANATO • FCPN -->
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(48.000000, 120.000000, 120.000000)">V</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(42.666667, 120.000000, 120.000000)">I</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(37.333333, 120.000000, 120.000000)">C</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(32.000000, 120.000000, 120.000000)">E</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(26.666667, 120.000000, 120.000000)">D</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(21.333333, 120.000000, 120.000000)">E</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(16.000000, 120.000000, 120.000000)">C</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(10.666667, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(5.333333, 120.000000, 120.000000)">N</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(0.000000, 120.000000, 120.000000)">A</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-5.333333, 120.000000, 120.000000)">T</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-10.666667, 120.000000, 120.000000)">O</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-21.333333, 120.000000, 120.000000)">•</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-32.000000, 120.000000, 120.000000)">F</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-37.333333, 120.000000, 120.000000)">C</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-42.666667, 120.000000, 120.000000)">P</text>
+  <text x="120.000000" y="211.000000" font-family="Helvetica, Arial, sans-serif" font-size="9.5" font-weight="bold" fill="#024966" text-anchor="middle" transform="rotate(-48.000000, 120.000000, 120.000000)">N</text>
+  <!-- Side Decorative Stars -->
+  <polygon points="34,120 36,124 41,124 37,127 38,131 34,128 30,131 31,127 27,124 32,124" fill="#BB2026"/>
+  <polygon points="206,120 208,124 213,124 209,127 210,131 206,128 202,131 203,127 199,124 204,124" fill="#BB2026"/>
+  <!-- Center Emblem -->
+  <polygon points="120,76 124,88 137,88 126,96 130,108 120,100 110,108 114,96 103,88 116,88" fill="#BB2026"/>
+  <text x="120" y="125" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="bold" fill="#024966" text-anchor="middle" letter-spacing="1">LA PAZ - BOLIVIA</text>
+  <text x="120" y="137" font-family="Helvetica, Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#32639E" text-anchor="middle" letter-spacing="0.5">DOCUMENTO OFICIAL</text>
+</svg>

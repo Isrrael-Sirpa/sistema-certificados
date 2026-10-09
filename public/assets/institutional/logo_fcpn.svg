@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="fcpnBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0f2b5c"/>
+    </linearGradient>
+  </defs>
+  <!-- Circle Shield -->
+  <circle cx="100" cy="100" r="88" fill="#ffffff" stroke="url(#fcpnBlue)" stroke-width="6"/>
+  <circle cx="100" cy="100" r="76" fill="#f8fafc" stroke="#d4af37" stroke-width="2"/>
+  <!-- Science Atomic Orbital Rings -->
+  <ellipse cx="100" cy="100" rx="60" ry="24" fill="none" stroke="#0284c7" stroke-width="2.5" transform="rotate(30 100 100)"/>
+  <ellipse cx="100" cy="100" rx="60" ry="24" fill="none" stroke="#0284c7" stroke-width="2.5" transform="rotate(-30 100 100)"/>
+  <ellipse cx="100" cy="100" rx="60" ry="24" fill="none" stroke="#0284c7" stroke-width="2.5" transform="rotate(90 100 100)"/>
+  <!-- Atomic Nucleus / Light -->
+  <circle cx="100" cy="100" r="10" fill="#d4af37"/>
+  <circle cx="100" cy="100" r="5" fill="#ffffff"/>
+  <!-- Electrons -->
+  <circle cx="145" cy="74" r="4" fill="#0f2b5c"/>
+  <circle cx="55" cy="126" r="4" fill="#0f2b5c"/>
+  <circle cx="100" cy="40" r="4" fill="#0f2b5c"/>
+</svg>

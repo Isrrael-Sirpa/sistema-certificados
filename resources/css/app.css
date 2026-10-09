@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+
+@source '../../resources/views/**/*.blade.php';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    
+    /* Paleta Oficial UMSA */
+    --color-umsa-blue: #024966;
+    --color-umsa-blue-dark: #013449;
+    --color-umsa-blue-light: #035e83;
+    --color-umsa-red: #BB2026;
+    --color-umsa-red-hover: #9e1a1f;
+    --color-umsa-red-light: #fef2f2;
+    --color-umsa-secondary: #32639E;
+    --color-umsa-secondary-hover: #264e7e;
+    --color-umsa-bg: #F5F7F8;
+    --color-umsa-text: #024966;
+
+    /* Legacy institutional tokens mapped to UMSA */
+    --color-institutional-900: #024966;
+    --color-institutional-800: #013449;
+    --color-institutional-700: #035e83;
+    --color-institutional-600: #32639E;
+    --color-institutional-100: #F5F7F8;
+    --color-gold-500: #BB2026;
+    --color-gold-600: #9e1a1f;
+}
+
+/* Clases utilitarias UMSA */
+.bg-umsa-blue { background-color: #024966; }
+.bg-umsa-red { background-color: #BB2026; }
+.bg-umsa-secondary { background-color: #32639E; }
+.bg-umsa-bg { background-color: #F5F7F8; }
+.text-umsa-blue { color: #024966; }
+.text-umsa-red { color: #BB2026; }
+.text-umsa-secondary { color: #32639E; }
+.border-umsa-blue { border-color: #024966; }
+.border-umsa-red { border-color: #BB2026; }
+.border-umsa-secondary { border-color: #32639E; }
+

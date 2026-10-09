@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="vicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1f44"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <!-- Classical Architectural Pediment / Pillars of University Leadership -->
+  <rect x="25" y="25" width="150" height="150" rx="16" fill="url(#vicGrad)" stroke="#d4af37" stroke-width="4"/>
+  <!-- Triangular Pediment -->
+  <polygon points="100,45 45,75 155,75" fill="#f8fafc" stroke="#d4af37" stroke-width="2"/>
+  <rect x="42" y="75" width="116" height="8" fill="#d4af37"/>
+  <!-- 4 Pillars -->
+  <rect x="52" y="87" width="14" height="48" rx="2" fill="#ffffff"/>
+  <rect x="76" y="87" width="14" height="48" rx="2" fill="#ffffff"/>
+  <rect x="110" y="87" width="14" height="48" rx="2" fill="#ffffff"/>
+  <rect x="134" y="87" width="14" height="48" rx="2" fill="#ffffff"/>
+  <!-- Base Pedestal -->
+  <rect x="42" y="138" width="116" height="8" fill="#d4af37"/>
+  <rect x="36" y="146" width="128" height="6" fill="#ffffff"/>
+</svg>

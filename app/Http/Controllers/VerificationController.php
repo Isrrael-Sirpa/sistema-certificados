@@ -1,0 +1,71 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Certificate;
+use App\Models\CertificateVerification;
+use App\Models\Setting;
+use Illuminate\Http\Request;
+
+class VerificationController extends Controller
+{
+    /**
+     * Muestra el formulario público para introducir manualmente el código del certificado.
+     */
+    public function index()
+    {
+        $settings = Setting::all()->pluck('value', 'key')->toArray();
+        return view('public.verify-search', compact('settings'));
+    }
+
+    /**
+     * Procesa la búsqueda manual por código.
+     */
+    public function search(Request $request)
+    {
+        $request->validate([
+            'certificate_code' => ['required', 'string'],
+        ]);
+
+        $code = strtoupper(trim($request->input('certificate_code')));
+        $certificate = Certificate::where('certificate_code', $code)->first();
+
+        if (!$certificate) {
+            return back()->withInput()->with('error', "No se encontró ningún certificado registrado con el código '{$code}'. Verifique que esté escrito exactamente como figura en el documento.");
+        }
+
+        return redirect()->route('verification.show', ['token' => $certificate->verification_token, 'method' => 'manual_code']);
+    }
+
+    /**
+     * Muestra la página pública de verificación institucional con el estado en tiempo real.
+     */
+    public function show(Request $request, string $token)
+    {
+        $certificate = Certificate::with(['beneficiary', 'activity', 'certificateType', 'certificateTemplate'])
+            ->where('verification_token', $token)
+            ->first();
+
+        if (!$certificate) {
+            return response()->view('public.verify-not-found', [
+                'token' => $token,
+                'settings' => Setting::all()->pluck('value', 'key')->toArray(),
+            ], 404);
+        }
+
+        $method = $request->query('method', 'qr_scan');
+
+        // Registrar consulta pública en el log de verificaciones
+        CertificateVerification::create([
+            'certificate_id' => $certificate->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'verification_method' => $method,
+            'verified_at' => now(),
+        ]);
+
+        $settings = Setting::all()->pluck('value', 'key')->toArray();
+
+        return view('public.verify-result', compact('certificate', 'settings'));
+    }
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <!-- Watermark Vector: Academic Laurel, Shield, and Torch -->
+  <g fill="none" stroke="#0f2b5c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
+    <!-- Big Shield -->
+    <path d="M250,40 C360,40 440,80 440,200 C440,350 320,440 250,470 C180,440 60,350 60,200 C60,80 140,40 250,40 Z"/>
+    <path d="M250,65 C340,65 415,100 415,200 C415,330 310,410 250,440 C190,410 85,330 85,200 C85,100 160,65 250,65 Z" stroke-dasharray="8,6"/>
+    
+    <!-- Torch of Wisdom in center -->
+    <path d="M235,270 L265,270 L255,370 L245,370 Z" fill="#0f2b5c" opacity="0.3"/>
+    <path d="M225,270 C225,240 275,240 275,270 Z" fill="#0f2b5c" opacity="0.5"/>
+    <path d="M250,170 C240,200 230,220 250,245 C270,220 260,200 250,170 Z" fill="#0f2b5c" opacity="0.4"/>
+    
+    <!-- Laurel Wreath -->
+    <path d="M140,200 C130,260 160,340 220,380" stroke-width="6"/>
+    <path d="M360,200 C370,260 340,340 280,380" stroke-width="6"/>
+  </g>
+</svg>
