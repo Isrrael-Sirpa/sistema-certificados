@@ -27,7 +27,7 @@ class CertificatePdfService
 
         // 1. Verificar si existe snapshot de diseño congelado en el certificado (Inmutabilidad)
         $snapshot = $certificate->snapshot_data ?? [];
-        $isFrozen = !empty($snapshot['design_schema']);
+        $isFrozen = ! empty($snapshot['design_schema']);
 
         if ($isFrozen) {
             $schema = $snapshot['design_schema'];
@@ -43,19 +43,22 @@ class CertificatePdfService
             // Emisión nueva o certificado sin snapshot previo: obtener de la plantilla o actividad
             $template = $certificate->certificateTemplate;
             $activityConfig = $certificate->activity?->certificateConfig;
-            
-            $schema = $activityConfig && !empty($activityConfig->primary_color)
-                ? array_merge($template->configuration ?? [], [
-                    'primary_color' => $activityConfig->primary_color,
-                    'secondary_color' => $activityConfig->secondary_color ?? $template->configuration['secondary_color'],
-                ])
-                : ($template->configuration ?? []);
 
-            $orientation = $template->orientation ?? 'landscape';
+            $templateConfig = $template?->configuration ?? [];
+            $secondaryFallback = $templateConfig['secondary_color'] ?? '#d4af37';
+
+            $schema = $activityConfig && ! empty($activityConfig->primary_color)
+                ? array_merge($templateConfig, [
+                    'primary_color' => $activityConfig->primary_color,
+                    'secondary_color' => $activityConfig->secondary_color ?? $secondaryFallback,
+                ])
+                : $templateConfig;
+
+            $orientation = $template?->orientation ?? 'landscape';
             $certificateTypeName = $certificate->certificateType->name ?? 'CERTIFICADO';
 
             // Interpolar texto del cuerpo
-            $rawBodyText = ($activityConfig && !empty($activityConfig->custom_body_text))
+            $rawBodyText = ($activityConfig && ! empty($activityConfig->custom_body_text))
                 ? $activityConfig->custom_body_text
                 : ($schema['body_text'] ?? 'Por su participación en {{actividad.nombre}}');
 
@@ -84,23 +87,23 @@ class CertificatePdfService
             ];
 
             foreach ($signatures as &$sig) {
-                if (!empty($sig['asset_path'])) {
+                if (! empty($sig['asset_path'])) {
                     $sig['asset_base64'] = $this->assetManager->getAssetBase64($sig['asset_path']);
                 }
             }
 
             // Resolver logos en Base64 (soporta JPG, PNG, SVG)
             $customFields = $certificate->custom_fields_data ?? [];
-            $leftLogoRef = $customFields['logo_left_id'] 
-                ?? $schema['logo_left_id'] 
-                ?? $schema['logo_left_path'] 
-                ?? ($schema['logos'][0]['path'] ?? null) 
+            $leftLogoRef = $customFields['logo_left_id']
+                ?? $schema['logo_left_id']
+                ?? $schema['logo_left_path']
+                ?? ($schema['logos'][0]['path'] ?? null)
                 ?? 'assets/institutional/logo_umsa.svg';
 
-            $rightLogoRef = $customFields['logo_right_id'] 
-                ?? $schema['logo_right_id'] 
-                ?? $schema['logo_right_path'] 
-                ?? ($schema['logos'][1]['path'] ?? null) 
+            $rightLogoRef = $customFields['logo_right_id']
+                ?? $schema['logo_right_id']
+                ?? $schema['logo_right_path']
+                ?? ($schema['logos'][1]['path'] ?? null)
                 ?? 'assets/institutional/logo_fcpn.svg';
 
             $logosBase64 = [
@@ -109,15 +112,15 @@ class CertificatePdfService
             ];
 
             // Resolver marca de agua e imagen de fondo en Base64
-            $watermarkRef = $customFields['watermark_asset_id'] 
-                ?? $schema['watermark_asset_id'] 
+            $watermarkRef = $customFields['watermark_asset_id']
+                ?? $schema['watermark_asset_id']
                 ?? null;
             $watermarkImageBase64 = $watermarkRef ? $this->assetManager->getAssetBase64($watermarkRef) : null;
 
             // Resolver sello seco en Base64
-            $stampRef = $customFields['stamp_asset_id'] 
-                ?? $schema['stamp_asset_id'] 
-                ?? (!empty($schema['show_stamp']) ? 'assets/institutional/sello_oficial_vicedecanato.svg' : null);
+            $stampRef = $customFields['stamp_asset_id']
+                ?? $schema['stamp_asset_id']
+                ?? (! empty($schema['show_stamp']) ? 'assets/institutional/sello_oficial_vicedecanato.svg' : null);
             $stampBase64 = $stampRef ? $this->assetManager->getAssetBase64($stampRef) : null;
         }
 
@@ -125,7 +128,7 @@ class CertificatePdfService
         $schema = $this->templateEngine->normalizeSchema($schema, $orientation);
 
         // Pre-procesar elementos si existen en el esquema (soporte integral para snapshots y emisión en vivo)
-        if (!empty($schema['elements']) && is_array($schema['elements'])) {
+        if (! empty($schema['elements']) && is_array($schema['elements'])) {
             $context = $context ?? [
                 'beneficiary' => $beneficiaryData ?? $certificate->beneficiary,
                 'activity' => $certificate->activity,
@@ -142,7 +145,7 @@ class CertificatePdfService
                             $el['asset_base64'] = $this->assetManager->getAssetBase64($ref);
                         }
                     }
-                } elseif (($el['type'] ?? '') === 'text' && empty($el['resolved_content']) && !empty($el['content'])) {
+                } elseif (($el['type'] ?? '') === 'text' && empty($el['resolved_content']) && ! empty($el['content'])) {
                     $el['resolved_content'] = $this->templateEngine->interpolate($el['content'], $context);
                 }
             }
@@ -150,7 +153,7 @@ class CertificatePdfService
         }
 
         $view = 'certificates.templates.engine';
-        if (!view()->exists($view)) {
+        if (! view()->exists($view)) {
             $view = 'certificates.templates.default';
         }
 
@@ -183,8 +186,8 @@ class CertificatePdfService
     public function generateAndStore(Certificate $certificate): string
     {
         $pdf = $this->render($certificate);
-        $fileName = 'certificates/' . date('Y') . '/' . $certificate->certificate_code . '.pdf';
-        
+        $fileName = 'certificates/'.date('Y').'/'.$certificate->certificate_code.'.pdf';
+
         Storage::disk('public')->put($fileName, $pdf->output());
 
         return $fileName;

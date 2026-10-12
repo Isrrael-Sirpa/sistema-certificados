@@ -78,7 +78,6 @@
                     ¿Es un beneficiario o empleador?
                     <a href="{{ route('verification.index') }}" class="text-[#32639E] font-semibold hover:underline">Verificar certificado con QR o código</a>
                 </p>
-            </div> </p>
             </div>
         </div>
     </div>

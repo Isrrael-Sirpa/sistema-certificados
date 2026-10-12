@@ -19,9 +19,11 @@ class ActivityController extends Controller
         $query = Activity::withCount('certificates');
 
         if ($search = $request->input('search')) {
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('location', 'like', "%{$search}%");
+            });
         }
 
         if ($type = $request->input('activity_type')) {
@@ -70,7 +72,7 @@ class ActivityController extends Controller
             'certificateConfig.template',
             'certificates' => function ($q) {
                 $q->with(['beneficiary', 'certificateType', 'certificateTemplate'])->latest('id');
-            }
+            },
         ]);
 
         $beneficiaries = Beneficiary::orderBy('last_name')->orderBy('first_name')->get();
@@ -138,10 +140,10 @@ class ActivityController extends Controller
         ]);
 
         $customFields = [];
-        if (!empty($validated['resolution_number'])) {
+        if (! empty($validated['resolution_number'])) {
             $customFields['resolucion'] = $validated['resolution_number'];
         }
-        if (!empty($validated['modality'])) {
+        if (! empty($validated['modality'])) {
             $customFields['modalidad'] = $validated['modality'];
         }
 
@@ -195,6 +197,7 @@ class ActivityController extends Controller
 
             if ($alreadyExists) {
                 $skipped++;
+
                 continue;
             }
 

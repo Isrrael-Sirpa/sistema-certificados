@@ -11,6 +11,7 @@ use App\Models\CertificateTemplateVersion;
 use App\Models\CertificateType;
 use App\Models\InstitutionalAsset;
 use App\Services\CertificatePdfService;
+use App\Services\QRCodeService;
 use App\Services\TemplateEngineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -29,8 +30,8 @@ class CertificateTemplateController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
             });
         }
 
@@ -53,7 +54,7 @@ class CertificateTemplateController extends Controller
         $categories = ['institucional', 'seminario', 'capacitacion', 'reconocimiento', 'disertante', 'aprobacion', 'academica'];
         $initialTemplates = $this->templateEngine->getInitialTemplateDefinitions();
         $existingTemplates = CertificateTemplate::active()->select('id', 'name', 'category', 'orientation', 'current_version')->get();
-        
+
         return view('templates.create', compact('categories', 'initialTemplates', 'existingTemplates'));
     }
 
@@ -69,7 +70,7 @@ class CertificateTemplateController extends Controller
             'source_template_id' => ['nullable', 'exists:certificate_templates,id'],
         ]);
 
-        $slug = Str::slug($validated['name']) . '-' . Str::lower(Str::random(5));
+        $slug = Str::slug($validated['name']).'-'.Str::lower(Str::random(5));
         $mode = $validated['creation_mode'] ?? 'predefined';
         $configuration = [];
         $description = $validated['description'] ?? null;
@@ -77,14 +78,14 @@ class CertificateTemplateController extends Controller
         if ($mode === 'blank' || ($validated['base_template_slug'] ?? '') === 'blank') {
             $configuration = $this->templateEngine->createBlankSchema($validated['orientation']);
             $description = $description ?? 'Plantilla creada en lienzo en blanco';
-        } elseif ($mode === 'duplicate' && !empty($validated['source_template_id'])) {
+        } elseif ($mode === 'duplicate' && ! empty($validated['source_template_id'])) {
             $source = CertificateTemplate::findOrFail($validated['source_template_id']);
             $configuration = $source->configuration ?? [];
             $description = $description ?? "Duplicada a partir de {$source->name}";
         } else {
             // Predefined base template
             $initialDefs = collect($this->templateEngine->getInitialTemplateDefinitions());
-            $baseDef = $initialDefs->firstWhere('slug', $validated['base_template_slug'] ?? 'institucional-clasica') 
+            $baseDef = $initialDefs->firstWhere('slug', $validated['base_template_slug'] ?? 'institucional-clasica')
                 ?? $initialDefs->first();
             $configuration = $baseDef['configuration'] ?? [];
             $description = $description ?? ($baseDef['description'] ?? '');
@@ -109,10 +110,10 @@ class CertificateTemplateController extends Controller
 
         $template->versions()->create([
             'version_number' => 1,
-            'name' => "Versión 1.0 (Inicial)",
+            'name' => 'Versión 1.0 (Inicial)',
             'orientation' => $template->orientation,
             'design_schema' => $configuration,
-            'change_summary' => "Creación inicial de la plantilla",
+            'change_summary' => 'Creación inicial de la plantilla',
             'created_by_user_id' => $request->user()->id,
         ]);
 
@@ -157,16 +158,16 @@ class CertificateTemplateController extends Controller
         ]);
 
         $schema = [];
-        if (!empty($validated['schema_json'])) {
+        if (! empty($validated['schema_json'])) {
             $schema = json_decode($validated['schema_json'], true) ?? [];
-        } elseif (!empty($validated['schema'])) {
+        } elseif (! empty($validated['schema'])) {
             $schema = $validated['schema'];
         }
 
         $schema = $this->templateEngine->normalizeSchema($schema, $validated['orientation']);
 
         $newVersionNumber = $template->current_version;
-        if (!empty($validated['create_new_version'])) {
+        if (! empty($validated['create_new_version'])) {
             $newVersionNumber = $template->current_version + 1;
         }
 
@@ -189,7 +190,7 @@ class CertificateTemplateController extends Controller
                 'name' => "Versión {$newVersionNumber}.0",
                 'orientation' => $template->orientation,
                 'design_schema' => $schema,
-                'change_summary' => $validated['change_summary'] ?? "Actualización de diseño visual de la plantilla",
+                'change_summary' => $validated['change_summary'] ?? 'Actualización de diseño visual de la plantilla',
                 'created_by_user_id' => $request->user()->id,
             ]
         );
@@ -226,16 +227,16 @@ class CertificateTemplateController extends Controller
      */
     public function toggleStatus(CertificateTemplate $template)
     {
-        $template->is_active = !$template->is_active;
+        $template->is_active = ! $template->is_active;
         $template->save();
 
         AuditLog::log(
             'template_updated',
-            "Estado de plantilla '{$template->name}' cambiado a " . ($template->is_active ? 'Activa' : 'Inactiva'),
+            "Estado de plantilla '{$template->name}' cambiado a ".($template->is_active ? 'Activa' : 'Inactiva'),
             $template
         );
 
-        return back()->with('success', "Estado de la plantilla actualizado.");
+        return back()->with('success', 'Estado de la plantilla actualizado.');
     }
 
     /**
@@ -342,13 +343,13 @@ class CertificateTemplateController extends Controller
         $schema = $request->input('schema') ? json_decode($request->input('schema'), true) : ($template->configuration ?? []);
         $orientation = $request->input('orientation', $template->orientation ?? 'landscape');
         $schema = $this->templateEngine->normalizeSchema($schema, $orientation);
-        
+
         $sampleCertificate = (object) $this->createSampleCertificateData($template, $schema);
-        $qrService = app(\App\Services\QrCodeService::class);
+        $qrService = app(QRCodeService::class);
         $qrBase64 = $qrService->generateBase64Svg(url('/verificar/DEMO-PREVIEW-2026'), 160);
 
         // Interpolar textos dinámicos en los elementos del esquema para previsualización fidedigna
-        if (!empty($schema['elements']) && is_array($schema['elements'])) {
+        if (! empty($schema['elements']) && is_array($schema['elements'])) {
             $context = [
                 'beneficiary' => [
                     'name' => $sampleCertificate->beneficiary_name,
@@ -371,7 +372,7 @@ class CertificateTemplateController extends Controller
             ];
 
             foreach ($schema['elements'] as &$el) {
-                if (($el['type'] ?? '') === 'text' && !empty($el['content'])) {
+                if (($el['type'] ?? '') === 'text' && ! empty($el['content'])) {
                     $el['resolved_content'] = $this->templateEngine->interpolate($el['content'], $context);
                 }
             }

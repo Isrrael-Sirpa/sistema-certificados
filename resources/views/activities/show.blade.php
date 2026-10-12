@@ -167,7 +167,7 @@
                             <code class="bg-slate-100 px-1 py-0.5 rounded text-[#024966]">@{{actividad.fechas}}</code>.
                         </p>
                         <textarea name="custom_body_text" rows="3" 
-                                  placeholder="Ej: Por su destacada y activa participación en calidad de {{certificado.tipo}} en {{actividad.nombre}}, con una carga horaria de {{actividad.horas}} horas académicas..."
+                                  placeholder="Ej: Por su destacada y activa participación en calidad de @{{certificado.tipo}} en @{{actividad.nombre}}, con una carga horaria de @{{actividad.horas}} horas académicas..."
                                   class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">{{ old('custom_body_text', $config?->custom_body_text) }}</textarea>
                     </div>
                 </div>

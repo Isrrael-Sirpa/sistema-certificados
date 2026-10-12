@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\InstitutionalAsset;
 use App\Services\AssetManagerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class InstitutionalAssetController extends Controller
 {
@@ -60,21 +61,31 @@ class InstitutionalAssetController extends Controller
 
     public function toggleStatus(InstitutionalAsset $asset)
     {
-        $asset->is_active = !$asset->is_active;
+        $asset->is_active = ! $asset->is_active;
         $asset->save();
 
         AuditLog::log(
             'asset_updated',
-            "Estado del recurso '{$asset->name}' cambiado a " . ($asset->is_active ? 'Activo' : 'Inactivo'),
+            "Estado del recurso '{$asset->name}' cambiado a ".($asset->is_active ? 'Activo' : 'Inactivo'),
             $asset
         );
 
-        return back()->with('success', "Estado del recurso actualizado.");
+        return back()->with('success', 'Estado del recurso actualizado.');
     }
 
     public function destroy(InstitutionalAsset $asset)
     {
+        if ($asset->is_mandatory) {
+            return back()->with('error', "No se puede eliminar el recurso '{$asset->name}' porque está marcado como obligatorio para la institución.");
+        }
+
         $name = $asset->name;
+        $filePath = $asset->file_path;
+
+        if ($filePath && Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
+        }
+
         $asset->delete();
 
         AuditLog::log('asset_deleted', "Recurso '{$name}' eliminado de la biblioteca", null);
