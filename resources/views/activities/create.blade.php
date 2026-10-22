@@ -21,7 +21,7 @@
                 </label>
                 <input type="text" name="name" id="name" value="{{ old('name') }}" required
                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
-                       placeholder="Ej: Congreso Internacional de Ciencias Puras y Aplicadas">
+                       placeholder="Ej: Congreso Internacional de Tecnología e Innovación Industrial">
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -104,7 +104,7 @@
                     <label for="responsible_authority" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                         Autoridad Responsable (Firma)
                     </label>
-                    <input type="text" name="responsible_authority" id="responsible_authority" value="{{ old('responsible_authority', 'Dr. Carlos Mendoza Fernández - Vicedecano') }}"
+                    <input type="text" name="responsible_authority" id="responsible_authority" value="{{ old('responsible_authority', 'Ing. Aniceto Velarde Forest - Vicedecano') }}"
                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
                 </div>
             </div>

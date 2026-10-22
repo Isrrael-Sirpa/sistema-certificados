@@ -112,7 +112,7 @@
                                     '{{actividad.fechas}}' => $certificate->date_range ?? 'Del 15 al 20 de Septiembre de 2026',
                                     '{{certificado.codigo}}' => $certificate->certificate_code ?? 'CERT-2026-000042',
                                     '{{institucion.nombre}}' => 'UNIVERSIDAD MAYOR DE SAN ANDRÉS',
-                                    '{{facultad.nombre}}' => 'FACULTAD DE CIENCIAS PURAS Y NATURALES',
+                                    '{{facultad.nombre}}' => 'FACULTAD DE TECNOLOGÍA',
                                     '{{vicedecanato.nombre}}' => 'VICEDECANATO',
                                 ]))) !!}
                             </div>
@@ -126,7 +126,7 @@
                                     <div style="height: 32px;"></div>
                                 @endif
                                 <div style="width: 80%; border-top: 1px solid #334155; margin: 2px auto 3px auto;"></div>
-                                <div style="font-size: 10px; font-weight: bold; color: #0f172a; line-height: 1.2;">{{ $el['authority_name'] ?? $certificate->authority_name ?? 'Dr. Carlos Mendoza Fernández' }}</div>
+                                <div style="font-size: 10px; font-weight: bold; color: #0f172a; line-height: 1.2;">{{ $el['authority_name'] ?? $certificate->authority_name ?? 'Ing. Aniceto Velarde Forest' }}</div>
                                 <div style="font-size: 8.5px; color: #64748b; line-height: 1.2;">{{ $el['authority_title'] ?? $certificate->authority_position ?? 'Vicedecano de Facultad' }}</div>
                             </div>
                         @elseif($el['type'] === 'stamp')
@@ -163,7 +163,7 @@
                         UNIVERSIDAD MAYOR DE SAN ANDRÉS
                     </h2>
                     <h3 class="text-xs md:text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                        FACULTAD DE CIENCIAS PURAS Y NATURALES - VICEDECANATO
+                        FACULTAD DE TECNOLOGÍA - VICEDECANATO
                     </h3>
                     <div class="w-24 h-0.5 mx-auto my-3" style="background-color: {{ $schema['secondary_color'] ?? '#d4af37' }};"></div>
                 </div>
@@ -186,7 +186,7 @@
                 <div class="flex items-end justify-between pt-6 border-t border-slate-200 text-center relative z-20">
                     <div class="w-48 text-center">
                         <div class="w-36 border-t border-slate-700 mx-auto pt-1">
-                            <p class="text-xs font-bold text-slate-900">{{ $certificate->authority_name ?? 'Dr. Carlos Mendoza Fernández' }}</p>
+                            <p class="text-xs font-bold text-slate-900">{{ $certificate->authority_name ?? 'Ing. Aniceto Velarde Forest' }}</p>
                             <p class="text-[10px] text-slate-500">{{ $certificate->authority_position ?? 'Vicedecano de Facultad' }}</p>
                         </div>
                     </div>

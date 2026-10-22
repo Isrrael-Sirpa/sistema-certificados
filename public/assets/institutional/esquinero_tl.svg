@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Top-Left Corner -->
+  <g fill="none" stroke="#d4af37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6,6 L 45,6 M 6,6 L 6,45" stroke-width="3"/>
+    <path d="M 12,12 L 40,12 M 12,12 L 12,40" stroke-width="1.5" stroke="#024966"/>
+    <polygon points="12,12 18,6 24,12 18,18" fill="#d4af37" stroke="none"/>
+    <circle cx="18" cy="18" r="3" fill="#024966" stroke="none"/>
+    <path d="M 6,45 C 15,45 22,35 22,25 C 22,18 17,14 12,17" />
+    <path d="M 45,6 C 45,15 35,22 25,22 C 18,22 14,17 17,12" />
+    <path d="M 22,25 C 28,32 35,35 48,35 C 38,38 30,44 26,52" stroke-width="1.5" stroke="#024966"/>
+    <path d="M 25,22 C 32,28 35,35 35,48 C 38,38 44,30 52,26" stroke-width="1.5" stroke="#024966"/>
+    <circle cx="48" cy="35" r="2" fill="#d4af37" stroke="none"/>
+    <circle cx="35" cy="48" r="2" fill="#d4af37" stroke="none"/>
+    <circle cx="26" cy="52" r="1.5" fill="#024966" stroke="none"/>
+    <circle cx="52" cy="26" r="1.5" fill="#024966" stroke="none"/>
+    <circle cx="6" cy="6" r="3" fill="#d4af37" stroke="none"/>
+  </g>
+</svg>

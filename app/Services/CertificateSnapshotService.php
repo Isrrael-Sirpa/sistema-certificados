@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Models\Beneficiary;
-use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\Setting;
+use Carbon\Carbon;
 
 class CertificateSnapshotService
 {
@@ -34,19 +34,19 @@ class CertificateSnapshotService
         // 1. Resolver esquema visual (fusionando plantilla base + personalización de actividad)
         $schema = $template->configuration ?? [];
         if ($activityConfig) {
-            if (!empty($activityConfig->primary_color)) {
+            if (! empty($activityConfig->primary_color)) {
                 $schema['primary_color'] = $activityConfig->primary_color;
             }
-            if (!empty($activityConfig->secondary_color)) {
+            if (! empty($activityConfig->secondary_color)) {
                 $schema['secondary_color'] = $activityConfig->secondary_color;
             }
-            if (!empty($activityConfig->custom_title)) {
+            if (! empty($activityConfig->custom_title)) {
                 $schema['custom_title'] = $activityConfig->custom_title;
             }
         }
 
         // 2. Resolver redacción de cuerpo
-        $rawText = ($activityConfig && !empty($activityConfig->custom_body_text))
+        $rawText = ($activityConfig && ! empty($activityConfig->custom_body_text))
             ? $activityConfig->custom_body_text
             : ($schema['body_text'] ?? 'Por su participación en {{actividad.nombre}}');
 
@@ -56,7 +56,7 @@ class CertificateSnapshotService
             'certificate' => [
                 'code' => $code,
                 'issue_date' => $issueDate,
-                'expiration_date' => \Carbon\Carbon::parse($issueDate)->addYears(3)->toDateString(),
+                'expiration_date' => Carbon::parse($issueDate)->addYears(3)->toDateString(),
                 'type' => $certificateType->name,
             ],
             'settings' => $settings,
@@ -76,22 +76,22 @@ class CertificateSnapshotService
         ];
 
         foreach ($signatures as &$sig) {
-            if (!empty($sig['asset_path'])) {
+            if (! empty($sig['asset_path'])) {
                 $sig['asset_base64'] = $this->assetManager->getAssetBase64($sig['asset_path']);
             }
         }
 
         // 4. Congelar logos izquierdo y derecho en Base64 (soporta JPG, PNG, SVG)
-        $leftLogoRef = $customFields['logo_left_id'] 
-            ?? $schema['logo_left_id'] 
-            ?? $schema['logo_left_path'] 
-            ?? ($schema['logos'][0]['path'] ?? null) 
+        $leftLogoRef = $customFields['logo_left_id']
+            ?? $schema['logo_left_id']
+            ?? $schema['logo_left_path']
+            ?? ($schema['logos'][0]['path'] ?? null)
             ?? 'assets/institutional/logo_umsa.svg';
 
-        $rightLogoRef = $customFields['logo_right_id'] 
-            ?? $schema['logo_right_id'] 
-            ?? $schema['logo_right_path'] 
-            ?? ($schema['logos'][1]['path'] ?? null) 
+        $rightLogoRef = $customFields['logo_right_id']
+            ?? $schema['logo_right_id']
+            ?? $schema['logo_right_path']
+            ?? ($schema['logos'][1]['path'] ?? null)
             ?? 'assets/institutional/logo_fcpn.svg';
 
         $logosBase64 = [
@@ -103,10 +103,10 @@ class CertificateSnapshotService
         $watermarkImageRef = $customFields['watermark_asset_id']
             ?? $schema['watermark_asset_id']
             ?? $schema['watermark_asset_path']
-            ?? null;
+            ?? (! empty($schema['show_watermark']) ? 'assets/institutional/marca_agua_escudo.svg' : null);
 
-        $watermarkImageBase64 = $watermarkImageRef 
-            ? $this->assetManager->getAssetBase64($watermarkImageRef) 
+        $watermarkImageBase64 = $watermarkImageRef
+            ? $this->assetManager->getAssetBase64($watermarkImageRef)
             : null;
 
         // 6. Congelar sello oficial
@@ -115,21 +115,21 @@ class CertificateSnapshotService
             ?? $schema['stamp_asset_path']
             ?? 'assets/institutional/sello_oficial_vicedecanato.svg';
 
-        $stampBase64 = !empty($schema['show_stamp'])
+        $stampBase64 = ! empty($schema['show_stamp'])
             ? $this->assetManager->getAssetBase64($stampRef)
             : null;
 
         // 7. Normalizar esquema y congelar elementos dinámicos de lienzo (Base64 y textos interpolados)
         $schema = $this->templateEngine->normalizeSchema($schema, $template->orientation);
 
-        if (!empty($schema['elements']) && is_array($schema['elements'])) {
+        if (! empty($schema['elements']) && is_array($schema['elements'])) {
             foreach ($schema['elements'] as &$el) {
                 if (in_array($el['type'] ?? '', ['logo', 'signature', 'stamp', 'watermark', 'image'])) {
                     $ref = $el['asset_id'] ?? $el['asset_path'] ?? null;
                     if ($ref && empty($el['asset_base64'])) {
                         $el['asset_base64'] = $this->assetManager->getAssetBase64($ref);
                     }
-                } elseif (($el['type'] ?? '') === 'text' && !empty($el['content'])) {
+                } elseif (($el['type'] ?? '') === 'text' && ! empty($el['content'])) {
                     $el['resolved_content'] = $this->templateEngine->interpolate($el['content'], $context);
                 }
             }

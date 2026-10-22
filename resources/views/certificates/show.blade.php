@@ -157,7 +157,7 @@
                                 </div>
                             @endforeach
                         @else
-                            <span class="font-medium text-slate-800 mt-0.5 block">Dr. Carlos Mendoza Fernández (Vicedecano)</span>
+                            <span class="font-medium text-slate-800 mt-0.5 block">Ing. Aniceto Velarde Forest (Vicedecano)</span>
                         @endif
                     </div>
                 </div>

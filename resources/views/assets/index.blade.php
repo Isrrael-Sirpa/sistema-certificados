@@ -180,7 +180,7 @@
                     <p class="text-xs font-bold text-slate-800">Datos de la Autoridad Firmante:</p>
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nombre Completo y Grado</label>
-                        <input type="text" name="authority_name" placeholder="Ej: Dr. Carlos Mendoza Fernández"
+                        <input type="text" name="authority_name" placeholder="Ej: Ing. Aniceto Velarde Forest"
                                class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg bg-white">
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -191,7 +191,7 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Unidad / Facultad</label>
-                            <input type="text" name="institution" placeholder="Ej: FCPN - UMSA"
+                            <input type="text" name="institution" placeholder="Ej: Facultad de Tecnología - UMSA"
                                    class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg bg-white">
                         </div>
                     </div>

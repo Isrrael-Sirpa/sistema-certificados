@@ -3,17 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Activity;
-use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
-use App\Models\InstitutionalAsset;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
-use App\Services\CertificateSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -23,7 +20,9 @@ class GeneralSystemAuditFixesTest extends TestCase
     use RefreshDatabase;
 
     protected User $adminUser;
+
     protected User $operatorUser;
+
     protected CertificateTemplate $defaultTemplate;
 
     protected function setUp(): void
@@ -31,8 +30,8 @@ class GeneralSystemAuditFixesTest extends TestCase
         parent::setUp();
         $this->seed();
 
-        $this->adminUser = User::whereHas('role', fn($q) => $q->where('name', Role::ADMIN))->first();
-        $this->operatorUser = User::whereHas('role', fn($q) => $q->where('name', Role::OPERATOR))->first();
+        $this->adminUser = User::whereHas('role', fn ($q) => $q->where('name', Role::ADMIN))->first();
+        $this->operatorUser = User::whereHas('role', fn ($q) => $q->where('name', Role::OPERATOR))->first();
         $this->defaultTemplate = CertificateTemplate::first();
     }
 
@@ -76,6 +75,17 @@ class GeneralSystemAuditFixesTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_vertical_template_preview_pdf_generates_stream_without_errors(): void
+    {
+        $verticalTemplate = CertificateTemplate::where('orientation', 'portrait')->first();
+        if ($verticalTemplate) {
+            $response = $this->actingAs($this->adminUser)->get(route('templates.preview', $verticalTemplate));
+
+            $response->assertStatus(200);
+            $response->assertHeader('Content-Type', 'application/pdf');
+        }
     }
 
     public function test_template_show_and_edit_routes_redirect_to_designer(): void

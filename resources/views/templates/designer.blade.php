@@ -53,26 +53,39 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
     <!-- ============================================================== -->
     <!-- 1. TOP STUDIO ACTION BAR                                       -->
     <!-- ============================================================== -->
-    <header class="bg-white px-5 py-3.5 rounded-2xl border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-4 sticky top-2 z-40">
+    <!-- ============================================================== -->
+    <!-- 1. TOP STUDIO ACTION BAR (ESTÁTICA, SIN SUPERPOSICIÓN)         -->
+    <!-- ============================================================== -->
+    <header class="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4 relative z-20">
         
         <!-- Left: Back & Template Meta -->
         <div class="flex items-center gap-3">
             <a href="{{ route('templates.index') }}" 
                class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-               title="Volver al catálogo">
+               title="Volver al catálogo de plantillas">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             </a>
             <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <input type="text" x-model="name" @input="markDirty()"
-                           class="text-sm sm:text-base font-bold text-[#024966] border border-slate-200 hover:border-slate-300 focus:border-[#024966] focus:ring-1 focus:ring-[#024966] px-2 py-1 rounded-lg transition-all w-48 sm:w-64 bg-slate-50/50">
+                    <div class="relative flex items-center">
+                        <input type="text" x-model="name" @input="markDirty()"
+                               class="text-sm sm:text-base font-bold text-[#024966] border border-slate-200 hover:border-slate-300 focus:border-[#024966] focus:ring-1 focus:ring-[#024966] pl-2 pr-6 py-1 rounded-lg transition-all w-48 sm:w-64 bg-slate-50/70"
+                               title="Nombre de la plantilla">
+                        <span class="absolute right-2 text-slate-400 text-xs pointer-events-none">✏️</span>
+                    </div>
                     <span class="bg-blue-50 text-[#024966] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
                         v{{ $template->current_version }}.0
                     </span>
                     <button type="button" @click="toggleOrientation()" 
                             class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase cursor-pointer transition-all flex items-center gap-1"
-                            title="Alternar orientación A4">
-                        <span x-text="orientation === 'landscape' ? '📄 Horizontal (297×210 mm)' : '📃 Vertical (210×297 mm)'"></span>
+                            title="Alternar entre orientación horizontal y vertical">
+                        <span x-text="orientation === 'landscape' ? '📄 A4 Horizontal (297×210 mm)' : '📃 A4 Vertical (210×297 mm)'"></span>
+                    </button>
+                    <button type="button" @click="autoAdaptLayout()" 
+                            class="bg-blue-50 hover:bg-blue-100 text-[#024966] border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full cursor-pointer transition-all flex items-center gap-1"
+                            title="Reacomodar automáticamente los elementos para aprovechar de forma óptima el espacio A4 según la orientación seleccionada">
+                        <svg class="w-3 h-3 text-[#024966]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Adaptar Proporciones</span>
                     </button>
                     <!-- Status indicator -->
                     <span class="flex items-center gap-1.5 text-[11px] font-medium transition-all"
@@ -81,7 +94,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <span x-text="isDirty ? 'Modificado sin guardar' : 'Guardado'"></span>
                     </span>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">Estudio visual institucional • Haga clic en cualquier elemento del lienzo para editarlo</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Estudio visual institucional • Haz clic en cualquier elemento del lienzo para seleccionarlo y editarlo</p>
             </div>
         </div>
 
@@ -90,12 +103,12 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             <!-- Undo / Redo -->
             <button type="button" @click="undo()" :disabled="undoStack.length <= 1"
                     class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    title="Deshacer (Ctrl+Z)">
+                    title="Deshacer última acción (Ctrl+Z)">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m0 0l-4-4m4 4l4-4M3 10l4-4m-4 4l4 4"/></svg>
             </button>
             <button type="button" @click="redo()" :disabled="redoStack.length === 0"
                     class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    title="Rehacer (Ctrl+Y)">
+                    title="Rehacer acción (Ctrl+Y)">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m0 0l4-4m-4 4l-4-4m21-2l-4-4m4 4l-4 4"/></svg>
             </button>
 
@@ -115,7 +128,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             </button>
             <button type="button" @click="setZoom(100)"
                     class="px-1.5 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-all cursor-pointer"
-                    title="Zoom original (100%)">
+                    title="Restablecer zoom al 100%">
                 100%
             </button>
 
@@ -125,15 +138,15 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             <button type="button" @click="showGrid = !showGrid"
                     :class="showGrid ? 'bg-white text-[#024966] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                     class="px-2 py-1 text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                    title="Alternar cuadrícula milimétrica de alineación">
+                    title="Alternar cuadrícula de alineación">
                 <span>📏</span>
                 <span class="hidden sm:inline">Guías</span>
             </button>
 
             <!-- Real PDF Preview Button -->
             <a href="{{ route('templates.preview', $template) }}" target="_blank"
-               class="px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg transition-all cursor-pointer flex items-center gap-1"
-               title="Ver PDF Oficial generado por DomPDF">
+               class="px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+               title="Ver PDF oficial generado en tiempo real con DomPDF">
                 <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
                 <span>Previsualizar PDF</span>
             </a>
@@ -142,12 +155,14 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- Right: Save Actions -->
         <div class="flex items-center gap-2">
             <button type="button" @click="saveTemplate(false)"
-                    class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
-                <span>Guardar v{{ $template->current_version }}.0</span>
+                    class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                    title="Guardar cambios en la versión actual v{{ $template->current_version }}.0">
+                <span>💾 Guardar v{{ $template->current_version }}.0</span>
             </button>
 
             <button type="button" @click="saveTemplate(true)"
-                    class="px-5 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5">
+                    class="px-5 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5"
+                    title="Guardar como nueva versión incrementada v{{ $template->current_version + 1 }}.0">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 <span>Guardar como v{{ $template->current_version + 1 }}.0</span>
             </button>
@@ -187,7 +202,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- ========================================================== -->
         <!-- LEFT COLUMN: TOOLBOX, ASSET LIBRARY & LAYERS (3 COLS)      -->
         <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[750px] sticky top-20"
+        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
                :class="activePanel !== 'tools' ? 'hidden lg:flex' : 'flex'">
             
             <!-- Left Tabs Bar -->
@@ -229,7 +244,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 <p class="text-[9px] text-slate-400">Universidad / Entidad</p>
                             </button>
 
-                            <button type="button" @click="addTextElement('text', 'FACULTAD DE CIENCIAS PURAS Y NATURALES', 11, true)"
+                            <button type="button" @click="addTextElement('text', 'FACULTAD DE TECNOLOGÍA', 11, true)"
                                     class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
                                 <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Subtítulo</p>
                                 <p class="text-[9px] text-slate-400">Facultad / Carrera</p>
@@ -263,6 +278,24 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                     class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
                                 <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Párrafo de Certificación</p>
                                 <p class="text-[9px] text-slate-400">Texto libre con variables interpolables</p>
+                            </button>
+
+                            <button type="button" @click="addTextElement('text', 'El Vicedecano y las Autoridades de la Facultad de Tecnología de la Universidad Mayor de San Andrés, en uso de sus atribuciones confieren el presente:', 10, false, 'italic')"
+                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
+                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Preámbulo Institucional</p>
+                                <p class="text-[9px] text-slate-400">Fórmula solemne de otorgamiento en cursiva</p>
+                            </button>
+
+                            <button type="button" @click="addTextElement('text', 'Resolución H.C.F. Nº @{{acreditacion.resolucion}}', 9, false)"
+                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Resolución / Aval</p>
+                                <p class="text-[9px] text-slate-400">Res. HCF de acreditación</p>
+                            </button>
+
+                            <button type="button" @click="addTextElement('text', '@{{certificado.lugar_fecha_emision}}', 10, false)"
+                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Lugar y Fecha Solemne</p>
+                                <p class="text-[9px] text-slate-400">La Paz, 20 de septiembre...</p>
                             </button>
                         </div>
                     </div>
@@ -448,13 +481,13 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             </div>
 
             <!-- Canvas Scroll Wrapper & Zoom Transformer -->
-            <div class="bg-slate-200/90 p-4 sm:p-6 rounded-2xl border border-slate-300 flex items-center justify-center overflow-auto min-h-[580px] max-h-[750px]"
+            <div class="bg-slate-200/80 p-4 sm:p-6 rounded-2xl border border-slate-300 flex items-center justify-center overflow-auto min-h-[620px] max-h-[780px] shadow-inner"
                  @click.self="selectElement(null)">
                 
                 <!-- The Scalable A4 Document Sheet -->
                 <div id="certificateCanvasSheet"
                      @click.self="selectElement(null)"
-                     class="bg-white shadow-2xl relative transition-transform origin-top select-none"
+                     class="bg-white shadow-2xl relative transition-transform origin-top select-none border border-slate-200/60"
                      :style="{
                          width: canvasWidthStyle,
                          height: canvasHeightStyle,
@@ -482,6 +515,16 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                              opacity: 0.7
                          }"></div>
 
+                    <!-- 4 Ornamental Academic Corners -->
+                    <template x-if="schema.border_style === 'ornamental-double' || schema.border_style === 'gold-filigree'">
+                        <div class="pointer-events-none z-10">
+                            <img src="{{ asset('assets/institutional/esquinero_tl.svg') }}" class="absolute top-[22px] left-[22px] w-11 h-11 pointer-events-none opacity-85" alt="Esquinero TL">
+                            <img src="{{ asset('assets/institutional/esquinero_tr.svg') }}" class="absolute top-[22px] right-[22px] w-11 h-11 pointer-events-none opacity-85" alt="Esquinero TR">
+                            <img src="{{ asset('assets/institutional/esquinero_bl.svg') }}" class="absolute bottom-[22px] left-[22px] w-11 h-11 pointer-events-none opacity-85" alt="Esquinero BL">
+                            <img src="{{ asset('assets/institutional/esquinero_br.svg') }}" class="absolute bottom-[22px] right-[22px] w-11 h-11 pointer-events-none opacity-85" alt="Esquinero BR">
+                        </div>
+                    </template>
+
                     <!-- Optional Background Grid Layer -->
                     <div x-show="showGrid" class="absolute inset-0 pointer-events-none opacity-20"
                          style="background-image: radial-gradient(#024966 1px, transparent 1px); background-size: 20px 20px;"></div>
@@ -501,7 +544,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                              @click.stop="selectElement(el.id)"
                              class="absolute transition-shadow group select-none cursor-move"
                              :class="{
-                                 'ring-2 ring-blue-600 ring-offset-1 shadow-lg bg-blue-50/20': selectedId === el.id,
+                                 'ring-2 ring-[#024966] ring-offset-1 shadow-lg bg-blue-50/25': selectedId === el.id,
                                  'hover:outline hover:outline-1 hover:outline-blue-400': selectedId !== el.id,
                                  'pointer-events-none': el.is_locked
                              }"
@@ -515,12 +558,18 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                  transform: 'rotate(' + (el.rotation || 0) + 'deg)'
                              }">
 
-                            <!-- Selection Outline & Resize Handle -->
+                            <!-- Selection Outline, Resize Handle & Element Type Badge -->
                             <template x-if="selectedId === el.id">
                                 <div>
+                                    <!-- Floating Element Badge -->
+                                    <div class="absolute -top-6 left-0 px-2 py-0.5 bg-[#024966] text-white text-[9px] font-bold rounded shadow pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 border border-blue-400">
+                                        <span x-text="getElementIcon(el.type)"></span>
+                                        <span x-text="el.name || el.type"></span>
+                                    </div>
+                                    <!-- Resize Handle (SE Corner) -->
                                     <div @mousedown.stop="startResize($event, el.id)"
-                                         class="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border-2 border-white rounded-full shadow-md cursor-se-resize z-50 hover:scale-125 transition-transform"
-                                         title="Redimensionar elemento"></div>
+                                         class="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-md cursor-se-resize z-50 hover:scale-125 transition-transform"
+                                         title="Arrastrar para redimensionar"></div>
                                     <div class="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
                                     <div class="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
                                     <div class="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
@@ -569,15 +618,33 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                             <!-- 3. QR CODE ELEMENT -->
                             <template x-if="isQrType(el.type)">
-                                <div class="w-full h-full p-1 flex flex-col items-center justify-center text-center pointer-events-none">
-                                    <div class="w-full aspect-square max-h-[85%] bg-white border border-slate-300 rounded p-1 flex items-center justify-center shadow-xs">
-                                        <svg class="w-full h-full text-slate-900" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
-                                        </svg>
-                                    </div>
-                                    <span class="text-[7px] font-mono text-slate-500 mt-0.5 truncate block max-w-full">
-                                        CERT-2026-000042
-                                    </span>
+                                <div class="w-full h-full p-1 flex items-center justify-center text-center pointer-events-none">
+                                    <template x-if="orientation === 'portrait' || el.width >= 22">
+                                        <div class="w-full h-full bg-slate-50/95 border border-slate-300 rounded-lg p-1.5 flex items-center justify-between gap-2 shadow-xs">
+                                            <div class="h-full aspect-square bg-white border border-slate-300 rounded p-1 flex items-center justify-center shrink-0">
+                                                <svg class="w-full h-full text-slate-900" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
+                                                </svg>
+                                            </div>
+                                            <div class="flex-1 text-left overflow-hidden">
+                                                <span class="inline-block text-[8px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Verificación Oficial</span>
+                                                <p class="text-[9px] font-mono font-bold text-slate-800 mt-0.5 truncate">CERT-2026-000042</p>
+                                                <p class="text-[7px] text-slate-500 leading-tight truncate">Validez en línea UMSA</p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template x-if="orientation !== 'portrait' && el.width < 22">
+                                        <div class="w-full h-full flex flex-col items-center justify-center">
+                                            <div class="w-full aspect-square max-h-[85%] bg-white border border-slate-300 rounded p-1 flex items-center justify-center shadow-xs">
+                                                <svg class="w-full h-full text-slate-900" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
+                                                </svg>
+                                            </div>
+                                            <span class="text-[7px] font-mono text-slate-500 mt-0.5 truncate block max-w-full">
+                                                CERT-2026-000042
+                                            </span>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
 
@@ -588,7 +655,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                         <img :src="resolveAssetUrl(el)" class="h-10 max-h-[50%] object-contain mb-1" alt="Firma">
                                     </template>
                                     <div class="w-4/5 border-t border-slate-700 my-0.5"></div>
-                                    <p class="text-[10px] font-bold text-slate-900 leading-tight truncate w-full" x-text="el.content || el.name || 'Dr. Carlos Mendoza Fernández'"></p>
+                                    <p class="text-[10px] font-bold text-slate-900 leading-tight truncate w-full" x-text="el.content || el.name || 'Ing. Aniceto Velarde Forest'"></p>
                                     <p class="text-[8px] text-slate-500 leading-tight truncate w-full" x-text="el.subtitle || el.position || 'Vicedecano de Facultad'"></p>
                                 </div>
                             </template>
@@ -622,7 +689,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- ========================================================== -->
         <!-- RIGHT COLUMN: CONTEXTUAL PROPERTIES INSPECTOR (3 COLS)     -->
         <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[750px] sticky top-20"
+        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
                :class="activePanel !== 'inspector' ? 'hidden lg:flex' : 'flex'">
             
             <!-- Right Inspector Header -->
@@ -649,21 +716,31 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                     <div class="space-y-4">
                         
                         <!-- Element Quick Actions: Align, Layer, Clone -->
-                        <div class="flex items-center justify-between gap-1 p-1 bg-slate-100 rounded-xl">
+                        <div class="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
                             <button type="button" @click="alignElementCenter('x')"
-                                    class="p-1.5 rounded-lg text-slate-600 hover:text-[#024966] hover:bg-white transition-all text-[11px] font-bold flex-1 text-center cursor-pointer"
-                                    title="Centrar horizontalmente">
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    title="Centrar horizontalmente en el lienzo">
                                 ↔ Centro X
                             </button>
                             <button type="button" @click="alignElementCenter('y')"
-                                    class="p-1.5 rounded-lg text-slate-600 hover:text-[#024966] hover:bg-white transition-all text-[11px] font-bold flex-1 text-center cursor-pointer"
-                                    title="Centrar verticalmente">
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    title="Centrar verticalmente en el lienzo">
                                 ↕ Centro Y
                             </button>
                             <button type="button" @click="duplicateElement(selectedElement.id)"
-                                    class="p-1.5 rounded-lg text-slate-600 hover:text-[#024966] hover:bg-white transition-all text-[11px] font-bold flex-1 text-center cursor-pointer"
-                                    title="Duplicar elemento">
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    title="Duplicar este elemento">
                                 📋 Clonar
+                            </button>
+                            <button type="button" @click="bringToFront(selectedElement.id)"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    title="Traer al frente (capa superior)">
+                                ⬆ Frente
+                            </button>
+                            <button type="button" @click="sendToBack(selectedElement.id)"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    title="Enviar al fondo (detrás de otros)">
+                                ⬇ Fondo
                             </button>
                         </div>
 
@@ -711,38 +788,76 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 <textarea rows="3" x-model="selectedElement.content" @input="markDirty()"
                                           class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white"></textarea>
                                 
-                                <!-- Dynamic Variable Chips -->
-                                <div>
-                                    <span class="block text-[9px] text-slate-400 mb-1">Insertar variable dinámica:</span>
-                                    <div class="flex flex-wrap gap-1">
-                                        <button type="button" @click="insertVariable('@{{beneficiario.nombre}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{beneficiario.nombre}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{beneficiario.documento}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{beneficiario.documento}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{actividad.nombre}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{actividad.nombre}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{actividad.horas}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{actividad.horas}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{actividad.fechas}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{actividad.fechas}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{certificado.tipo}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{certificado.tipo}}
-                                        </button>
-                                        <button type="button" @click="insertVariable('@{{certificado.codigo}}')"
-                                                class="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-[#024966] rounded text-[10px] font-mono cursor-pointer">
-                                            @{{certificado.codigo}}
-                                        </button>
+                                <!-- Categorized Dynamic Variable Chips -->
+                                <div class="space-y-1.5 pt-1">
+                                    <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Variables Dinámicas:</span>
+                                    
+                                    <div>
+                                        <span class="text-[9px] text-slate-500 font-semibold block mb-0.5">👤 Beneficiario:</span>
+                                        <div class="flex flex-wrap gap-1">
+                                            <button type="button" @click="insertVariable('@{{beneficiario.nombre}}')"
+                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#024966] rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Nombre completo del participante">
+                                                + @{{beneficiario.nombre}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{beneficiario.documento}}')"
+                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#024966] rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Documento / C.I.">
+                                                + @{{beneficiario.documento}}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span class="text-[9px] text-slate-500 font-semibold block mb-0.5">🎓 Actividad Académica:</span>
+                                        <div class="flex flex-wrap gap-1">
+                                            <button type="button" @click="insertVariable('@{{actividad.nombre}}')"
+                                                    class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Título de la actividad">
+                                                + @{{actividad.nombre}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{actividad.horas}}')"
+                                                    class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Carga horaria en horas">
+                                                + @{{actividad.horas}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{actividad.fechas}}')"
+                                                    class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Fechas del evento">
+                                                + @{{actividad.fechas}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{acreditacion.resolucion}}')"
+                                                    class="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Resolución Facultativa de Acreditación">
+                                                + @{{acreditacion.resolucion}}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span class="text-[9px] text-slate-500 font-semibold block mb-0.5">📜 Certificado:</span>
+                                        <div class="flex flex-wrap gap-1">
+                                            <button type="button" @click="insertVariable('@{{certificado.tipo}}')"
+                                                    class="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Tipo de certificación">
+                                                + @{{certificado.tipo}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{certificado.codigo}}')"
+                                                    class="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Código oficial correlativo">
+                                                + @{{certificado.codigo}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{certificado.lugar_fecha_emision}}')"
+                                                    class="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Lugar y fecha formal de emisión">
+                                                + @{{certificado.lugar_fecha_emision}}
+                                            </button>
+                                            <button type="button" @click="insertVariable('@{{certificado.fecha_emision_larga}}')"
+                                                    class="px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    title="Fecha larga de emisión">
+                                                + @{{certificado.fecha_emision_larga}}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -750,26 +865,28 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                         <!-- 3. Typography Styles (For Text Elements) -->
                         <template x-if="isTextType(selectedElement.type)">
-                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                                 <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipografía & Estilos</span>
                                 
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Tamaño (px)</label>
-                                        <input type="number" min="6" max="72" x-model.number="selectedElement.styles.font_size" 
-                                               @input="selectedElement.font_size = selectedElement.styles.font_size; markDirty();"
-                                               class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" @click="changeFontSize(-1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 font-bold text-slate-700 cursor-pointer">-</button>
+                                            <input type="number" min="6" max="72" x-model.number="selectedElement.styles.font_size" 
+                                                   @input="selectedElement.font_size = selectedElement.styles.font_size; markDirty();"
+                                                   class="w-full py-1 px-1 text-center text-xs border border-slate-300 rounded bg-white font-mono font-bold">
+                                            <button type="button" @click="changeFontSize(1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 font-bold text-slate-700 cursor-pointer">+</button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Alineación</label>
-                                        <select x-model="selectedElement.styles.text_align" 
-                                                @change="selectedElement.text_align = selectedElement.styles.text_align; markDirty();"
-                                                class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
-                                            <option value="center">Centro</option>
-                                            <option value="left">Izquierda</option>
-                                            <option value="right">Derecha</option>
-                                            <option value="justify">Justificado</option>
-                                        </select>
+                                        <div class="grid grid-cols-4 gap-0.5 p-0.5 bg-slate-100 rounded-lg border border-slate-200 h-7 items-center">
+                                            <button type="button" @click="setTextAlign('left')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'left' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Izquierda">⫷</button>
+                                            <button type="button" @click="setTextAlign('center')" :class="(selectedElement.styles?.text_align || selectedElement.text_align || 'center') === 'center' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Centro">≡</button>
+                                            <button type="button" @click="setTextAlign('right')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'right' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Derecha">⫸</button>
+                                            <button type="button" @click="setTextAlign('justify')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'justify' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Justificado">☵</button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -993,7 +1110,10 @@ function certificateStudio(config) {
             activityHours: '40',
             activityDates: 'del 15 al 20 de Septiembre de 2026',
             certificateType: 'ASISTENCIA Y APROBACIÓN',
-            certificateCode: 'CERT-2026-000042'
+            certificateCode: 'CERT-2026-000042',
+            issuePlaceDate: 'La Paz, 20 de Septiembre de 2026',
+            issueDateLong: '20 de Septiembre de 2026',
+            resolution: '045/2026'
         },
 
         init() {
@@ -1125,7 +1245,11 @@ function certificateStudio(config) {
                 .replace(/@?\{\{actividad\.horas\}\}/g, this.sampleData.activityHours)
                 .replace(/@?\{\{actividad\.fechas\}\}/g, this.sampleData.activityDates)
                 .replace(/@?\{\{certificado\.tipo\}\}/g, this.sampleData.certificateType)
-                .replace(/@?\{\{certificado\.codigo\}\}/g, this.sampleData.certificateCode);
+                .replace(/@?\{\{certificado\.codigo\}\}/g, this.sampleData.certificateCode)
+                .replace(/@?\{\{certificado\.lugar_fecha_emision\}\}/g, this.sampleData.issuePlaceDate)
+                .replace(/@?\{\{certificado\.fecha_emision_larga\}\}/g, this.sampleData.issueDateLong)
+                .replace(/@?\{\{acreditacion\.resolucion\}\}/g, this.sampleData.resolution)
+                .replace(/@?\{\{actividad\.resolucion\}\}/g, this.sampleData.resolution);
         },
 
         updateSampleProfile() {
@@ -1291,7 +1415,7 @@ function certificateStudio(config) {
         },
 
         // Element Insertion Handlers
-        addTextElement(type, defaultContent, fontSize = 12, isBold = false) {
+        addTextElement(type, defaultContent, fontSize = 12, isBold = false, fontStyle = 'normal') {
             const id = 'el_' + Date.now();
             const newEl = {
                 id: id,
@@ -1311,7 +1435,7 @@ function certificateStudio(config) {
                 styles: {
                     font_size: fontSize,
                     font_weight: isBold ? 'bold' : 'normal',
-                    font_style: 'normal',
+                    font_style: fontStyle,
                     text_align: 'center',
                     text_color: this.schema.text_color || '#1e293b'
                 }
@@ -1368,7 +1492,7 @@ function certificateStudio(config) {
                 is_mandatory: false,
                 asset_id: firstSig ? firstSig.id : null,
                 asset_url: firstSig ? firstSig.url : '',
-                content: 'Dr. Carlos Mendoza Fernández',
+                content: 'Ing. Aniceto Velarde Forest',
                 subtitle: 'Vicedecano de Facultad',
                 styles: {}
             };
@@ -1493,14 +1617,204 @@ function certificateStudio(config) {
             this.markDirty();
         },
 
+        bringToFront(id) {
+            const el = this.elements.find(e => e.id === id);
+            if (!el) return;
+            const maxZ = Math.max(...this.elements.map(e => e.z_index || 10), 10);
+            el.z_index = maxZ + 1;
+            this.pushHistoryState();
+            this.markDirty();
+        },
+
+        sendToBack(id) {
+            const el = this.elements.find(e => e.id === id);
+            if (!el) return;
+            const minZ = Math.min(...this.elements.map(e => e.z_index || 10), 10);
+            el.z_index = Math.max(1, minZ - 1);
+            this.pushHistoryState();
+            this.markDirty();
+        },
+
+        changeFontSize(delta) {
+            if (!this.selectedElement) return;
+            if (!this.selectedElement.styles) this.selectedElement.styles = {};
+            const cur = Number(this.selectedElement.styles.font_size || this.selectedElement.font_size || 12);
+            const updated = Math.max(6, Math.min(72, cur + delta));
+            this.selectedElement.styles.font_size = updated;
+            this.selectedElement.font_size = updated;
+            this.markDirty();
+        },
+
+        setTextAlign(align) {
+            if (!this.selectedElement) return;
+            if (!this.selectedElement.styles) this.selectedElement.styles = {};
+            this.selectedElement.styles.text_align = align;
+            this.selectedElement.text_align = align;
+            this.markDirty();
+        },
+
         insertVariable(variable) {
             if (!this.selectedElement) return;
-            this.selectedElement.content = (this.selectedElement.content || '') + ' ' + variable;
+            const current = (this.selectedElement.content || '').trim();
+            this.selectedElement.content = current ? (current + ' ' + variable) : variable;
             this.markDirty();
         },
 
         toggleOrientation() {
             this.orientation = this.orientation === 'landscape' ? 'portrait' : 'landscape';
+            this.markDirty();
+        },
+
+        autoAdaptLayout(forceOrientation = null) {
+            const targetOrientation = forceOrientation || this.orientation;
+            this.orientation = targetOrientation;
+
+            let sigCount = 0;
+            let logoCount = 0;
+
+            this.elements.forEach(el => {
+                if (this.isSignatureType(el.type)) sigCount++;
+                if (el.type === 'logo') logoCount++;
+            });
+
+            let currentSigIndex = 0;
+            let currentLogoIndex = 0;
+
+            this.elements.forEach(el => {
+                const type = el.type;
+
+                if (targetOrientation === 'portrait') {
+                    // Portrait layout adaptations
+                    if (type === 'logo') {
+                        if (currentLogoIndex === 0 && logoCount === 1) {
+                            el.x = 42; el.y = 5.5; el.width = 16; el.height = 11;
+                        } else if (currentLogoIndex === 0) {
+                            el.x = 10; el.y = 6; el.width = 13; el.height = 12;
+                        } else {
+                            el.x = 77; el.y = 6; el.width = 13; el.height = 12;
+                        }
+                        currentLogoIndex++;
+                    } else if (type === 'header_title') {
+                        el.x = 16; el.y = 6.5; el.width = 68; el.height = 4;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 13;
+                    } else if (type === 'header_subtitle') {
+                        el.x = 16; el.y = 11; el.width = 68; el.height = 3.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11;
+                    } else if (type === 'certificate_type') {
+                        el.x = 10; el.y = 24.5; el.width = 80; el.height = 6.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 23;
+                    } else if (type === 'beneficiary_name') {
+                        el.x = 10; el.y = 32.5; el.width = 80; el.height = 7;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 22;
+                    } else if (type === 'beneficiary_document') {
+                        el.x = 25; el.y = 40; el.width = 50; el.height = 3;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11;
+                    } else if (type === 'body_text') {
+                        el.x = 12; el.y = 44.5; el.width = 76; el.height = 14;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11.5;
+                    } else if (type === 'activity_dates' || (el.content && el.content.includes('fecha_emision'))) {
+                        el.x = 15; el.y = 63.5; el.width = 70; el.height = 4;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 10;
+                    } else if (this.isSignatureType(type)) {
+                        if (sigCount >= 2) {
+                            if (currentSigIndex === 0) {
+                                el.x = 14; el.y = 71; el.width = 33; el.height = 13;
+                            } else {
+                                el.x = 53; el.y = 71; el.width = 33; el.height = 13;
+                            }
+                        } else {
+                            el.x = 34; el.y = 71; el.width = 32; el.height = 13;
+                        }
+                        currentSigIndex++;
+                    } else if (type === 'stamp') {
+                        el.x = 14; el.y = 85.5; el.width = 13; el.height = 10.5;
+                    } else if (this.isQrType(type)) {
+                        el.x = 30; el.y = 85.5; el.width = 56; el.height = 10.5;
+                    } else if (type === 'watermark') {
+                        el.x = 24; el.y = 27; el.width = 52; el.height = 44;
+                        el.opacity = 0.07;
+                    } else if (this.isLineType(type)) {
+                        el.x = 20; el.width = 60;
+                    } else if (el.content && el.content.includes('otorgan el presente')) {
+                        el.x = 12; el.y = 18; el.width = 76; el.height = 5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 10.5;
+                    } else if (el.content && el.content.includes('resolucion')) {
+                        el.x = 15; el.y = 59.5; el.width = 70; el.height = 3.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 9.5;
+                    }
+                } else {
+                    // Landscape layout adaptations
+                    if (type === 'logo') {
+                        if (currentLogoIndex === 0 && logoCount === 1) {
+                            el.x = 8; el.y = 6.5; el.width = 10; el.height = 14;
+                        } else if (currentLogoIndex === 0) {
+                            el.x = 8; el.y = 6.5; el.width = 10; el.height = 14;
+                        } else {
+                            el.x = 82; el.y = 6.5; el.width = 10; el.height = 14;
+                        }
+                        currentLogoIndex++;
+                    } else if (type === 'header_title') {
+                        el.x = 20; el.y = 6.5; el.width = 60; el.height = 5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 13;
+                    } else if (type === 'header_subtitle') {
+                        el.x = 20; el.y = 12; el.width = 60; el.height = 4.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11;
+                    } else if (type === 'certificate_type') {
+                        el.x = 15; el.y = 19; el.width = 70; el.height = 8.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 23;
+                    } else if (type === 'beneficiary_name') {
+                        el.x = 10; el.y = 29; el.width = 80; el.height = 8.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 22;
+                    } else if (type === 'beneficiary_document') {
+                        el.x = 25; el.y = 38; el.width = 50; el.height = 3.5;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11;
+                    } else if (type === 'body_text') {
+                        el.x = 12; el.y = 43; el.width = 76; el.height = 16;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 11.5;
+                    } else if (type === 'activity_dates' || (el.content && el.content.includes('fecha_emision'))) {
+                        el.x = 15; el.y = 60.5; el.width = 70; el.height = 4;
+                        if (!el.styles) el.styles = {};
+                        el.styles.font_size = 10;
+                    } else if (this.isSignatureType(type)) {
+                        if (sigCount >= 2) {
+                            if (currentSigIndex === 0) {
+                                el.x = 16; el.y = 68; el.width = 28; el.height = 18;
+                            } else {
+                                el.x = 56; el.y = 68; el.width = 28; el.height = 18;
+                            }
+                        } else {
+                            el.x = 36; el.y = 68; el.width = 28; el.height = 18;
+                        }
+                        currentSigIndex++;
+                    } else if (type === 'stamp') {
+                        el.x = 44; el.y = 69; el.width = 12; el.height = 17;
+                    } else if (this.isQrType(type)) {
+                        el.x = 84; el.y = 69; el.width = 10; el.height = 18;
+                    } else if (type === 'watermark') {
+                        el.x = 30; el.y = 20; el.width = 40; el.height = 55;
+                        el.opacity = 0.07;
+                    } else if (this.isLineType(type)) {
+                        el.x = 25; el.width = 50;
+                    }
+                }
+            });
+
+            this.pushHistoryState();
             this.markDirty();
         },
 

@@ -14,7 +14,7 @@
             padding: 0;
         }
         body {
-            font-family: {{ $schema['font_family'] ?? 'Helvetica' }}, 'DejaVu Sans', sans-serif;
+            font-family: {{ $schema['font_family'] ?? 'DejaVu Serif' }}, 'DejaVu Serif', serif;
             color: {{ $schema['text_color'] ?? '#1e293b' }};
             background-color: #ffffff;
             width: 100%;
@@ -295,16 +295,16 @@
         }
 
         .qr-cell {
-            width: 20%;
+            width: 25%;
             text-align: right;
             vertical-align: bottom;
             padding-bottom: 2px;
         }
 
         .qr-img {
-            width: 75px;
-            height: 75px;
-            margin-bottom: 2px;
+            width: 95px;
+            height: 95px;
+            margin-bottom: 3px;
         }
 
         .meta-info {
@@ -336,6 +336,21 @@
     <div class="border-outer"></div>
     <div class="border-inner">
         
+        @if(!empty($corners_base64) && ($schema['border_style'] ?? '') !== 'none')
+            @if(!empty($corners_base64['tl']))
+                <img src="{{ $corners_base64['tl'] }}" style="position: absolute; top: -3mm; left: -3mm; width: 22mm; height: 22mm; z-index: 2; pointer-events: none;" alt="esquinero">
+            @endif
+            @if(!empty($corners_base64['tr']))
+                <img src="{{ $corners_base64['tr'] }}" style="position: absolute; top: -3mm; right: -3mm; width: 22mm; height: 22mm; z-index: 2; pointer-events: none;" alt="esquinero">
+            @endif
+            @if(!empty($corners_base64['bl']))
+                <img src="{{ $corners_base64['bl'] }}" style="position: absolute; bottom: -3mm; left: -3mm; width: 22mm; height: 22mm; z-index: 2; pointer-events: none;" alt="esquinero">
+            @endif
+            @if(!empty($corners_base64['br']))
+                <img src="{{ $corners_base64['br'] }}" style="position: absolute; bottom: -3mm; right: -3mm; width: 22mm; height: 22mm; z-index: 2; pointer-events: none;" alt="esquinero">
+            @endif
+        @endif
+
         @if(!empty($schema['elements']) && count($schema['elements']) > 0)
             <!-- ============================================== -->
             <!-- DYNAMIC ELEMENT-BASED CANVAS ENGINE            -->
@@ -348,9 +363,13 @@
                         <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: 1; opacity: {{ $el['opacity'] ?? 0.06 }}; text-align: center; pointer-events: none;">
                             <img src="{{ $el['asset_base64'] }}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto; display: block;">
                         </div>
+                    @elseif(!empty($watermark_image_base64))
+                        <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: 1; opacity: {{ $el['opacity'] ?? 0.06 }}; text-align: center; pointer-events: none;">
+                            <img src="{{ $watermark_image_base64 }}" style="max-width: 100%; max-height: 100%; width: auto; height: auto; margin: 0 auto; display: block;">
+                        </div>
                     @else
                         <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: 1; opacity: {{ $el['opacity'] ?? 0.05 }}; text-align: center; transform: rotate({{ $el['rotation'] ?? -25 }}deg); font-size: 45px; font-weight: bold; color: {{ $schema['primary_color'] ?? '#024966' }}; pointer-events: none; font-family: 'DejaVu Serif', serif;">
-                            {{ $el['watermark_text'] ?? 'VICEDECANATO' }}
+                            {{ $el['watermark_text'] ?? 'UMSA' }}
                         </div>
                     @endif
                 @elseif($el['type'] === 'logo' || $el['type'] === 'image')
@@ -360,7 +379,7 @@
                         @endif
                     </div>
                 @elseif($el['type'] === 'text')
-                    <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: {{ $el['z_index'] ?? 10 }}; text-align: {{ $el['text_align'] ?? 'center' }}; color: {{ $el['text_color'] ?? '#1e293b' }}; font-family: {{ $el['font_family'] ?? $schema['font_family'] ?? 'Helvetica' }}, sans-serif; font-size: {{ $el['font_size'] ?? 12 }}px; font-weight: {{ $el['font_weight'] ?? 'normal' }}; font-style: {{ $el['font_style'] ?? 'normal' }}; line-height: {{ $el['line_height'] ?? 1.3 }}; letter-spacing: {{ $el['letter_spacing'] ?? 0 }}px; {{ !empty($el['border_bottom']) ? 'border-bottom: 2px solid ' . ($el['border_bottom_color'] ?? '#d4af37') . ';' : '' }}">
+                    <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: {{ $el['z_index'] ?? 10 }}; text-align: {{ $el['text_align'] ?? 'center' }}; color: {{ $el['text_color'] ?? '#1e293b' }}; font-family: {{ $el['font_family'] ?? $schema['font_family'] ?? 'DejaVu Serif' }}, 'DejaVu Serif', serif; font-size: {{ $el['font_size'] ?? 12 }}px; font-weight: {{ $el['font_weight'] ?? 'normal' }}; font-style: {{ $el['font_style'] ?? 'normal' }}; line-height: {{ $el['line_height'] ?? 1.3 }}; letter-spacing: {{ $el['letter_spacing'] ?? 0 }}px; {{ !empty($el['border_bottom']) ? 'border-bottom: 2px solid ' . ($el['border_bottom_color'] ?? '#d4af37') . ';' : '' }}">
                         {!! nl2br(e($el['resolved_content'] ?? $el['content'] ?? '')) !!}
                     </div>
                 @elseif($el['type'] === 'signature')
@@ -385,12 +404,34 @@
                     </div>
                 @elseif($el['type'] === 'qr')
                     <div style="position: absolute; left: {{ $el['x'] }}%; top: {{ $el['y'] }}%; width: {{ $el['width'] }}%; height: {{ $el['height'] }}%; z-index: {{ $el['z_index'] ?? 10 }}; text-align: center;">
-                        @if(!empty($qr_base64))
-                            <img src="{{ $qr_base64 }}" style="width: 58px; height: 58px; margin: 0 auto 2px auto; display: block;" alt="QR">
-                        @endif
-                        @if(!empty($el['show_code']))
-                            <div style="font-size: 7.5px; font-family: monospace; font-weight: bold; color: #024966; letter-spacing: 0.3px;">{{ $certificate->certificate_code }}</div>
-                            <div style="font-size: 6.5px; font-weight: bold; color: #047857; margin-top: 1px;">✓ VIGENCIA 3 AÑOS</div>
+                        @if(($orientation ?? 'landscape') === 'portrait')
+                            <!-- Placa Institucional de Validación QR en Vertical -->
+                            <table style="width: 100%; border-collapse: collapse; background-color: #f8fafc; border: 0.5px solid #cbd5e1; border-radius: 6px; padding: 6px 8px;">
+                                <tr>
+                                    <td style="width: 82px; vertical-align: middle; text-align: center;">
+                                        @if(!empty($qr_base64))
+                                            <img src="{{ $qr_base64 }}" style="width: 78px; height: 78px; display: block; margin: 0 auto;" alt="QR">
+                                        @endif
+                                    </td>
+                                    <td style="vertical-align: middle; text-align: left; padding-left: 8px; line-height: 1.3;">
+                                        <div style="font-size: 7.5px; font-weight: bold; color: #475569; letter-spacing: 0.5px;">VERIFICACIÓN DIGITAL UMSA</div>
+                                        <div style="font-size: 8.5px; font-family: monospace; font-weight: bold; color: #024966; letter-spacing: 0.3px; margin: 2px 0;">{{ $certificate->certificate_code }}</div>
+                                        <div style="font-size: 7px; font-weight: bold; color: #047857;">✓ DOCUMENTO OFICIAL ACREDITADO</div>
+                                        <div style="font-size: 6.5px; color: #64748b;">Escanee para validar autenticidad y vigencia</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        @else
+                            <!-- Placa Compacta en Horizontal -->
+                            <div style="display: inline-block; background-color: #ffffff; border: 0.5px solid #cbd5e1; border-radius: 6px; padding: 6px; text-align: center;">
+                                @if(!empty($qr_base64))
+                                    <img src="{{ $qr_base64 }}" style="width: 95px; height: 95px; margin: 0 auto 3px auto; display: block;" alt="QR">
+                                @endif
+                                @if(!empty($el['show_code']))
+                                    <div style="font-size: 8px; font-family: monospace; font-weight: bold; color: #024966; letter-spacing: 0.3px;">{{ $certificate->certificate_code }}</div>
+                                    <div style="font-size: 7px; font-weight: bold; color: #047857; margin-top: 1px;">✓ VIGENCIA 3 AÑOS</div>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 @elseif($el['type'] === 'line')
@@ -420,7 +461,7 @@
                     </td>
                     <td class="header-text-center">
                         <div class="institution-title">{{ $schema['header_title'] ?? $settings['institution_name'] ?? 'UNIVERSIDAD MAYOR DE SAN ANDRÉS' }}</div>
-                        <div class="faculty-title">{{ $schema['header_subtitle'] ?? $settings['faculty_name'] ?? 'FACULTAD DE CIENCIAS PURAS Y NATURALES' }}</div>
+                        <div class="faculty-title">{{ $schema['header_subtitle'] ?? $settings['faculty_name'] ?? 'FACULTAD DE TECNOLOGÍA' }}</div>
                         <div class="department-title">{{ $schema['header_department'] ?? $settings['department_name'] ?? 'VICEDECANATO' }}</div>
                         <div class="divider"></div>
                     </td>

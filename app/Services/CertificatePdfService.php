@@ -22,7 +22,7 @@ class CertificatePdfService
     public function render(Certificate $certificate)
     {
         $qrUrl = $certificate->verification_url;
-        $qrBase64 = $this->qrCodeService->generateBase64Svg($qrUrl, 160);
+        $qrBase64 = $this->qrCodeService->generateBase64Svg($qrUrl, 240);
         $settings = Setting::all()->pluck('value', 'key')->toArray();
 
         // 1. Verificar si existe snapshot de diseño congelado en el certificado (Inmutabilidad)
@@ -79,10 +79,10 @@ class CertificatePdfService
             // Resolver firmas con Base64
             $signatures = $schema['signatures'] ?? [
                 [
-                    'name' => $settings['authority_name'] ?? 'Dr. Carlos Mendoza Fernández',
+                    'name' => $settings['authority_name'] ?? 'Ing. Aniceto Velarde Forest',
                     'position' => $settings['authority_position'] ?? 'Vicedecano de Facultad',
-                    'institution' => 'FCPN - UMSA',
-                    'asset_path' => 'assets/institutional/firma_vicedecano.svg',
+                    'institution' => 'Facultad de Tecnología - UMSA',
+                    'asset_path' => 'assets/institutional/firma_vicedecano_ft.svg',
                 ],
             ];
 
@@ -98,13 +98,13 @@ class CertificatePdfService
                 ?? $schema['logo_left_id']
                 ?? $schema['logo_left_path']
                 ?? ($schema['logos'][0]['path'] ?? null)
-                ?? 'assets/institutional/logo_umsa.svg';
+                ?? 'assets/institutional/logo_umsa.png';
 
             $rightLogoRef = $customFields['logo_right_id']
                 ?? $schema['logo_right_id']
                 ?? $schema['logo_right_path']
                 ?? ($schema['logos'][1]['path'] ?? null)
-                ?? 'assets/institutional/logo_fcpn.svg';
+                ?? 'assets/institutional/logo_ft_umsa.png';
 
             $logosBase64 = [
                 'left' => $this->assetManager->getAssetBase64($leftLogoRef),
@@ -114,15 +114,23 @@ class CertificatePdfService
             // Resolver marca de agua e imagen de fondo en Base64
             $watermarkRef = $customFields['watermark_asset_id']
                 ?? $schema['watermark_asset_id']
-                ?? null;
+                ?? $schema['watermark_asset_path']
+                ?? (! empty($schema['show_watermark']) ? 'assets/institutional/marca_agua_ft.svg' : null);
             $watermarkImageBase64 = $watermarkRef ? $this->assetManager->getAssetBase64($watermarkRef) : null;
 
             // Resolver sello seco en Base64
             $stampRef = $customFields['stamp_asset_id']
                 ?? $schema['stamp_asset_id']
-                ?? (! empty($schema['show_stamp']) ? 'assets/institutional/sello_oficial_vicedecanato.svg' : null);
+                ?? (! empty($schema['show_stamp']) ? 'assets/institutional/sello_vicedecanato_ft.svg' : null);
             $stampBase64 = $stampRef ? $this->assetManager->getAssetBase64($stampRef) : null;
         }
+
+        $cornersBase64 = [
+            'tl' => $this->assetManager->getAssetBase64('assets/institutional/esquinero_tl.svg'),
+            'tr' => $this->assetManager->getAssetBase64('assets/institutional/esquinero_tr.svg'),
+            'bl' => $this->assetManager->getAssetBase64('assets/institutional/esquinero_bl.svg'),
+            'br' => $this->assetManager->getAssetBase64('assets/institutional/esquinero_br.svg'),
+        ];
 
         // Normalizar esquema asegurando estructura de elementos
         $schema = $this->templateEngine->normalizeSchema($schema, $orientation);
@@ -141,6 +149,9 @@ class CertificatePdfService
                 if (in_array($el['type'] ?? '', ['logo', 'signature', 'stamp', 'watermark', 'image'])) {
                     if (empty($el['asset_base64'])) {
                         $ref = $el['asset_id'] ?? $el['asset_path'] ?? null;
+                        if (! $ref && ($el['type'] ?? '') === 'watermark') {
+                            $ref = 'assets/institutional/marca_agua_escudo.svg';
+                        }
                         if ($ref) {
                             $el['asset_base64'] = $this->assetManager->getAssetBase64($ref);
                         }
@@ -162,6 +173,7 @@ class CertificatePdfService
             'schema' => $schema,
             'orientation' => $orientation,
             'qr_base64' => $qrBase64,
+            'corners_base64' => $cornersBase64,
             'settings' => $settings,
             'resolved_body_text' => $resolvedBodyText,
             'signatures' => $signatures,

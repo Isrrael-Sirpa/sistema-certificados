@@ -178,15 +178,15 @@
         }
 
         .qr-box {
-            width: 24%;
+            width: 26%;
             text-align: center;
             vertical-align: middle;
         }
 
         .qr-image {
-            width: 85px;
-            height: 85px;
-            margin-bottom: 3px;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 4px;
         }
 
         .qr-caption {
@@ -230,7 +230,7 @@
 
         <div class="header">
             <div class="institution-name">{{ $settings['institution_name'] ?? 'UNIVERSIDAD MAYOR DE SAN ANDRÉS' }}</div>
-            <div class="faculty-name">{{ $settings['faculty_name'] ?? 'FACULTAD DE CIENCIAS PURAS Y NATURALES' }}</div>
+            <div class="faculty-name">{{ $settings['faculty_name'] ?? 'FACULTAD DE TECNOLOGÍA' }}</div>
             <div class="department-name">{{ $settings['department_name'] ?? 'VICEDECANATO' }}</div>
             <div class="divider"></div>
         </div>
@@ -266,7 +266,7 @@
                 <td class="signature-box">
                     <div style="height: 35px;"></div>
                     <div class="signature-line"></div>
-                    <div class="authority-name">{{ $certificate->activity->responsible_authority ?? $settings['authority_name'] ?? 'Dr. Carlos Mendoza Fernández' }}</div>
+                    <div class="authority-name">{{ $certificate->activity->responsible_authority ?? $settings['authority_name'] ?? 'Ing. Aniceto Velarde Forest' }}</div>
                     <div class="authority-position">{{ $settings['authority_position'] ?? 'Vicedecano de Facultad' }}</div>
                 </td>
                 <td class="qr-box">

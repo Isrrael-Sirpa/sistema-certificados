@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Activity;
 use App\Models\Beneficiary;
-use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\Role;
 use App\Models\Setting;
@@ -78,20 +77,24 @@ class DatabaseSeeder extends Seeder
             CertificateTemplatesSeeder::class,
         ]);
 
-        // 5. Configuraciones Institucionales del Sistema
+        // 5. Configuraciones Institucionales del Sistema (Facultad de Tecnología - UMSA)
         $defaultSettings = [
             ['key' => 'institution_name', 'value' => 'UNIVERSIDAD MAYOR DE SAN ANDRÉS', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Nombre de la Institución'],
-            ['key' => 'faculty_name', 'value' => 'FACULTAD DE CIENCIAS PURAS Y NATURALES', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Facultad'],
+            ['key' => 'faculty_name', 'value' => 'FACULTAD DE TECNOLOGÍA', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Facultad'],
             ['key' => 'department_name', 'value' => 'VICEDECANATO', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Unidad o Vicedecanato'],
-            ['key' => 'authority_name', 'value' => 'Dr. Carlos Mendoza Fernández', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Nombre de la Autoridad'],
+            ['key' => 'authority_name', 'value' => 'Ing. Aniceto Velarde Forest', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Nombre del Vicedecano'],
             ['key' => 'authority_position', 'value' => 'Vicedecano', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Cargo de la Autoridad'],
+            ['key' => 'dean_name', 'value' => 'Lic. Jorge Velasco Orellanos', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Nombre del Decano'],
+            ['key' => 'dean_position', 'value' => 'Decano', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Cargo del Decano'],
+            ['key' => 'faculty_motto', 'value' => 'Ciencia, cálculo y jerarquía Adelante Tecnología', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Lema Facultativo'],
+            ['key' => 'institution_address', 'value' => 'Av. Arce No. 2295', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Dirección Facultativa'],
             ['key' => 'institution_city', 'value' => 'La Paz - Bolivia', 'group' => 'institutional', 'type' => 'string', 'display_name' => 'Ciudad y País'],
             ['key' => 'certificate_validity_years', 'value' => '3', 'group' => 'certificate', 'type' => 'integer', 'display_name' => 'Años de Vigencia Estándar'],
-            ['key' => 'system_email', 'value' => 'vicedecanato@universidad.edu', 'group' => 'general', 'type' => 'string', 'display_name' => 'Correo de Contacto Institucional'],
+            ['key' => 'system_email', 'value' => 'vicedecanato.tecnologia@umsa.bo', 'group' => 'general', 'type' => 'string', 'display_name' => 'Correo de Contacto Institucional'],
         ];
 
         foreach ($defaultSettings as $stg) {
-            Setting::firstOrCreate(['key' => $stg['key']], $stg);
+            Setting::updateOrCreate(['key' => $stg['key']], $stg);
         }
 
         // 6. Beneficiarios de Prueba

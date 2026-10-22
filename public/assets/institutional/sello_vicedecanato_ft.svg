@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!-- Sello Seco / Tinta Oficial del Vicedecanato FT-UMSA -->
+  <g fill="none" stroke="#024966" opacity="0.85" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Círculos concéntricos exteriores -->
+    <circle cx="120" cy="120" r="114" stroke-width="3"/>
+    <circle cx="120" cy="120" r="106" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <circle cx="120" cy="120" r="78" stroke-width="2"/>
+    <circle cx="120" cy="120" r="74" stroke-width="1"/>
+
+    <!-- Pistas de Texto Circular -->
+    <path id="stampTop" d="M 22,120 A 98,98 0 0,1 218,120" fill="none"/>
+    <path id="stampBottom" d="M 218,120 A 98,98 0 0,1 22,120" fill="none"/>
+  </g>
+
+  <!-- Tipografía Circular del Sello -->
+  <text font-family="'Inter', Arial, sans-serif" font-size="11.5" font-weight="900" fill="#024966" opacity="0.9" letter-spacing="2.8">
+    <textPath href="#stampTop" startOffset="50%" text-anchor="middle">
+      UNIVERSIDAD MAYOR DE SAN ANDRÉS
+    </textPath>
+  </text>
+
+  <text font-family="'Inter', Arial, sans-serif" font-size="10.5" font-weight="800" fill="#bb2026" opacity="0.95" letter-spacing="3.2">
+    <textPath href="#stampBottom" startOffset="50%" text-anchor="middle">
+      ★ FACULTAD DE TECNOLOGÍA ★
+    </textPath>
+  </text>
+
+  <!-- Centro del Sello: VICEDECANATO y Símbolo -->
+  <g id="stampCenter" transform="translate(120, 120)">
+    <!-- Engranaje y Átomo en Miniatura -->
+    <circle cx="0" cy="-14" r="22" fill="none" stroke="#024966" stroke-width="2.5" opacity="0.85"/>
+    <ellipse cx="0" cy="-14" rx="18" ry="7" fill="none" stroke="#bb2026" stroke-width="1.5" transform="rotate(30)" opacity="0.8"/>
+    <ellipse cx="0" cy="-14" rx="18" ry="7" fill="none" stroke="#bb2026" stroke-width="1.5" transform="rotate(-30)" opacity="0.8"/>
+    <circle cx="0" cy="-14" r="4" fill="#024966"/>
+
+    <!-- Textos Centrales -->
+    <text x="0" y="20" font-family="'Inter', Arial, sans-serif" font-size="13" font-weight="900" fill="#024966" text-anchor="middle" letter-spacing="2">
+      VICEDECANATO
+    </text>
+    <text x="0" y="34" font-family="'Inter', Arial, sans-serif" font-size="8" font-weight="700" fill="#64748b" text-anchor="middle" letter-spacing="1.5">
+      LA PAZ - BOLIVIA
+    </text>
+  </g>
+</svg>

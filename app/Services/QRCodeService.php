@@ -9,7 +9,7 @@ class QRCodeService
     /**
      * Genera el contenido SVG del código QR para una URL dada.
      */
-    public function generateSvg(string $url, int $size = 180): string
+    public function generateSvg(string $url, int $size = 240): string
     {
         return QrCode::size($size)
             ->format('svg')
@@ -20,9 +20,10 @@ class QRCodeService
     /**
      * Genera una cadena Base64 Data URI del QR SVG listo para incrustar directamente en PDFs y Blade.
      */
-    public function generateBase64Svg(string $url, int $size = 180): string
+    public function generateBase64Svg(string $url, int $size = 240): string
     {
         $svg = $this->generateSvg($url, $size);
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+
+        return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
 }

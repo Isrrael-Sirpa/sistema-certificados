@@ -38,17 +38,18 @@
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
         
         <!-- Institutional Brand Header -->
-        <div class="p-6 border-b border-white/10 flex items-center justify-between">
+        <div class="p-5 border-b border-white/10 flex items-center justify-between bg-black/10">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-[#BB2026] flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-red-900/30">
-                    🏛️
+                <div class="w-11 h-11 rounded-xl bg-white/10 p-1.5 flex items-center justify-center backdrop-blur-xs border border-white/20 shadow-md">
+                    <img src="{{ asset('assets/institutional/logo_ft_umsa.svg') }}" class="w-full h-full object-contain" alt="Escudo FT-UMSA" onerror="this.onerror=null; this.src='{{ asset('assets/institutional/logo_ft_umsa.png') }}';">
                 </div>
                 <div>
-                    <h1 class="text-base font-bold tracking-tight text-white leading-tight">VICEDECANATO</h1>
-                    <p class="text-[11px] text-red-200 font-medium tracking-wide uppercase">Sistema de Certificados</p>
+                    <div class="text-[9px] font-extrabold uppercase tracking-widest text-red-200">UMSA • TECNOLOGÍA</div>
+                    <h1 class="text-sm font-black tracking-tight text-white leading-tight">VICEDECANATO</h1>
+                    <p class="text-[10px] text-slate-300 font-medium tracking-wide">Certificación Digital</p>
                 </div>
             </div>
-            <button @click="sidebarOpen = false" class="md:hidden text-slate-300 hover:text-white">
+            <button @click="sidebarOpen = false" class="md:hidden text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/10">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -148,7 +149,7 @@
 
             <form method="POST" action="{{ route('logout') }}" class="ml-2">
                 @csrf
-                <button type="submit" title="Cerrar sesión" class="p-2 text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors">
+                <button type="submit" title="Cerrar sesión" class="p-2 text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 </button>
             </form>
@@ -172,12 +173,13 @@
 
             <div class="flex items-center gap-3">
                 <div class="hidden sm:flex items-center gap-2 text-xs text-[#024966] bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                    <span>📅</span>
+                    <svg class="w-3.5 h-3.5 text-[#32639E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span class="font-medium">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</span>
                 </div>
 
-                <a href="{{ route('certificates.create') }}" class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all">
-                    <span>+ Emitir Certificado</span>
+                <a href="{{ route('certificates.create') }}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all">
+                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Emitir Certificado</span>
                 </a>
             </div>
         </header>
@@ -185,30 +187,33 @@
         <!-- Flash Messages -->
         <div class="px-6 pt-4">
             @if(session('success'))
-                <div class="flex items-center p-4 mb-3 text-sm text-green-800 rounded-xl bg-green-50 border border-green-200 shadow-xs" role="alert">
-                    <span class="text-lg mr-2">✅</span>
+                <div class="flex items-center p-4 mb-3 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-200 shadow-xs" role="alert">
+                    <svg class="w-5 h-5 text-emerald-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <div class="font-medium flex-1">{{ session('success') }}</div>
                 </div>
             @endif
 
             @if(session('error'))
                 <div class="flex items-center p-4 mb-3 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 shadow-xs" role="alert">
-                    <span class="text-lg mr-2">⚠️</span>
+                    <svg class="w-5 h-5 text-red-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <div class="font-medium flex-1">{{ session('error') }}</div>
                 </div>
             @endif
 
             @if(session('warning'))
                 <div class="flex items-center p-4 mb-3 text-sm text-amber-800 rounded-xl bg-amber-50 border border-amber-200 shadow-xs" role="alert">
-                    <span class="text-lg mr-2">🔔</span>
+                    <svg class="w-5 h-5 text-amber-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     <div class="font-medium flex-1">{{ session('warning') }}</div>
                 </div>
             @endif
 
             @if ($errors->any())
                 <div class="p-4 mb-3 text-sm text-red-800 rounded-xl bg-red-50 border border-red-200 shadow-xs">
-                    <div class="font-bold mb-1">Por favor corrija los siguientes errores:</div>
-                    <ul class="list-disc list-inside space-y-0.5">
+                    <div class="font-bold mb-1 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>Por favor corrija los siguientes errores:</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-0.5 ml-6">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -223,8 +228,13 @@
         </main>
 
         <!-- Footer -->
-        <footer class="bg-white border-t border-slate-200 px-6 py-3 text-center text-xs text-slate-400">
-            Sistema de Gestión, Generación y Verificación de Certificados &copy; {{ date('Y') }} - Vicedecanato
+        <footer class="bg-white border-t border-slate-200 px-6 py-3 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <div>
+                <span class="font-bold text-[#024966]">Facultad de Tecnología</span> • Universidad Mayor de San Andrés (Av. Arce No. 2295)
+            </div>
+            <div class="text-[11px] text-slate-400">
+                Sistema Oficial de Certificación Digital &copy; {{ date('Y') }} Vicedecanato
+            </div>
         </footer>
     </div>
 

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 120" width="280" height="120">
+  <!-- Trazo caligráfico de firma institucional digitalizada -->
+  <g fill="none" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 30,55 C 45,25 65,20 70,45 C 75,68 85,75 110,48 C 130,28 140,40 135,60 C 130,80 155,70 175,45 C 190,30 205,35 195,58 C 185,82 170,88 150,75 C 130,62 120,72 135,82 C 160,95 210,70 245,50"/>
+    <path d="M 50,78 Q 130,72 230,68" stroke-width="1.8"/>
+    <path d="M 85,38 L 85,74" stroke-width="2.4"/>
+    <path d="M 160,35 Q 165,65 170,78" stroke-width="1.6"/>
+  </g>
+  <!-- Rúbrica y datos de autoridad -->
+  <text x="140" y="98" font-family="'Inter', Arial, sans-serif" font-size="11" font-weight="bold" fill="#024966" text-anchor="middle">
+    Ing. Aniceto Velarde Forest
+  </text>
+  <text x="140" y="112" font-family="'Inter', Arial, sans-serif" font-size="9" font-weight="600" fill="#64748b" text-anchor="middle">
+    VICEDECANO • FACULTAD DE TECNOLOGÍA
+  </text>
+</svg>
