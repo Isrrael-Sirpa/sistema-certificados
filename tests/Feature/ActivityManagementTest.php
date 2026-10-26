@@ -42,7 +42,7 @@ class ActivityManagementTest extends TestCase
         $response->assertSee($activity->name);
         $response->assertSee('Diseño y Personalización de Certificado');
         $response->assertSee('Certificados Emitidos en este Evento');
-        $response->assertSee('Emisión Masiva de Certificados');
+        $response->assertSee('Nómina de Participantes de esta Actividad');
     }
 
     public function test_activity_search_filters_with_sql_precedence(): void

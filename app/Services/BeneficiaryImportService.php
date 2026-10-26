@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Activity;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
+use App\Models\Certificate;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -229,6 +231,434 @@ class BeneficiaryImportService
                 'created_count' => $createdCount,
                 'skipped_count' => $skippedCount,
                 'total_processed' => count($rows),
+            ];
+        });
+    }
+
+    /**
+     * Analiza una nómina (.xlsx o .csv) en el contexto de una Actividad Académica específica.
+     * Clasifica a cada estudiante en:
+     * - new_student: No existe en la base de datos (se creará en el padrón y se emitirá su certificado).
+     * - existing_student: Ya registrado en el padrón (se asociará a la actividad y se emitirá su certificado).
+     * - already_certified: Ya cuenta con un certificado activo en esta actividad (se omitirá para evitar duplicados).
+     * - error: Registro incompleto o inválido (falta CI o nombre).
+     */
+    public function parseAndPreviewForActivity(UploadedFile $file, Activity $activity, ?int $certificateTypeId = null): array
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $rawRows = match ($extension) {
+            'csv', 'txt' => $this->parseCsv($file->getRealPath()),
+            'xlsx' => $this->parseXlsx($file->getRealPath()),
+            default => throw new \InvalidArgumentException("Formato no soportado (.{$extension}). Utilice archivos .xlsx o .csv."),
+        };
+
+        if (empty($rawRows)) {
+            return [
+                'headers' => [],
+                'mapped_columns' => [],
+                'rows' => [],
+                'summary' => [
+                    'total' => 0,
+                    'new_students' => 0,
+                    'existing_students' => 0,
+                    'already_certified' => 0,
+                    'errors' => 0,
+                    'ready_to_certify' => 0,
+                ],
+                'error_message' => 'El archivo no contiene registros o está vacío.',
+            ];
+        }
+
+        // 1. Cabeceras
+        $rawHeaders = array_shift($rawRows);
+        $mappedColumns = $this->mapHeadersToFields($rawHeaders);
+
+        // 2. Beneficiarios existentes indexados por CI normalizado -> id del beneficiario
+        $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
+            return [$this->normalizeDocumentNumber($ben->document_number) => $ben->id];
+        })->toArray();
+
+        // 3. Beneficiarios que YA tienen certificado activo en ESTA actividad
+        $certQuery = Certificate::where('activity_id', $activity->id)
+            ->whereNull('revoked_at');
+        if ($certificateTypeId) {
+            $certQuery->where('certificate_type_id', $certificateTypeId);
+        }
+        $alreadyCertifiedBeneficiaryIds = $certQuery->pluck('beneficiary_id')
+            ->flip()
+            ->toArray();
+
+        $processedRows = [];
+        $newStudentsCount = 0;
+        $existingStudentsCount = 0;
+        $alreadyCertifiedCount = 0;
+        $errorCount = 0;
+        $seenInFile = [];
+
+        foreach ($rawRows as $index => $row) {
+            if ($this->isRowEmpty($row)) {
+                continue;
+            }
+
+            $extracted = $this->extractRowData($row, $mappedColumns);
+            $docNumber = $this->normalizeDocumentNumber($extracted['document_number'] ?? '');
+
+            $rowStatus = 'new_student';
+            $errorMsg = null;
+            $existingBenId = null;
+
+            if (empty($docNumber)) {
+                $rowStatus = 'error';
+                $errorMsg = 'Falta el número de documento / CI.';
+            } elseif (empty($extracted['first_name'])) {
+                $rowStatus = 'error';
+                $errorMsg = 'Falta el nombre del estudiante.';
+            } elseif (empty($extracted['last_name'])) {
+                $rowStatus = 'error';
+                $errorMsg = 'Falta el apellido del estudiante.';
+            } elseif (isset($seenInFile[$docNumber])) {
+                // Repetido en el mismo archivo
+                $rowStatus = 'already_certified';
+                $errorMsg = 'CI repetido dentro del mismo archivo (se omitirá la repetición).';
+            } elseif (isset($existingBeneficiariesByCi[$docNumber])) {
+                // El estudiante YA existe en el padrón
+                $existingBenId = $existingBeneficiariesByCi[$docNumber];
+                if (isset($alreadyCertifiedBeneficiaryIds[$existingBenId])) {
+                    // Ya tiene certificado en este evento
+                    $rowStatus = 'already_certified';
+                    $errorMsg = 'Ya posee certificado emitido en esta actividad (se omitirá automáticamente).';
+                } else {
+                    // Existe en padrón, pero es nuevo en este evento
+                    $rowStatus = 'existing_student';
+                    $errorMsg = 'Registrado en padrón. Se asociará a la actividad y se emitirá su certificado.';
+                }
+            } else {
+                // Nuevo estudiante completo
+                $rowStatus = 'new_student';
+                $errorMsg = 'Nuevo estudiante. Se registrará en el padrón y se emitirá su certificado.';
+            }
+
+            if ($rowStatus === 'new_student') {
+                $seenInFile[$docNumber] = true;
+                $newStudentsCount++;
+            } elseif ($rowStatus === 'existing_student') {
+                $seenInFile[$docNumber] = true;
+                $existingStudentsCount++;
+            } elseif ($rowStatus === 'already_certified') {
+                $alreadyCertifiedCount++;
+            } else {
+                $errorCount++;
+            }
+
+            $processedRows[] = [
+                'row_number' => $index + 2,
+                'data' => $extracted,
+                'status' => $rowStatus,
+                'beneficiary_id' => $existingBenId,
+                'message' => $errorMsg,
+            ];
+        }
+
+        $readyToCertify = $newStudentsCount + $existingStudentsCount;
+
+        return [
+            'headers' => $rawHeaders,
+            'mapped_columns' => $mappedColumns,
+            'rows' => $processedRows,
+            'summary' => [
+                'total' => count($processedRows),
+                'new_students' => $newStudentsCount,
+                'existing_students' => $existingStudentsCount,
+                'already_certified' => $alreadyCertifiedCount,
+                'errors' => $errorCount,
+                'ready_to_certify' => $readyToCertify,
+            ],
+            'can_import' => $readyToCertify > 0,
+        ];
+    }
+
+    /**
+     * Ejecuta la emisión masiva bajo transacción:
+     * - Crea a los nuevos beneficiarios en el padrón general
+     * - Emite certificados tanto a los nuevos como a los existentes
+     * - Omite a los ya certificados y filas con error
+     */
+    public function executeActivityBulkIssuance(
+        array $rows,
+        Activity $activity,
+        int $certificateTypeId,
+        ?int $templateId,
+        string $issueDate,
+        User $user,
+        CertificateService $certificateService
+    ): array {
+        return DB::transaction(function () use ($rows, $activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService) {
+            $issuedCount = 0;
+            $newStudentsCount = 0;
+            $existingStudentsCount = 0;
+            $skippedCount = 0;
+
+            // Cache de beneficiarios existentes
+            $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
+                return [$this->normalizeDocumentNumber($ben->document_number) => $ben];
+            })->all();
+
+            // Certificados existentes en la actividad
+            $alreadyCertifiedBeneficiaryIds = Certificate::where('activity_id', $activity->id)
+                ->where('certificate_type_id', $certificateTypeId)
+                ->whereNull('revoked_at')
+                ->pluck('beneficiary_id')
+                ->flip()
+                ->toArray();
+
+            foreach ($rows as $item) {
+                $status = $item['status'] ?? '';
+                if ($status !== 'new_student' && $status !== 'existing_student') {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                $data = $item['data'] ?? [];
+                $docNumber = $this->normalizeDocumentNumber($data['document_number'] ?? '');
+
+                if (empty($docNumber) || empty($data['first_name']) || empty($data['last_name'])) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                // 1. Obtener o crear el Beneficiario
+                $beneficiary = null;
+                if ($status === 'existing_student' && isset($existingBeneficiariesByCi[$docNumber])) {
+                    $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                } elseif (isset($existingBeneficiariesByCi[$docNumber])) {
+                    // Por si acaso ya existía en BD aunque haya llegado como new_student
+                    $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                } else {
+                    $beneficiary = Beneficiary::create([
+                        'document_type' => $data['document_type'] ?? 'CI',
+                        'document_number' => $docNumber,
+                        'first_name' => trim($data['first_name']),
+                        'last_name' => trim($data['last_name']),
+                        'academic_title' => ! empty($data['academic_title']) ? trim($data['academic_title']) : 'Univ.',
+                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : 'Facultad de Tecnología - UMSA',
+                        'email' => ! empty($data['email']) ? strtolower(trim($data['email'])) : null,
+                        'phone' => ! empty($data['phone']) ? trim($data['phone']) : null,
+                        'notes' => 'Registrado vía nómina masiva de actividad: '.$activity->name.' ('.now()->format('d/m/Y H:i').')',
+                    ]);
+
+                    $existingBeneficiariesByCi[$docNumber] = $beneficiary;
+                    $newStudentsCount++;
+                }
+
+                if (! $beneficiary) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                if ($status === 'existing_student') {
+                    $existingStudentsCount++;
+                }
+
+                // 2. Verificar que no tenga certificado ya emitido para esta actividad
+                if (isset($alreadyCertifiedBeneficiaryIds[$beneficiary->id])) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                // 3. Emitir el certificado institucional con snapshot inmutable y token QR
+                $certificateService->issueCertificate([
+                    'beneficiary_id' => $beneficiary->id,
+                    'activity_id' => $activity->id,
+                    'certificate_type_id' => $certificateTypeId,
+                    'certificate_template_id' => $templateId,
+                    'issue_date' => $issueDate,
+                ], $user);
+
+                $activity->participants()->syncWithoutDetaching([
+                    $beneficiary->id => ['role' => 'Participante', 'status' => 'certificado'],
+                ]);
+
+                $alreadyCertifiedBeneficiaryIds[$beneficiary->id] = true;
+                $issuedCount++;
+            }
+
+            // Registrar en auditoría
+            AuditLog::log(
+                'activity_bulk_certified',
+                "Emisión masiva en actividad '{$activity->name}': {$issuedCount} certificados emitidos ({$newStudentsCount} nuevos beneficiarios creados en el padrón, {$existingStudentsCount} beneficiarios existentes asociados, {$skippedCount} omitidos).",
+                $activity,
+                null,
+                [
+                    'activity_id' => $activity->id,
+                    'activity_name' => $activity->name,
+                    'issued_count' => $issuedCount,
+                    'new_students_count' => $newStudentsCount,
+                    'existing_students_count' => $existingStudentsCount,
+                    'skipped_count' => $skippedCount,
+                    'executed_by_user_id' => $user->id,
+                ]
+            );
+
+            return [
+                'issued_count' => $issuedCount,
+                'new_students_count' => $newStudentsCount,
+                'existing_students_count' => $existingStudentsCount,
+                'skipped_count' => $skippedCount,
+                'total_processed' => count($rows),
+            ];
+        });
+    }
+
+    /**
+     * Registra a los participantes de una nómina en la lista de la actividad (activity_participants)
+     * sin emitir certificados aún.
+     */
+    public function enrollParticipantsFromRows(array $rows, Activity $activity, User $user): array
+    {
+        return DB::transaction(function () use ($rows, $activity) {
+            $enrolledCount = 0;
+            $newStudentsCount = 0;
+            $alreadyEnrolledCount = 0;
+            $errorCount = 0;
+
+            $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
+                return [$this->normalizeDocumentNumber($ben->document_number) => $ben];
+            })->all();
+
+            $currentlyEnrolledIds = $activity->participants()->pluck('beneficiaries.id')->flip()->toArray();
+
+            foreach ($rows as $item) {
+                $data = $item['data'] ?? [];
+                $docNumber = $this->normalizeDocumentNumber($data['document_number'] ?? '');
+
+                if (empty($docNumber) || empty($data['first_name']) || empty($data['last_name'])) {
+                    $errorCount++;
+
+                    continue;
+                }
+
+                $beneficiary = null;
+                if (isset($existingBeneficiariesByCi[$docNumber])) {
+                    $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                } else {
+                    $beneficiary = Beneficiary::create([
+                        'document_type' => $data['document_type'] ?? 'CI',
+                        'document_number' => $docNumber,
+                        'first_name' => trim($data['first_name']),
+                        'last_name' => trim($data['last_name']),
+                        'academic_title' => ! empty($data['academic_title']) ? trim($data['academic_title']) : 'Univ.',
+                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : 'Facultad de Tecnología - UMSA',
+                        'email' => ! empty($data['email']) ? strtolower(trim($data['email'])) : null,
+                        'phone' => ! empty($data['phone']) ? trim($data['phone']) : null,
+                        'notes' => 'Registrado vía nómina de actividad: '.$activity->name.' ('.now()->format('d/m/Y H:i').')',
+                    ]);
+
+                    $existingBeneficiariesByCi[$docNumber] = $beneficiary;
+                    $newStudentsCount++;
+                }
+
+                if (isset($currentlyEnrolledIds[$beneficiary->id])) {
+                    $alreadyEnrolledCount++;
+
+                    continue;
+                }
+
+                // Verificar si ya cuenta con certificado emitido previamente en esta actividad
+                $hasCert = Certificate::where('activity_id', $activity->id)
+                    ->where('beneficiary_id', $beneficiary->id)
+                    ->whereNull('revoked_at')
+                    ->exists();
+
+                $activity->participants()->attach($beneficiary->id, [
+                    'role' => 'Participante',
+                    'status' => $hasCert ? 'certificado' : 'inscrito',
+                ]);
+
+                $currentlyEnrolledIds[$beneficiary->id] = true;
+                $enrolledCount++;
+            }
+
+            AuditLog::log(
+                'activity_participants_enrolled',
+                "Nómina de participantes actualizada en '{$activity->name}': {$enrolledCount} participantes agregados ({$newStudentsCount} nuevos en padrón, {$alreadyEnrolledCount} ya estaban en la lista).",
+                $activity
+            );
+
+            return [
+                'enrolled_count' => $enrolledCount,
+                'new_students_count' => $newStudentsCount,
+                'already_enrolled_count' => $alreadyEnrolledCount,
+                'error_count' => $errorCount,
+                'total_processed' => count($rows),
+            ];
+        });
+    }
+
+    /**
+     * Emite masivamente los certificados para los participantes registrados en la nómina de la actividad
+     * que se encuentren pendientes de certificado.
+     */
+    public function issueCertificatesToActivityParticipants(
+        Activity $activity,
+        int $certificateTypeId,
+        ?int $templateId,
+        string $issueDate,
+        User $user,
+        CertificateService $certificateService,
+        ?array $selectedBeneficiaryIds = null
+    ): array {
+        return DB::transaction(function () use ($activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService, $selectedBeneficiaryIds) {
+            $query = $activity->participants();
+            if (! empty($selectedBeneficiaryIds)) {
+                $query->whereIn('beneficiaries.id', $selectedBeneficiaryIds);
+            }
+            $participants = $query->get();
+
+            $issuedCount = 0;
+            $skippedCount = 0;
+
+            $alreadyCertifiedBeneficiaryIds = Certificate::where('activity_id', $activity->id)
+                ->where('certificate_type_id', $certificateTypeId)
+                ->whereNull('revoked_at')
+                ->pluck('beneficiary_id')
+                ->flip()
+                ->toArray();
+
+            foreach ($participants as $participant) {
+                if (isset($alreadyCertifiedBeneficiaryIds[$participant->id])) {
+                    $skippedCount++;
+                    $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
+
+                    continue;
+                }
+
+                $certificateService->issueCertificate([
+                    'beneficiary_id' => $participant->id,
+                    'activity_id' => $activity->id,
+                    'certificate_type_id' => $certificateTypeId,
+                    'certificate_template_id' => $templateId,
+                    'issue_date' => $issueDate,
+                ], $user);
+
+                $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
+                $alreadyCertifiedBeneficiaryIds[$participant->id] = true;
+                $issuedCount++;
+            }
+
+            AuditLog::log(
+                'activity_bulk_certified',
+                "Emisión masiva a la nómina de '{$activity->name}': {$issuedCount} certificados emitidos ({$skippedCount} omitidos por ya poseer certificado).",
+                $activity
+            );
+
+            return [
+                'issued_count' => $issuedCount,
+                'skipped_count' => $skippedCount,
+                'total_candidates' => $participants->count(),
             ];
         });
     }

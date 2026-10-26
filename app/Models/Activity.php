@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -39,6 +40,13 @@ class Activity extends Model
         return $this->hasMany(Certificate::class);
     }
 
+    public function participants(): BelongsToMany
+    {
+        return $this->belongsToMany(Beneficiary::class, 'activity_participants')
+            ->withPivot(['id', 'role', 'status'])
+            ->withTimestamps();
+    }
+
     public function certificateConfig(): HasOne
     {
         return $this->hasOne(ActivityCertificateConfig::class);
@@ -50,8 +58,10 @@ class Activity extends Model
             if ($this->start_date->equalTo($this->end_date)) {
                 return $this->start_date->translatedFormat('d \d\e F \d\e Y');
             }
-            return 'Del ' . $this->start_date->translatedFormat('d \d\e F') . ' al ' . $this->end_date->translatedFormat('d \d\e F \d\e Y');
+
+            return 'Del '.$this->start_date->translatedFormat('d \d\e F').' al '.$this->end_date->translatedFormat('d \d\e F \d\e Y');
         }
+
         return '';
     }
 }

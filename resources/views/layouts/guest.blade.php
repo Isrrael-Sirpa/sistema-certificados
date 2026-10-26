@@ -14,6 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
 </head>
 <body class="min-h-full font-sans antialiased text-slate-800 bg-[#F5F7F8] flex flex-col justify-between">
 
@@ -72,5 +73,6 @@
         </div>
     </footer>
 
+    @stack('scripts')
 </body>
 </html>

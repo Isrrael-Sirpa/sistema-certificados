@@ -74,6 +74,13 @@ Route::middleware(['auth'])->group(function () {
         ->names('activities')
         ->parameters(['actividades' => 'activity']);
     Route::post('/actividades/{activity}/emision-masiva', [ActivityController::class, 'batchIssue'])->name('activities.batch-issue');
+    Route::post('/actividades/{activity}/nomina/preview', [ActivityController::class, 'previewRoster'])->name('activities.roster.preview');
+    Route::post('/actividades/{activity}/nomina/confirmar', [ActivityController::class, 'confirmRosterIssuance'])->name('activities.roster.confirm');
+    Route::post('/actividades/{activity}/nomina/cargar', [ActivityController::class, 'enrollRoster'])->name('activities.roster.enroll');
+    Route::post('/actividades/{activity}/participantes/agregar-manual', [ActivityController::class, 'addParticipantManual'])->name('activities.participants.add-manual');
+    Route::delete('/actividades/{activity}/participantes/{beneficiary}', [ActivityController::class, 'removeParticipant'])->name('activities.participants.remove');
+    Route::post('/actividades/{activity}/participantes/emitir-certificados', [ActivityController::class, 'issueToRoster'])->name('activities.participants.issue-certificates');
+    Route::get('/actividades/{activity}/descargar-zip', [ActivityController::class, 'downloadZip'])->name('activities.download-zip');
     Route::post('/actividades/{activity}/configuracion-certificado', [ActivityController::class, 'updateCertificateConfig'])->name('activities.certificate-config');
 
     // Módulo de Reportes
