@@ -67,9 +67,12 @@
                 <p class="text-xs text-slate-500">Mostrando {{ $certificates->total() }} certificado(s) registrados</p>
             </div>
             
-            <a href="{{ route('certificates.create') }}" class="px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5">
-                <span>+ Emitir Nuevo Certificado</span>
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('reports.index') }}" class="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-[#024966] text-xs font-semibold rounded-xl border border-slate-200/80 transition-all hover:border-slate-300 shadow-2xs">
+                    <svg class="w-4 h-4 text-[#32639E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span>Reportes y Estadísticas</span>
+                </a>
+            </div>
         </div>
 
         <div class="overflow-x-auto">

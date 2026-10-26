@@ -59,6 +59,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Gestión de Beneficiarios
+    Route::get('/beneficiarios/importar', [BeneficiaryController::class, 'importForm'])->name('beneficiaries.import');
+    Route::get('/beneficiarios/plantilla-ejemplo', [BeneficiaryController::class, 'downloadTemplate'])->name('beneficiaries.template.download');
+    Route::post('/beneficiarios/importar/preview', [BeneficiaryController::class, 'preview'])->name('beneficiaries.import.preview');
+    Route::post('/beneficiarios/importar/ejecutar', [BeneficiaryController::class, 'storeBulk'])->name('beneficiaries.import.store');
+    Route::post('/beneficiarios/importar/cancelar', [BeneficiaryController::class, 'cancelPreview'])->name('beneficiaries.import.cancel');
+
     Route::resource('beneficiarios', BeneficiaryController::class)
         ->names('beneficiaries')
         ->parameters(['beneficiarios' => 'beneficiary']);

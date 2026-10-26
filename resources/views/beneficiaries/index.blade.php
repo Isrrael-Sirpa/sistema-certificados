@@ -17,10 +17,18 @@
             </div>
         </form>
 
-        <a href="{{ route('beneficiaries.create') }}" 
-           class="px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5">
-            <span>+ Registrar Beneficiario</span>
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('beneficiaries.import') }}" 
+               class="px-4 py-2 bg-[#024966] hover:bg-[#01354a] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                <svg class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Importación Masiva (Excel/CSV)</span>
+            </a>
+
+            <a href="{{ route('beneficiaries.create') }}" 
+               class="px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>+ Registrar Beneficiario</span>
+            </a>
+        </div>
     </div>
 
     <!-- Beneficiaries Table -->

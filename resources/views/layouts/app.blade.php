@@ -177,8 +177,8 @@
                     <span class="font-medium">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</span>
                 </div>
 
-                <a href="{{ route('certificates.create') }}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all">
-                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <a href="{{ route('certificates.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 focus:ring-2 focus:ring-[#BB2026]/40 cursor-pointer">
+                    <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                     <span>Emitir Certificado</span>
                 </a>
             </div>
