@@ -5,9 +5,9 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
-        
-        <div class="p-6 bg-[#024966] text-white flex items-center justify-between">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+
+        <div class="p-6 bg-brand text-white flex items-center justify-between">
             <h3 class="text-base font-bold truncate">Editar: {{ $activity->name }}</h3>
             <a href="{{ route('activities.show', $activity) }}" class="text-xs text-slate-300 hover:text-white">&larr; Volver</a>
         </div>
@@ -21,7 +21,7 @@
                     Nombre de la Actividad <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="name" id="name" value="{{ old('name', $activity->name) }}" required
-                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -30,7 +30,7 @@
                         Tipo de Evento <span class="text-red-500">*</span>
                     </label>
                     <select name="activity_type" id="activity_type" required
-                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                         <option value="Curso" {{ old('activity_type', $activity->activity_type) === 'Curso' ? 'selected' : '' }}>Curso</option>
                         <option value="Taller" {{ old('activity_type', $activity->activity_type) === 'Taller' ? 'selected' : '' }}>Taller</option>
                         <option value="Seminario" {{ old('activity_type', $activity->activity_type) === 'Seminario' ? 'selected' : '' }}>Seminario</option>
@@ -46,7 +46,7 @@
                         Carga Horaria (Horas) <span class="text-red-500">*</span>
                     </label>
                     <input type="number" name="academic_hours" id="academic_hours" value="{{ old('academic_hours', $activity->academic_hours) }}" min="0" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
             </div>
 
@@ -56,7 +56,7 @@
                         Fecha de Inicio <span class="text-red-500">*</span>
                     </label>
                     <input type="date" name="start_date" id="start_date" value="{{ old('start_date', $activity->start_date->format('Y-m-d')) }}" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
                 <div>
@@ -64,7 +64,7 @@
                         Fecha de Conclusión <span class="text-red-500">*</span>
                     </label>
                     <input type="date" name="end_date" id="end_date" value="{{ old('end_date', $activity->end_date->format('Y-m-d')) }}" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
             </div>
 
@@ -74,7 +74,7 @@
                         Lugar / Modalidad
                     </label>
                     <input type="text" name="location" id="location" value="{{ old('location', $activity->location) }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
                 <div>
@@ -82,7 +82,7 @@
                         Estado del Evento <span class="text-red-500">*</span>
                     </label>
                     <select name="status" id="status" required
-                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                         <option value="activa" {{ old('status', $activity->status) === 'activa' ? 'selected' : '' }}>Activa</option>
                         <option value="finalizada" {{ old('status', $activity->status) === 'finalizada' ? 'selected' : '' }}>Finalizada</option>
                         <option value="cancelada" {{ old('status', $activity->status) === 'cancelada' ? 'selected' : '' }}>Cancelada</option>
@@ -96,7 +96,7 @@
                         Unidad Organizadora
                     </label>
                     <input type="text" name="organizer" id="organizer" value="{{ old('organizer', $activity->organizer) }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
                 <div>
@@ -104,7 +104,7 @@
                         Autoridad Responsable (Firma)
                     </label>
                     <input type="text" name="responsible_authority" id="responsible_authority" value="{{ old('responsible_authority', $activity->responsible_authority) }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
             </div>
 
@@ -113,14 +113,14 @@
                     Descripción del Contenido Académico
                 </label>
                 <textarea name="description" id="description" rows="3"
-                          class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">{{ old('description', $activity->description) }}</textarea>
+                          class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('description', $activity->description) }}</textarea>
             </div>
 
             <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                 <a href="{{ route('activities.show', $activity) }}" class="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
                     Cancelar
                 </a>
-                <button type="submit" class="px-6 py-2.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                <button type="submit" class="px-6 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all">
                     Guardar Cambios
                 </button>
             </div>

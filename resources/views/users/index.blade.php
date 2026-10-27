@@ -7,20 +7,20 @@
 <div class="space-y-6">
 
     <!-- Header Actions -->
-    <div class="flex items-center justify-between bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
+    <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
         <div>
-            <h3 class="text-sm font-bold text-[#024966]">Personal Autorizado</h3>
+            <h3 class="text-sm font-bold text-brand">Personal Autorizado</h3>
             <p class="text-xs text-slate-500">Gestione las cuentas y privilegios de acceso</p>
         </div>
 
-        <a href="{{ route('users.create') }}" 
-           class="px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+        <a href="{{ route('users.create') }}"
+           class="px-4 py-2 bg-action hover:bg-action-hover text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5">
             <span>+ Crear Usuario</span>
         </a>
     </div>
 
     <!-- Users Table -->
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
@@ -43,7 +43,7 @@
                                 {{ $u->email }}
                             </td>
                             <td class="px-5 py-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $u->isAdmin() ? 'bg-amber-100 text-amber-800' : 'bg-[#024966]/10 text-[#024966]' }}">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $u->isAdmin() ? 'bg-amber-100 text-amber-800' : 'bg-brand/10 text-brand' }}">
                                     {{ $u->role->display_name ?? 'Sin Rol' }}
                                 </span>
                             </td>
@@ -62,7 +62,7 @@
                                 @endif
                             </td>
                             <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-                                <a href="{{ route('users.edit', $u) }}" class="p-1.5 text-slate-500 hover:text-[#32639E] hover:bg-slate-100 rounded inline-block" title="Editar">
+                                <a href="{{ route('users.edit', $u) }}" class="p-1.5 text-slate-500 hover:text-brand-hover hover:bg-slate-100 rounded inline-block" title="Editar">
                                     ✏️
                                 </a>
 

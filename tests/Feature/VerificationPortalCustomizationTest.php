@@ -27,7 +27,7 @@ class VerificationPortalCustomizationTest extends TestCase
         $response->assertOk();
         $response->assertSee('Verificación Oficial de Certificados');
         $response->assertSee('Universidad Mayor de San Andrés • Facultad de Tecnología');
-        $response->assertSee('Escanear Código QR con Cámara');
+        $response->assertSee('Escanear código QR');
         $response->assertSee('EJ: CERT-2026-000001');
     }
 

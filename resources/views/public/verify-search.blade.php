@@ -14,24 +14,24 @@
 @endpush
 
 @section('content')
-<div class="max-w-2xl mx-auto" x-data="qrCameraScanner()">
+<div class="max-w-3xl mx-auto" x-data="qrCameraScanner()">
     <!-- Hero / Verification Card -->
-    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden mb-8">
-        
-        <div class="bg-gradient-to-b from-[#024966] via-[#023f59] to-[#01354a] px-8 py-10 text-center text-white relative">
+    <div class="ft-verify-card ft-panel bg-white rounded-3xl border border-border border-t-[3px] border-t-accent overflow-hidden mb-8">
+
+        <div class="ft-verify-header bg-white px-8 py-10 text-left text-brand relative">
             @php
                 $showUmsa = ($settings['portal_verify_show_umsa_logo'] ?? '1') == '1';
                 $showFt = ($settings['portal_verify_show_ft_logo'] ?? '1') == '1';
             @endphp
 
             @if($showUmsa || $showFt)
-                <div class="inline-flex items-center gap-3.5 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 mb-3 shadow-lg">
+                <div class="inline-flex items-center gap-3.5 p-3 rounded-2xl bg-surface-muted border border-border mb-5">
                     @if($showUmsa)
                         <img src="{{ asset('assets/institutional/logo_umsa.svg') }}" class="w-11 h-16 object-contain drop-shadow" alt="Escudo Oficial UMSA" onerror="this.onerror=null; this.src='{{ asset('assets/institutional/logo_umsa.png') }}';">
                     @endif
 
                     @if($showUmsa && $showFt)
-                        <div class="h-12 w-px bg-white/20"></div>
+                        <div class="h-12 w-px bg-border"></div>
                     @endif
 
                     @if($showFt)
@@ -40,18 +40,18 @@
                 </div>
             @endif
 
-            <div class="text-[10px] font-extrabold uppercase tracking-widest text-red-200">
+            <div class="ft-eyebrow text-action">
                 {{ $settings['portal_verify_tagline'] ?? 'Universidad Mayor de San Andrés • Facultad de Tecnología' }}
             </div>
-            <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white mt-1">
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-brand mt-3">
                 {{ $settings['portal_verify_title'] ?? 'Verificación Oficial de Certificados' }}
             </h1>
-            <p class="text-xs sm:text-sm text-sky-100/90 mt-2 max-w-lg mx-auto">
+            <p class="text-xs sm:text-sm text-muted mt-3 max-w-2xl">
                 {{ $settings['portal_verify_subtitle'] ?? 'Consulte la autenticidad, vigencia reglamentaria (3 años) y respaldo institucional de certificados emitidos por el Vicedecanato.' }}
             </p>
         </div>
 
-        <div class="p-8 sm:p-10 space-y-6">
+        <div class="ft-verify-body space-y-6">
             @if(session('error'))
                 <div class="p-4 bg-red-50 text-red-800 rounded-2xl border border-red-200 text-sm flex items-start gap-3">
                     <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -61,14 +61,14 @@
 
             <!-- Botón Destacado: Escanear con Cámara -->
             <div>
-                <button type="button" 
-                        @click="openScannerModal()" 
-                        class="w-full py-4 px-6 bg-gradient-to-r from-[#024966] via-[#023f59] to-[#01354a] hover:from-[#01354a] hover:to-[#012534] text-white text-sm font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer border border-sky-400/25 active:scale-98 group">
-                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
-                        <svg class="w-5 h-5 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <button type="button"
+                        @click="openScannerModal()"
+                        class="ft-scan-button w-full py-4 px-4 sm:px-6 bg-gradient-to-r from-brand via-brand to-brand-deep hover:from-brand-deep hover:to-brand-deep text-white text-sm font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 cursor-pointer border border-brand/20 active:scale-98 group">
+                    <div class="w-9 h-9 shrink-0 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                        <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     </div>
-                    <span class="tracking-wide text-sm sm:text-base">Escanear Código QR con Cámara</span>
-                    <span class="ml-1 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Cámara / Móvil</span>
+                    <span class="text-sm sm:text-base">Escanear código QR <span class="hidden sm:inline">con cámara</span></span>
+                    <span class="hidden sm:inline ml-1 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Cámara / Móvil</span>
                 </button>
             </div>
 
@@ -89,11 +89,11 @@
                     </label>
                     <div class="relative rounded-2xl shadow-xs">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                            <svg class="h-6 w-6 text-[#32639E]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <svg class="h-6 w-6 text-brand-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </div>
                         <input type="text" name="certificate_code" id="certificate_code" x-ref="certificateCodeInput"
-                               value="{{ old('certificate_code') }}" required autofocus
-                               class="block w-full pl-12 pr-4 py-3.5 text-base sm:text-lg font-mono tracking-wider uppercase border-2 border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#024966] focus:border-[#024966] placeholder-slate-400 transition-colors"
+                               value="{{ old('certificate_code') }}" required
+                               class="block w-full pl-12 pr-4 py-3.5 text-base sm:text-lg font-mono tracking-wider uppercase border-2 border-slate-200 rounded-2xl focus:ring-2 focus:ring-brand focus:border-brand placeholder-slate-400 transition-colors"
                                placeholder="{{ $settings['portal_verify_code_placeholder'] ?? 'EJ: CERT-2026-000001' }}">
                     </div>
                     <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
@@ -104,9 +104,9 @@
 
                 <div class="pt-2">
                     <button type="submit"
-                            class="w-full py-4 px-6 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-base font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
+                            class="w-full py-4 px-6 bg-action hover:bg-action-hover text-white text-base font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        <span>Verificar Autenticidad Registrada</span>
+                        <span>Verificar autenticidad</span>
                     </button>
                 </div>
             </form>
@@ -121,11 +121,11 @@
                 <div class="mt-8 pt-8 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-500">
                     @if($showQrCard)
                         <div @click="openScannerModal()" class="flex items-start gap-3.5 p-4 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 cursor-pointer transition-all group">
-                            <div class="w-10 h-10 rounded-xl bg-sky-50 text-[#024966] group-hover:bg-[#024966] group-hover:text-white flex items-center justify-center shrink-0 border border-sky-100 transition-colors">
+                            <div class="w-10 h-10 rounded-xl bg-brand-soft text-brand group-hover:bg-brand group-hover:text-white flex items-center justify-center shrink-0 border border-brand/10 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                             </div>
                             <div>
-                                <span class="font-bold text-slate-800 block text-xs group-hover:text-[#024966]">
+                                <span class="font-bold text-slate-800 block text-xs group-hover:text-brand">
                                     {{ $settings['portal_verify_qr_card_title'] ?? 'Escaneo QR Instantáneo' }}
                                 </span>
                                 {{ $settings['portal_verify_qr_card_desc'] ?? 'Escanee con la cámara de su dispositivo móvil o computadora para validación directa e inmediata sin teclear.' }}
@@ -153,8 +153,8 @@
     </div>
 
     <!-- MODAL INTERACTIVO DE ESCÁNER DE CÁMARA QR -->
-    <div x-show="scannerModalOpen" 
-         x-cloak 
+    <div x-show="scannerModalOpen"
+         x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -162,19 +162,19 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
-        
-        <div @click.away="closeScannerModal()" 
-             class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
-            
+
+        <div @click.away="closeScannerModal()"
+             class="ft-panel bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
+
             <!-- Modal Header -->
-            <div class="p-5 bg-gradient-to-r from-[#024966] to-[#01354a] text-white flex items-center justify-between">
+            <div class="p-5 bg-gradient-to-r from-brand to-brand-deep text-white flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-                        <svg class="w-5 h-5 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                        <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                     </div>
                     <div>
                         <h3 class="text-sm font-bold text-white">Lector QR de Certificados</h3>
-                        <p class="text-[11px] text-sky-200">Enfoque el código QR impreso en el documento</p>
+                        <p class="text-[11px] text-indigo-100">Enfoque el código QR impreso en el documento</p>
                     </div>
                 </div>
 
@@ -206,7 +206,7 @@
 
                 <!-- Visor de Cámara con Marco y Mira Láser -->
                 <div class="relative bg-black rounded-2xl overflow-hidden aspect-square w-full max-w-xs mx-auto shadow-inner flex items-center justify-center">
-                    
+
                     <!-- Elemento destino de Html5Qrcode -->
                     <div id="interactive-qr-reader" class="w-full h-full object-cover"></div>
 
@@ -232,9 +232,9 @@
                 <!-- Opciones y Alternativas de Cámara -->
                 <div class="space-y-3 pt-2">
                     <div class="flex items-center justify-between text-xs text-slate-500">
-                        <button type="button" 
-                                @click="switchCamera()" 
-                                x-show="hasMultipleCameras" 
+                        <button type="button"
+                                @click="switchCamera()"
+                                x-show="hasMultipleCameras"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors cursor-pointer">
                             <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             <span>Cambiar Cámara</span>
@@ -246,7 +246,7 @@
                     <!-- Opción alternativa: Cargar foto o imagen de certificado -->
                     <div class="pt-2 border-t border-slate-100">
                         <input type="file" id="qr-file-input" accept="image/*" class="hidden" @change="handleFileScan($event)">
-                        <label for="qr-file-input" 
+                        <label for="qr-file-input"
                                class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors">
                             <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             <span>📁 ¿Tiene una foto o archivo del QR? Subir imagen</span>
@@ -313,7 +313,7 @@
                     if (devices && devices.length > 0) {
                         this.cameras = devices;
                         this.hasMultipleCameras = devices.length > 1;
-                        
+
                         // Preferir cámara trasera ('environment') en smartphones
                         let selectedCameraId = devices[0].id;
                         const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));

@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="max-w-xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 sm:p-10 text-center">
+    <div class="ft-panel bg-white rounded-3xl shadow-xl border border-slate-200/80 p-8 sm:p-10 text-center">
         <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
             ❌
         </div>
@@ -18,7 +18,7 @@
         </div>
 
         <div class="mt-8">
-            <a href="{{ route('verification.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-sm font-semibold rounded-xl shadow-md transition-all">
+            <a href="{{ route('verification.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-action hover:bg-action-hover text-white text-sm font-semibold rounded-xl shadow-md transition-all">
                 <span>&larr; Intentar búsqueda manual por código</span>
             </a>
         </div>

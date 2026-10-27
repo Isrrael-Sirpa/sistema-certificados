@@ -5,9 +5,9 @@
 
 @section('content')
 <div class="max-w-2xl mx-auto">
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
-        
-        <div class="p-6 bg-[#024966] text-white flex items-center justify-between">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+
+        <div class="p-6 bg-brand text-white flex items-center justify-between">
             <h3 class="text-base font-bold truncate">Editar: {{ $user->name }}</h3>
             <a href="{{ route('users.index') }}" class="text-xs text-slate-300 hover:text-white">&larr; Volver</a>
         </div>
@@ -21,7 +21,7 @@
                     Nombre Completo <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" required
-                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
             </div>
 
             <div>
@@ -29,7 +29,7 @@
                     Correo Institucional <span class="text-red-500">*</span>
                 </label>
                 <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
-                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
             </div>
 
             <div>
@@ -37,7 +37,7 @@
                     Rol y Nivel de Acceso <span class="text-red-500">*</span>
                 </label>
                 <select name="role_id" id="role_id" required
-                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     @foreach($roles as $r)
                         <option value="{{ $r->id }}" {{ old('role_id', $user->role_id) == $r->id ? 'selected' : '' }}>
                             {{ $r->display_name }} ({{ $r->description }})
@@ -52,14 +52,14 @@
                     <div>
                         <label for="password" class="block text-[11px] font-medium text-slate-600 mb-1">Nueva Contraseña</label>
                         <input type="password" name="password" id="password"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#024966] bg-white"
+                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand bg-white"
                                placeholder="Dejar vacío para mantener">
                     </div>
 
                     <div>
                         <label for="password_confirmation" class="block text-[11px] font-medium text-slate-600 mb-1">Confirmar</label>
                         <input type="password" name="password_confirmation" id="password_confirmation"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#024966] bg-white"
+                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand bg-white"
                                placeholder="Confirmar nueva">
                     </div>
                 </div>
@@ -67,7 +67,7 @@
 
             <div class="pt-2">
                 <label class="flex items-center text-xs text-slate-700 cursor-pointer">
-                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} class="w-4 h-4 text-[#024966] border-slate-300 rounded-sm">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} class="w-4 h-4 text-brand border-slate-300 rounded-sm">
                     <span class="ml-2 font-medium">Cuenta activa y habilitada</span>
                 </label>
             </div>
@@ -76,7 +76,7 @@
                 <a href="{{ route('users.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
                     Cancelar
                 </a>
-                <button type="submit" class="px-6 py-2.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                <button type="submit" class="px-6 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all">
                     Guardar Cambios
                 </button>
             </div>

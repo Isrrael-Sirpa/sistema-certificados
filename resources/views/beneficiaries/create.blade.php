@@ -5,9 +5,9 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
-        
-        <div class="p-6 bg-[#024966] text-white flex items-center justify-between">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+
+        <div class="p-6 bg-brand text-white flex items-center justify-between">
             <h3 class="text-base font-bold">Datos del Beneficiario</h3>
             <a href="{{ route('beneficiaries.index') }}" class="text-xs text-slate-200 hover:text-white">&larr; Volver</a>
         </div>
@@ -22,7 +22,7 @@
                         Tipo Doc. <span class="text-red-500">*</span>
                     </label>
                     <select name="document_type" id="document_type" required
-                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                            class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                         <option value="CI" {{ old('document_type') === 'CI' ? 'selected' : '' }}>Cédula de Identidad (CI)</option>
                         <option value="DNI" {{ old('document_type') === 'DNI' ? 'selected' : '' }}>DNI</option>
                         <option value="PASAPORTE" {{ old('document_type') === 'PASAPORTE' ? 'selected' : '' }}>Pasaporte</option>
@@ -35,7 +35,7 @@
                         Número de Documento <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="document_number" id="document_number" value="{{ old('document_number') }}" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="Ej: 8493021 LP">
                 </div>
             </div>
@@ -47,7 +47,7 @@
                         Grado / Título
                     </label>
                     <input type="text" name="academic_title" id="academic_title" value="{{ old('academic_title') }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="Univ. / Lic. / Ing. / Dr.">
                 </div>
 
@@ -56,7 +56,7 @@
                         Nombres <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="Ej: Rodrigo">
                 </div>
 
@@ -65,7 +65,7 @@
                         Apellidos <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="last_name" id="last_name" value="{{ old('last_name') }}" required
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="Ej: Quispe Mamani">
                 </div>
             </div>
@@ -77,7 +77,7 @@
                         Correo Electrónico
                     </label>
                     <input type="email" name="email" id="email" value="{{ old('email') }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="correo@ejemplo.com">
                 </div>
 
@@ -86,7 +86,7 @@
                         Teléfono / Celular
                     </label>
                     <input type="text" name="phone" id="phone" value="{{ old('phone') }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="+591 ...">
                 </div>
 
@@ -95,7 +95,7 @@
                         Carrera / Unidad
                     </label>
                     <input type="text" name="institution_or_department" id="institution_or_department" value="{{ old('institution_or_department') }}"
-                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                           class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                            placeholder="Ej: Informática">
                 </div>
             </div>
@@ -105,7 +105,7 @@
                     Observaciones / Notas
                 </label>
                 <textarea name="notes" id="notes" rows="2"
-                          class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]"
+                          class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
                           placeholder="Notas administrativas adicionales...">{{ old('notes') }}</textarea>
             </div>
 
@@ -113,7 +113,7 @@
                 <a href="{{ route('beneficiaries.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
                     Cancelar
                 </a>
-                <button type="submit" class="px-6 py-2.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                <button type="submit" class="px-6 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all">
                     Guardar Beneficiario
                 </button>
             </div>

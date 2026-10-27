@@ -9,8 +9,8 @@
     <!-- Top Action Banner -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-            <h2 class="text-lg font-bold text-[#024966] flex items-center gap-2">
-                <span class="w-8 h-8 rounded-xl bg-sky-50 text-[#024966] flex items-center justify-center border border-sky-100">
+            <h2 class="text-lg font-bold text-brand flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-brand-soft text-brand flex items-center justify-center border border-brand/10">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 </span>
                 <span>Catálogo de Plantillas Institucionales (Facultad de Tecnología)</span>
@@ -19,8 +19,8 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <a href="{{ route('templates.create') }}" 
-               class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer">
+            <a href="{{ route('templates.create') }}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 <span>Nueva Plantilla</span>
             </a>
@@ -32,18 +32,18 @@
         <form method="GET" action="{{ route('templates.index') }}" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <div class="relative min-w-[240px]">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Buscar por nombre o descripción..."
-                       class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                       class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
 
-            <select name="category" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+            <select name="category" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 <option value="">Todas las categorías</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ ucfirst($cat) }}</option>
                 @endforeach
             </select>
 
-            <select name="orientation" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+            <select name="orientation" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 <option value="">Cualquier orientación</option>
                 <option value="landscape" {{ request('orientation') === 'landscape' ? 'selected' : '' }}>Horizontal (Landscape)</option>
                 <option value="portrait" {{ request('orientation') === 'portrait' ? 'selected' : '' }}>Vertical (Portrait)</option>
@@ -58,11 +58,11 @@
     <!-- Templates Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @forelse($templates as $tpl)
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group">
+            <div class="ft-panel bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group">
                 <!-- Preview Canvas Card Header -->
                 <div class="h-44 p-4 relative flex flex-col justify-between overflow-hidden"
                      style="background: linear-gradient(135deg, {{ $tpl->configuration['primary_color'] ?? '#024966' }} 0%, #01354a 100%);">
-                    
+
                     <!-- Decorative Certificate Mini Border -->
                     <div class="absolute inset-3 border {{ ($tpl->configuration['border_style'] ?? '') === 'ornamental-double' ? 'border-2 border-dashed' : 'border' }} rounded-lg opacity-40 pointer-events-none"
                          style="border-color: {{ $tpl->configuration['secondary_color'] ?? '#d4af37' }};"></div>
@@ -76,8 +76,8 @@
                     <div class="relative z-10 flex items-center justify-between">
                         <div class="flex items-center gap-1.5">
                             @if($tpl->is_default)
-                                <span class="bg-amber-400 text-[#024966] text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                                    <svg class="w-3 h-3 text-[#024966]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                                <span class="bg-amber-400 text-brand text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                                    <svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                                     <span>OFICIAL FT</span>
                                 </span>
                             @endif
@@ -119,7 +119,7 @@
                         <!-- Specialization Tag -->
                         @if(str_contains($tpl->slug, 'industrial'))
                             <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-soft text-sky-800 border border-sky-200">
                                     ⚙️ Áreas Mecánica / Eléctrica / Civil
                                 </span>
                             </div>
@@ -166,8 +166,8 @@
                     <!-- Action Buttons -->
                     <div class="space-y-2 pt-2 border-t border-slate-100">
                         <div class="grid grid-cols-2 gap-2">
-                            <a href="{{ route('templates.designer', $tpl) }}" 
-                               class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-[#024966] hover:bg-[#01354a] text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                            <a href="{{ route('templates.designer', $tpl) }}"
+                               class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-xs transition-all">
                                 <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                 <span>Diseñador</span>
                             </a>
@@ -180,7 +180,7 @@
                         </div>
 
                         <!-- Secondary Actions Row -->
-                        <div class="flex items-center justify-between text-[11px] pt-1 text-slate-500">
+                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[11px] pt-1 text-slate-500">
                             <!-- Toggle Active Form -->
                             <form method="POST" action="{{ route('templates.toggle-status', $tpl) }}">
                                 @csrf
@@ -216,7 +216,7 @@
                 </div>
             </div>
         @empty
-            <div class="col-span-full bg-white rounded-2xl p-12 text-center border border-slate-200">
+            <div class="col-span-full ft-panel bg-white rounded-2xl p-12 text-center border border-slate-200">
                 <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl mb-3">
                     🎨
                 </div>
@@ -232,8 +232,8 @@
     </div>
 
     <!-- Duplicate Modal -->
-    <div x-show="duplicateModalOpen" 
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4" 
+    <div x-show="duplicateModalOpen"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -241,11 +241,11 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          style="display: none;">
-        
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden"
+
+        <div class="ft-panel bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto"
              @click.away="duplicateModalOpen = false">
-            
-            <div class="bg-[#024966] text-white p-5 flex items-center justify-between">
+
+            <div class="bg-brand text-white p-5 flex items-center justify-between">
                 <div>
                     <h3 class="text-base font-bold">Duplicar Plantilla</h3>
                     <p class="text-xs text-slate-200 mt-0.5">Copia íntegra de diseño, logos, firmas y estilos</p>
@@ -264,7 +264,7 @@
                         Nombre de la Nueva Plantilla <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="name" x-model="newTemplateName" required
-                           class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                           class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
                 <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
@@ -272,8 +272,8 @@
                             class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50">
                         Cancelar
                     </button>
-                    <button type="submit" 
-                            class="px-5 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs">
+                    <button type="submit"
+                            class="px-5 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs">
                         Crear Duplicado
                     </button>
                 </div>

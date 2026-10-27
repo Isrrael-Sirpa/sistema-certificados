@@ -7,9 +7,9 @@
 <div class="space-y-6">
 
     <!-- Filter Card -->
-    <div class="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80">
+    <div class="ft-panel bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80">
         <form method="GET" action="{{ route('reports.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            
+
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Desde</label>
                 <input type="date" name="start_date" value="{{ $startDate }}" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg">
@@ -41,7 +41,7 @@
             </div>
 
             <div class="flex items-end gap-2">
-                <button type="submit" class="w-full py-2 px-4 bg-[#BB2026] text-white text-xs font-semibold rounded-lg hover:bg-[#9e1a1f]">
+                <button type="submit" class="w-full py-2 px-4 bg-action text-white text-xs font-semibold rounded-lg hover:bg-action-hover">
                     Generar Reporte
                 </button>
                 <button type="button" onclick="window.print()" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs" title="Imprimir Reporte">
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Summary Metrics -->
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
             <span class="text-xs text-slate-500 block">Total en Periodo</span>
             <span class="text-2xl font-bold text-slate-900">{{ $total }}</span>
@@ -73,7 +73,7 @@
     </div>
 
     <!-- Report Table -->
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
@@ -91,7 +91,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($certificates as $cert)
                         <tr class="hover:bg-slate-50/80">
-                            <td class="px-5 py-2.5 font-mono font-bold text-[#024966]">{{ $cert->certificate_code }}</td>
+                            <td class="px-5 py-2.5 font-mono font-bold text-brand">{{ $cert->certificate_code }}</td>
                             <td class="px-5 py-2.5 font-semibold text-slate-900">{{ $cert->beneficiary->full_name }}</td>
                             <td class="px-5 py-2.5 font-mono text-slate-600">{{ $cert->beneficiary->formatted_document }}</td>
                             <td class="px-5 py-2.5 text-slate-700 max-w-xs truncate">{{ $cert->activity->name }}</td>

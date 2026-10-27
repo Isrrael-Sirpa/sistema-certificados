@@ -2,8 +2,8 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto">
-    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden">
-        
+    <div class="ft-panel bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden">
+
         <!-- Verification Header Status Banner -->
         @if($certificate->isRevoked())
             <div class="bg-gradient-to-r from-red-600 to-red-800 px-8 py-8 text-center text-white relative">
@@ -28,7 +28,7 @@
                 </p>
             </div>
         @else
-            <div class="bg-gradient-to-r from-emerald-600 via-emerald-700 to-[#024966] px-8 py-8 text-center text-white relative">
+            <div class="bg-gradient-to-r from-emerald-600 via-emerald-700 to-brand px-8 py-8 text-center text-white relative">
                 <div class="inline-flex p-3 rounded-2xl bg-white/20 mb-3 shadow-inner">
                     <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                 </div>
@@ -49,7 +49,7 @@
                     <img src="{{ asset('assets/institutional/sello_vicedecanato_ft.svg') }}" class="w-14 h-14 object-contain opacity-90 hidden sm:block" alt="Sello Oficial">
                     <div>
                         <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Código Único Registrado</span>
-                        <span class="text-xl sm:text-2xl font-mono font-black text-[#024966]">{{ $certificate->certificate_code }}</span>
+                        <span class="text-xl sm:text-2xl font-mono font-black text-brand">{{ $certificate->certificate_code }}</span>
                     </div>
                 </div>
 
@@ -84,7 +84,7 @@
 
                 <div>
                     <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Modalidad de Certificación</span>
-                    <p class="text-base font-bold text-[#024966]">{{ $certificate->certificateType->name }}</p>
+                    <p class="text-base font-bold text-brand">{{ $certificate->certificateType->name }}</p>
                 </div>
 
                 <div class="md:col-span-2">
@@ -101,18 +101,18 @@
 
             <!-- Fechas y Vigencia -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                <div class="p-4 bg-white rounded-2xl border border-slate-200">
+                <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Fecha de Emisión</span>
                     <span class="text-sm font-bold text-slate-800">{{ \Carbon\Carbon::parse($certificate->issue_date)->translatedFormat('d/m/Y') }}</span>
                 </div>
 
-                <div class="p-4 bg-white rounded-2xl border border-slate-200">
+                <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Fecha de Vencimiento</span>
                     <span class="text-sm font-bold text-slate-800">{{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d/m/Y') }}</span>
                     <span class="text-[10px] text-slate-400 block">(3 años calendario)</span>
                 </div>
 
-                <div class="p-4 bg-white rounded-2xl border border-slate-200">
+                <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Autoridad Emisora</span>
                     <span class="text-sm font-bold text-slate-800">{{ $certificate->activity->responsible_authority ?? $settings['authority_name'] ?? 'Ing. Aniceto Velarde Forest (Vicedecano)' }}</span>
                 </div>
@@ -127,7 +127,7 @@
 
             <!-- Botones de Acción -->
             <div class="pt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100">
-                <a href="{{ route('verification.index') }}" class="text-xs font-bold text-[#32639E] hover:underline flex items-center gap-1.5">
+                <a href="{{ route('verification.index') }}" class="text-xs font-bold text-brand-hover hover:underline flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                     <span>Consultar otro certificado</span>
                 </a>

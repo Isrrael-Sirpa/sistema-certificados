@@ -8,13 +8,13 @@
 
     <!-- Top Action Bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
-        <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-xl bg-red-50 text-[#BB2026] font-mono font-bold flex items-center justify-center text-xl">
+        <div class="flex min-w-0 items-center gap-3">
+            <div class="w-12 h-12 shrink-0 rounded-xl bg-red-50 text-action font-mono font-bold flex items-center justify-center text-xl">
                 📜
             </div>
-            <div>
-                <div class="flex items-center gap-2">
-                    <h3 class="text-lg font-bold font-mono text-[#024966]">{{ $certificate->certificate_code }}</h3>
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-lg font-bold font-mono text-brand">{{ $certificate->certificate_code }}</h3>
                     @if($certificate->isRevoked())
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
                             ● REVOCADO
@@ -29,17 +29,17 @@
                         </span>
                     @endif
                 </div>
-                <p class="text-xs text-slate-400 font-mono">Token: {{ $certificate->verification_token }}</p>
+                <p class="break-all text-xs text-slate-400 font-mono">Token: {{ $certificate->verification_token }}</p>
             </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ route('certificates.preview', $certificate) }}" target="_blank" 
-               class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-[#024966] text-xs font-semibold rounded-lg border border-slate-200 transition-all flex items-center gap-1.5">
+            <a href="{{ route('certificates.preview', $certificate) }}" target="_blank"
+               class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-brand text-xs font-semibold rounded-lg border border-slate-200 transition-all flex items-center gap-1.5">
                 <span>👁️ Vista Previa PDF</span>
             </a>
 
-            <a href="{{ route('certificates.download', $certificate) }}" 
+            <a href="{{ route('certificates.download', $certificate) }}"
                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-all flex items-center gap-1.5">
                 <span>📥 Descargar PDF</span>
             </a>
@@ -66,18 +66,18 @@
 
     <!-- Main Grid: Info + QR Card -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <!-- Details Column (2 Cols) -->
         <div class="lg:col-span-2 space-y-6">
-            
+
             <!-- Information Card -->
-            <div class="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-5">
+            <div class="ft-panel bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-5">
                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Información del Certificado</h4>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
                         <span class="text-slate-400 block font-semibold">Beneficiario</span>
-                        <a href="{{ route('beneficiaries.show', $certificate->beneficiary) }}" class="text-sm font-bold text-[#32639E] hover:underline block mt-0.5">
+                        <a href="{{ route('beneficiaries.show', $certificate->beneficiary) }}" class="text-sm font-bold text-brand-hover hover:underline block mt-0.5">
                             {{ $certificate->beneficiary->full_title_name }}
                         </a>
                         <span class="text-slate-500">{{ $certificate->beneficiary->formatted_document }}</span>
@@ -122,7 +122,7 @@
             </div>
 
             <!-- Frozen Documental Snapshot Card -->
-            <div class="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-4">
+            <div class="ft-panel bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div class="flex items-center gap-2">
                         <span class="text-base">🧊</span>
@@ -171,7 +171,7 @@
             </div>
 
             <!-- Verification History Log -->
-            <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+            <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
                 <div class="p-5 border-b border-slate-100">
                     <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Registro de Consultas Públicas (Escaneos QR)</h4>
                     <p class="text-xs text-slate-400 mt-0.5">Total de comprobaciones: {{ $certificate->verifications->count() }}</p>
@@ -209,8 +209,8 @@
 
         <!-- QR Column (1 Col) -->
         <div class="space-y-6">
-            
-            <div class="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 text-center space-y-4">
+
+            <div class="ft-panel bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 text-center space-y-4">
                 <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Código QR de Autenticidad</h4>
 
                 <div class="p-4 bg-slate-50 rounded-2xl inline-block border border-slate-100 shadow-inner">
@@ -219,13 +219,13 @@
 
                 <div class="text-xs text-slate-500">
                     <span class="font-bold text-slate-700 block">URL de Verificación Segura</span>
-                    <input type="text" readonly value="{{ $certificate->verification_url }}" 
+                    <input type="text" readonly value="{{ $certificate->verification_url }}"
                            class="mt-1 w-full text-[11px] font-mono py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 text-center select-all">
                 </div>
 
                 <div class="pt-2">
                     <a href="{{ $certificate->verification_url }}" target="_blank"
-                       class="w-full py-2.5 px-4 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all inline-block">
+                       class="w-full py-2.5 px-4 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all inline-block">
                         Probar Verificación Pública &rarr;
                     </a>
                 </div>
@@ -236,11 +236,11 @@
     </div>
 
     <!-- Revocation Modal -->
-    <div x-show="revokeModal" 
+    <div x-show="revokeModal"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
-        
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4" @click.away="revokeModal = false">
+
+        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 space-y-4" @click.away="revokeModal = false">
             <div class="flex items-center gap-3 text-red-600">
                 <span class="text-2xl">🚫</span>
                 <h3 class="text-base font-bold text-slate-900">Anular / Revocar Certificado</h3>

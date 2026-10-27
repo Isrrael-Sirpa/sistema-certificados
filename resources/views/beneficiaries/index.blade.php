@@ -8,31 +8,31 @@
 
     <!-- Actions & Search Bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('beneficiaries.index') }}" class="flex-1 max-w-md">
+        <form method="GET" action="{{ route('beneficiaries.index') }}" class="w-full min-w-0 sm:flex-1 sm:min-w-64 max-w-md">
             <div class="relative">
-                <input type="text" name="search" value="{{ request('search') }}" 
-                       placeholder="Buscar por nombre, apellido, CI o correo..." 
-                       class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#024966]">
+                <input type="text" name="search" value="{{ request('search') }}"
+                       placeholder="Buscar por nombre, apellido, CI o correo..."
+                       class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
             </div>
         </form>
 
-        <div class="flex items-center gap-2">
-            <a href="{{ route('beneficiaries.import') }}" 
-               class="px-4 py-2 bg-[#024966] hover:bg-[#01354a] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
-                <svg class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+        <div class="flex w-full flex-col sm:w-auto sm:flex-row sm:flex-wrap sm:items-center gap-2">
+            <a href="{{ route('beneficiaries.import') }}"
+               class="px-4 py-2 bg-brand hover:bg-brand-deep text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                <svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                 <span>Importación Masiva (Excel/CSV)</span>
             </a>
 
-            <a href="{{ route('beneficiaries.create') }}" 
-               class="px-4 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+            <a href="{{ route('beneficiaries.create') }}"
+               class="px-4 py-2 bg-action hover:bg-action-hover text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
                 <span>+ Registrar Beneficiario</span>
             </a>
         </div>
     </div>
 
     <!-- Beneficiaries Table -->
-    <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
                 <thead class="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-100">
@@ -53,7 +53,7 @@
                                 {{ $ben->formatted_document }}
                             </td>
                             <td class="px-5 py-3">
-                                <a href="{{ route('beneficiaries.show', $ben) }}" class="font-bold text-[#32639E] hover:underline">
+                                <a href="{{ route('beneficiaries.show', $ben) }}" class="font-bold text-brand-hover hover:underline">
                                     {{ $ben->full_name }}
                                 </a>
                             </td>
@@ -68,7 +68,7 @@
                                 {{ $ben->institution_or_department ?? '-' }}
                             </td>
                             <td class="px-5 py-3 text-center">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#024966]/10 text-[#024966] border border-[#024966]/20">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand/10 text-brand border border-brand/20">
                                     {{ $ben->certificates_count }}
                                 </span>
                             </td>

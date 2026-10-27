@@ -46,7 +46,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 };
 </script>
 
-<div x-data="certificateStudio(window.__CERTIFICATE_STUDIO_CONFIG)" 
+<div x-data="certificateStudio(window.__CERTIFICATE_STUDIO_CONFIG)"
      @keydown.window="handleKeyDown($event)"
      class="space-y-4 select-none">
 
@@ -57,34 +57,34 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
     <!-- 1. TOP STUDIO ACTION BAR (ESTÁTICA, SIN SUPERPOSICIÓN)         -->
     <!-- ============================================================== -->
     <header class="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4 relative z-20">
-        
+
         <!-- Left: Back & Template Meta -->
-        <div class="flex items-center gap-3">
-            <a href="{{ route('templates.index') }}" 
+        <div class="flex min-w-0 items-center gap-3">
+            <a href="{{ route('templates.index') }}"
                class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
                title="Volver al catálogo de plantillas">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             </a>
-            <div>
+            <div class="min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                     <div class="relative flex items-center">
                         <input type="text" x-model="name" @input="markDirty()"
-                               class="text-sm sm:text-base font-bold text-[#024966] border border-slate-200 hover:border-slate-300 focus:border-[#024966] focus:ring-1 focus:ring-[#024966] pl-2 pr-6 py-1 rounded-lg transition-all w-48 sm:w-64 bg-slate-50/70"
+                               class="text-sm sm:text-base font-bold text-brand border border-slate-200 hover:border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand pl-2 pr-6 py-1 rounded-lg transition-all w-48 sm:w-64 bg-slate-50/70"
                                title="Nombre de la plantilla">
                         <span class="absolute right-2 text-slate-400 text-xs pointer-events-none">✏️</span>
                     </div>
-                    <span class="bg-blue-50 text-[#024966] border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    <span class="bg-blue-50 text-brand border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
                         v{{ $template->current_version }}.0
                     </span>
-                    <button type="button" @click="toggleOrientation()" 
+                    <button type="button" @click="toggleOrientation()"
                             class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase cursor-pointer transition-all flex items-center gap-1"
                             title="Alternar entre orientación horizontal y vertical">
                         <span x-text="orientation === 'landscape' ? '📄 A4 Horizontal (297×210 mm)' : '📃 A4 Vertical (210×297 mm)'"></span>
                     </button>
-                    <button type="button" @click="autoAdaptLayout()" 
-                            class="bg-blue-50 hover:bg-blue-100 text-[#024966] border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full cursor-pointer transition-all flex items-center gap-1"
+                    <button type="button" @click="autoAdaptLayout()"
+                            class="bg-blue-50 hover:bg-blue-100 text-brand border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full cursor-pointer transition-all flex items-center gap-1"
                             title="Reacomodar automáticamente los elementos para aprovechar de forma óptima el espacio A4 según la orientación seleccionada">
-                        <svg class="w-3 h-3 text-[#024966]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <svg class="w-3 h-3 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Adaptar Proporciones</span>
                     </button>
                     <!-- Status indicator -->
@@ -94,12 +94,12 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <span x-text="isDirty ? 'Modificado sin guardar' : 'Guardado'"></span>
                     </span>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">Estudio visual institucional • Haz clic en cualquier elemento del lienzo para seleccionarlo y editarlo</p>
+                <p class="break-words text-[11px] text-slate-500 mt-0.5">Estudio visual institucional • Haz clic en cualquier elemento del lienzo para seleccionarlo y editarlo</p>
             </div>
         </div>
 
         <!-- Center: Tools (Undo, Redo, Zoom, Grid, PDF Preview) -->
-        <div class="flex items-center gap-1 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200">
+        <div class="flex max-w-full flex-wrap items-center gap-1 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200">
             <!-- Undo / Redo -->
             <button type="button" @click="undo()" :disabled="undoStack.length <= 1"
                     class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
@@ -136,7 +136,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
             <!-- Grid Toggle -->
             <button type="button" @click="showGrid = !showGrid"
-                    :class="showGrid ? 'bg-white text-[#024966] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                    :class="showGrid ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                     class="px-2 py-1 text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1"
                     title="Alternar cuadrícula de alineación">
                 <span>📏</span>
@@ -153,7 +153,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         </div>
 
         <!-- Right: Save Actions -->
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <button type="button" @click="saveTemplate(false)"
                     class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                     title="Guardar cambios en la versión actual v{{ $template->current_version }}.0">
@@ -161,7 +161,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             </button>
 
             <button type="button" @click="saveTemplate(true)"
-                    class="px-5 py-2 bg-[#BB2026] hover:bg-[#9e1a1f] text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5"
+                    class="px-5 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5"
                     title="Guardar como nueva versión incrementada v{{ $template->current_version + 1 }}.0">
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                 <span>Guardar como v{{ $template->current_version + 1 }}.0</span>
@@ -183,13 +183,13 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
     <!-- Responsive View Mode Switcher (Visible on small screens) -->
     <div class="flex lg:hidden items-center justify-center bg-slate-100 p-1 rounded-xl gap-1 text-xs">
-        <button type="button" @click="activePanel = 'tools'" :class="activePanel === 'tools' ? 'bg-white font-bold text-[#024966] shadow-xs' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg flex-1 text-center">
+        <button type="button" @click="activePanel = 'tools'" :class="activePanel === 'tools' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
             🛠️ Herramientas
         </button>
-        <button type="button" @click="activePanel = 'canvas'" :class="activePanel === 'canvas' ? 'bg-white font-bold text-[#024966] shadow-xs' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg flex-1 text-center">
+        <button type="button" @click="activePanel = 'canvas'" :class="activePanel === 'canvas' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
             🎨 Lienzo A4
         </button>
-        <button type="button" @click="activePanel = 'inspector'" :class="activePanel === 'inspector' ? 'bg-white font-bold text-[#024966] shadow-xs' : 'text-slate-600'" class="px-3 py-1.5 rounded-lg flex-1 text-center">
+        <button type="button" @click="activePanel = 'inspector'" :class="activePanel === 'inspector' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
             🎛️ Propiedades
         </button>
     </div>
@@ -198,27 +198,27 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
     <!-- 2. STUDIO THREE-COLUMN LAYOUT                                  -->
     <!-- ============================================================== -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        
+
         <!-- ========================================================== -->
         <!-- LEFT COLUMN: TOOLBOX, ASSET LIBRARY & LAYERS (3 COLS)      -->
         <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
+        <aside class="lg:col-span-3 space-y-3 ft-panel bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
                :class="activePanel !== 'tools' ? 'hidden lg:flex' : 'flex'">
-            
+
             <!-- Left Tabs Bar -->
             <div class="flex items-center border-b border-slate-200 bg-slate-50/80 p-1.5 gap-1">
                 <button type="button" @click="leftTab = 'tools'"
-                        :class="leftTab === 'tools' ? 'bg-white text-[#024966] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        :class="leftTab === 'tools' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
                     🛠️ Elementos
                 </button>
                 <button type="button" @click="leftTab = 'library'"
-                        :class="leftTab === 'library' ? 'bg-white text-[#024966] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        :class="leftTab === 'library' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
                     🖼️ Biblioteca
                 </button>
                 <button type="button" @click="leftTab = 'layers'"
-                        :class="leftTab === 'layers' ? 'bg-white text-[#024966] font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        :class="leftTab === 'layers' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
                     📚 Capas (<span x-text="elements.length"></span>)
                 </button>
@@ -231,7 +231,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <!-- SUB-TAB 1: HERRAMIENTAS DE INSERCIÓN              -->
                 <!-- -------------------------------------------------- -->
                 <div x-show="leftTab === 'tools'" class="space-y-4">
-                    
+
                     <!-- Text Blocks Category -->
                     <div>
                         <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -239,62 +239,62 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         </h3>
                         <div class="grid grid-cols-2 gap-2">
                             <button type="button" @click="addTextElement('text', 'UNIVERSIDAD MAYOR DE SAN ANDRÉS', 14, true)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Título Superior</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Título Superior</p>
                                 <p class="text-[9px] text-slate-400">Universidad / Entidad</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'FACULTAD DE TECNOLOGÍA', 11, true)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Subtítulo</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Subtítulo</p>
                                 <p class="text-[9px] text-slate-400">Facultad / Carrera</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', '@{{certificado.tipo}}', 22, true)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Tipo Certificado</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Tipo Certificado</p>
                                 <p class="text-[9px] text-slate-400">Aprobación, Asistencia</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', '@{{beneficiario.nombre}}', 18, true)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Beneficiario</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Beneficiario</p>
                                 <p class="text-[9px] text-slate-400">Nombre completo</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'C.I. @{{beneficiario.documento}}', 11, false)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Documento C.I.</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Documento C.I.</p>
                                 <p class="text-[9px] text-slate-400">Identificación</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'La Paz, @{{actividad.fechas}}', 10, false)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Fechas / Lugar</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Fechas / Lugar</p>
                                 <p class="text-[9px] text-slate-400">Periodo académico</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'Por su destacada participación en la actividad académica \'@{{actividad.nombre}}\', con una carga horaria de @{{actividad.horas}} horas.', 11, false)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Párrafo de Certificación</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Párrafo de Certificación</p>
                                 <p class="text-[9px] text-slate-400">Texto libre con variables interpolables</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'El Vicedecano y las Autoridades de la Facultad de Tecnología de la Universidad Mayor de San Andrés, en uso de sus atribuciones confieren el presente:', 10, false, 'italic')"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Preámbulo Institucional</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group col-span-2">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Preámbulo Institucional</p>
                                 <p class="text-[9px] text-slate-400">Fórmula solemne de otorgamiento en cursiva</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', 'Resolución H.C.F. Nº @{{acreditacion.resolucion}}', 9, false)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Resolución / Aval</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Resolución / Aval</p>
                                 <p class="text-[9px] text-slate-400">Res. HCF de acreditación</p>
                             </button>
 
                             <button type="button" @click="addTextElement('text', '@{{certificado.lugar_fecha_emision}}', 10, false)"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Lugar y Fecha Solemne</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Lugar y Fecha Solemne</p>
                                 <p class="text-[9px] text-slate-400">La Paz, 20 de septiembre...</p>
                             </button>
                         </div>
@@ -307,26 +307,26 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         </h3>
                         <div class="grid grid-cols-2 gap-2">
                             <button type="button" @click="addQrElement()"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Código QR</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Código QR</p>
                                 <p class="text-[9px] text-slate-400">Verificación pública</p>
                             </button>
 
                             <button type="button" @click="addSignatureBlock()"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Bloque de Firma</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Bloque de Firma</p>
                                 <p class="text-[9px] text-slate-400">Línea + Nombre + Cargo</p>
                             </button>
 
                             <button type="button" @click="addDecorativeLine()"
-                                    class="p-2 border border-slate-200 hover:border-[#024966] hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-slate-800 group-hover:text-[#024966] text-[11px]">Línea Ornamental</p>
+                                    class="p-2 border border-slate-200 hover:border-brand hover:bg-slate-50 rounded-xl text-left transition-all cursor-pointer group">
+                                <p class="font-bold text-slate-800 group-hover:text-brand text-[11px]">Línea Ornamental</p>
                                 <p class="text-[9px] text-slate-400">Separador visual</p>
                             </button>
 
                             <button type="button" @click="leftTab = 'library'"
                                     class="p-2 border border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-100/50 rounded-xl text-left transition-all cursor-pointer group">
-                                <p class="font-bold text-[#024966] text-[11px]">+ Insertar Imagen</p>
+                                <p class="font-bold text-brand text-[11px]">+ Insertar Imagen</p>
                                 <p class="text-[9px] text-slate-500">De la biblioteca</p>
                             </button>
                         </div>
@@ -349,31 +349,31 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <!-- SUB-TAB 2: BIBLIOTECA INSTITUCIONAL               -->
                 <!-- -------------------------------------------------- -->
                 <div x-show="leftTab === 'library'" class="space-y-3">
-                    
+
                     <!-- Category Filter -->
                     <div class="flex items-center gap-1 overflow-x-auto pb-1 text-[11px]">
                         <button type="button" @click="libFilter = 'all'"
-                                :class="libFilter === 'all' ? 'bg-[#024966] text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="libFilter === 'all' ? 'bg-brand text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 class="px-2 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap">
                             Todos
                         </button>
                         <button type="button" @click="libFilter = 'logo'"
-                                :class="libFilter === 'logo' ? 'bg-[#024966] text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="libFilter === 'logo' ? 'bg-brand text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 class="px-2 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap">
                             Logos
                         </button>
                         <button type="button" @click="libFilter = 'signature'"
-                                :class="libFilter === 'signature' ? 'bg-[#024966] text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="libFilter === 'signature' ? 'bg-brand text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 class="px-2 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap">
                             Firmas
                         </button>
                         <button type="button" @click="libFilter = 'stamp'"
-                                :class="libFilter === 'stamp' ? 'bg-[#024966] text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="libFilter === 'stamp' ? 'bg-brand text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 class="px-2 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap">
                             Sellos
                         </button>
                         <button type="button" @click="libFilter = 'watermark'"
-                                :class="libFilter === 'watermark' ? 'bg-[#024966] text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                :class="libFilter === 'watermark' ? 'bg-brand text-white font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                                 class="px-2 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap">
                             Marcas
                         </button>
@@ -381,7 +381,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                     <!-- Direct Upload Link -->
                     <a href="{{ route('assets.index') }}" target="_blank"
-                       class="w-full py-2 px-3 border border-dashed border-slate-300 hover:border-[#024966] text-slate-600 hover:text-[#024966] rounded-xl text-center flex items-center justify-center gap-1.5 transition-all block">
+                       class="w-full py-2 px-3 border border-dashed border-slate-300 hover:border-brand text-slate-600 hover:text-brand rounded-xl text-center flex items-center justify-center gap-1.5 transition-all block">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Subir archivo (PNG/JPG/SVG)</span>
                     </a>
@@ -403,7 +403,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                     </div>
                                 </div>
                                 <button type="button" @click="insertAssetToCanvas(item)"
-                                        class="px-2.5 py-1.5 bg-blue-50 group-hover:bg-[#024966] text-[#024966] group-hover:text-white rounded-lg font-bold text-[10px] transition-all cursor-pointer shrink-0"
+                                        class="px-2.5 py-1.5 bg-blue-50 group-hover:bg-brand text-brand group-hover:text-white rounded-lg font-bold text-[10px] transition-all cursor-pointer shrink-0"
                                         title="Añadir este elemento al lienzo">
                                     + Insertar
                                 </button>
@@ -422,9 +422,9 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                     <div class="space-y-1.5">
                         <template x-for="(el, index) in sortedLayers" :key="el.id">
                             <div class="p-2 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer"
-                                 :class="selectedId === el.id ? 'border-[#024966] bg-blue-50/70 shadow-xs ring-1 ring-[#024966]' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                                 :class="selectedId === el.id ? 'border-brand bg-blue-50/70 shadow-xs ring-1 ring-brand' : 'border-slate-200 bg-white hover:bg-slate-50'"
                                  @click="selectElement(el.id)">
-                                
+
                                 <div class="flex items-center gap-2 overflow-hidden">
                                     <span class="text-xs" x-text="getElementIcon(el.type)"></span>
                                     <span class="font-medium text-[11px] text-slate-700 truncate" x-text="el.name || el.type"></span>
@@ -432,7 +432,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                                 <div class="flex items-center gap-1 shrink-0">
                                     <!-- Visibility Toggle -->
-                                    <button type="button" @click.stop="toggleVisibility(el.id)" 
+                                    <button type="button" @click.stop="toggleVisibility(el.id)"
                                             class="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
                                             :title="el.is_visible !== false ? 'Ocultar elemento' : 'Mostrar elemento'">
                                         <span x-text="el.is_visible !== false ? '👁️' : '🕶️'"></span>
@@ -466,24 +466,24 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- ========================================================== -->
         <main class="lg:col-span-6 space-y-3"
               :class="activePanel !== 'canvas' ? 'hidden lg:block' : 'block'">
-            
+
             <!-- Canvas Header Bar with Coordinates Info -->
             <div class="flex items-center justify-between text-xs text-slate-500 px-1">
-                <span class="font-bold text-[#024966] flex items-center gap-1.5">
+                <span class="font-bold text-brand flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span>Lienzo A4</span>
                     <span class="text-[11px] font-normal text-slate-400" x-text="orientation === 'landscape' ? '(297×210 mm Horizontal)' : '(210×297 mm Vertical)'"></span>
                 </span>
                 <div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
                     <span x-show="selectedElement" x-text="'X: ' + Math.round(selectedElement?.x) + '%  Y: ' + Math.round(selectedElement?.y) + '%  W: ' + Math.round(selectedElement?.width) + '%'"></span>
-                    <span class="bg-blue-50 text-[#024966] px-2 py-0.5 rounded font-sans font-bold" x-text="elements.length + ' elementos activos'"></span>
+                    <span class="bg-blue-50 text-brand px-2 py-0.5 rounded font-sans font-bold" x-text="elements.length + ' elementos activos'"></span>
                 </div>
             </div>
 
             <!-- Canvas Scroll Wrapper & Zoom Transformer -->
             <div class="bg-slate-200/80 p-4 sm:p-6 rounded-2xl border border-slate-300 flex items-center justify-center overflow-auto min-h-[620px] max-h-[780px] shadow-inner"
                  @click.self="selectElement(null)">
-                
+
                 <!-- The Scalable A4 Document Sheet -->
                 <div id="certificateCanvasSheet"
                      @click.self="selectElement(null)"
@@ -544,7 +544,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                              @click.stop="selectElement(el.id)"
                              class="absolute transition-shadow group select-none cursor-move"
                              :class="{
-                                 'ring-2 ring-[#024966] ring-offset-1 shadow-lg bg-blue-50/25': selectedId === el.id,
+                                 'ring-2 ring-brand ring-offset-1 shadow-lg bg-blue-50/25': selectedId === el.id,
                                  'hover:outline hover:outline-1 hover:outline-blue-400': selectedId !== el.id,
                                  'pointer-events-none': el.is_locked
                              }"
@@ -562,7 +562,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             <template x-if="selectedId === el.id">
                                 <div>
                                     <!-- Floating Element Badge -->
-                                    <div class="absolute -top-6 left-0 px-2 py-0.5 bg-[#024966] text-white text-[9px] font-bold rounded shadow pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 border border-blue-400">
+                                    <div class="absolute -top-6 left-0 px-2 py-0.5 bg-brand text-white text-[9px] font-bold rounded shadow pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 border border-blue-400">
                                         <span x-text="getElementIcon(el.type)"></span>
                                         <span x-text="el.name || el.type"></span>
                                     </div>
@@ -603,7 +603,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             <template x-if="isImageType(el.type)">
                                 <div class="w-full h-full flex items-center justify-center p-0.5 pointer-events-none overflow-hidden">
                                     <template x-if="resolveAssetUrl(el)">
-                                        <img :src="resolveAssetUrl(el)" 
+                                        <img :src="resolveAssetUrl(el)"
                                              class="w-full h-full filter drop-shadow-xs"
                                              :style="{ objectFit: el.styles?.object_fit || el.object_fit || 'contain' }"
                                              :alt="el.name || el.type">
@@ -689,13 +689,13 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- ========================================================== -->
         <!-- RIGHT COLUMN: CONTEXTUAL PROPERTIES INSPECTOR (3 COLS)     -->
         <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
+        <aside class="lg:col-span-3 space-y-3 ft-panel bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
                :class="activePanel !== 'inspector' ? 'hidden lg:flex' : 'flex'">
-            
+
             <!-- Right Inspector Header -->
             <div class="border-b border-slate-200 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
                 <div>
-                    <h2 class="text-xs font-bold text-[#024966] uppercase tracking-wider flex items-center gap-1.5">
+                    <h2 class="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-1.5">
                         <span>🎛️</span>
                         <span x-text="selectedElement ? 'Propiedades del Elemento' : 'Ajustes Globales del Lienzo'"></span>
                     </h2>
@@ -714,31 +714,31 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <!-- ================================================== -->
                 <template x-if="selectedElement">
                     <div class="space-y-4">
-                        
+
                         <!-- Element Quick Actions: Align, Layer, Clone -->
                         <div class="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
                             <button type="button" @click="alignElementCenter('x')"
-                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
                                     title="Centrar horizontalmente en el lienzo">
                                 ↔ Centro X
                             </button>
                             <button type="button" @click="alignElementCenter('y')"
-                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
                                     title="Centrar verticalmente en el lienzo">
                                 ↕ Centro Y
                             </button>
                             <button type="button" @click="duplicateElement(selectedElement.id)"
-                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
                                     title="Duplicar este elemento">
                                 📋 Clonar
                             </button>
                             <button type="button" @click="bringToFront(selectedElement.id)"
-                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
                                     title="Traer al frente (capa superior)">
                                 ⬆ Frente
                             </button>
                             <button type="button" @click="sendToBack(selectedElement.id)"
-                                    class="p-1.5 rounded-lg text-slate-700 hover:text-[#024966] hover:bg-white transition-all text-center cursor-pointer"
+                                    class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
                                     title="Enviar al fondo (detrás de otros)">
                                 ⬇ Fondo
                             </button>
@@ -777,7 +777,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                     <span class="font-mono font-bold" x-text="Math.round((selectedElement.opacity ?? 1) * 100) + '%'"></span>
                                 </div>
                                 <input type="range" min="0.02" max="1" step="0.02" x-model.number="selectedElement.opacity" @input="markDirty()"
-                                       class="w-full accent-[#024966] cursor-pointer">
+                                       class="w-full accent-brand cursor-pointer">
                             </div>
                         </div>
 
@@ -787,21 +787,21 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contenido de Texto</label>
                                 <textarea rows="3" x-model="selectedElement.content" @input="markDirty()"
                                           class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white"></textarea>
-                                
+
                                 <!-- Categorized Dynamic Variable Chips -->
                                 <div class="space-y-1.5 pt-1">
                                     <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Variables Dinámicas:</span>
-                                    
+
                                     <div>
                                         <span class="text-[9px] text-slate-500 font-semibold block mb-0.5">👤 Beneficiario:</span>
                                         <div class="flex flex-wrap gap-1">
                                             <button type="button" @click="insertVariable('@{{beneficiario.nombre}}')"
-                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#024966] rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-brand rounded-md text-[10px] font-mono cursor-pointer transition-all"
                                                     title="Nombre completo del participante">
                                                 + @{{beneficiario.nombre}}
                                             </button>
                                             <button type="button" @click="insertVariable('@{{beneficiario.documento}}')"
-                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#024966] rounded-md text-[10px] font-mono cursor-pointer transition-all"
+                                                    class="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-brand rounded-md text-[10px] font-mono cursor-pointer transition-all"
                                                     title="Documento / C.I.">
                                                 + @{{beneficiario.documento}}
                                             </button>
@@ -867,13 +867,13 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <template x-if="isTextType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                                 <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipografía & Estilos</span>
-                                
+
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Tamaño (px)</label>
                                         <div class="flex items-center gap-1">
                                             <button type="button" @click="changeFontSize(-1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 font-bold text-slate-700 cursor-pointer">-</button>
-                                            <input type="number" min="6" max="72" x-model.number="selectedElement.styles.font_size" 
+                                            <input type="number" min="6" max="72" x-model.number="selectedElement.styles.font_size"
                                                    @input="selectedElement.font_size = selectedElement.styles.font_size; markDirty();"
                                                    class="w-full py-1 px-1 text-center text-xs border border-slate-300 rounded bg-white font-mono font-bold">
                                             <button type="button" @click="changeFontSize(1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 font-bold text-slate-700 cursor-pointer">+</button>
@@ -882,10 +882,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Alineación</label>
                                         <div class="grid grid-cols-4 gap-0.5 p-0.5 bg-slate-100 rounded-lg border border-slate-200 h-7 items-center">
-                                            <button type="button" @click="setTextAlign('left')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'left' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Izquierda">⫷</button>
-                                            <button type="button" @click="setTextAlign('center')" :class="(selectedElement.styles?.text_align || selectedElement.text_align || 'center') === 'center' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Centro">≡</button>
-                                            <button type="button" @click="setTextAlign('right')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'right' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Derecha">⫸</button>
-                                            <button type="button" @click="setTextAlign('justify')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'justify' ? 'bg-white shadow-xs text-[#024966] font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Justificado">☵</button>
+                                            <button type="button" @click="setTextAlign('left')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'left' ? 'bg-white shadow-xs text-brand font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Izquierda">⫷</button>
+                                            <button type="button" @click="setTextAlign('center')" :class="(selectedElement.styles?.text_align || selectedElement.text_align || 'center') === 'center' ? 'bg-white shadow-xs text-brand font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Centro">≡</button>
+                                            <button type="button" @click="setTextAlign('right')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'right' ? 'bg-white shadow-xs text-brand font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Derecha">⫸</button>
+                                            <button type="button" @click="setTextAlign('justify')" :class="(selectedElement.styles?.text_align || selectedElement.text_align) === 'justify' ? 'bg-white shadow-xs text-brand font-bold' : 'text-slate-500 hover:text-slate-800'" class="py-0.5 text-xs rounded text-center cursor-pointer" title="Justificado">☵</button>
                                         </div>
                                     </div>
                                 </div>
@@ -893,7 +893,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Peso</label>
-                                        <select x-model="selectedElement.styles.font_weight" 
+                                        <select x-model="selectedElement.styles.font_weight"
                                                 @change="selectedElement.font_weight = selectedElement.styles.font_weight; markDirty();"
                                                 class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
                                             <option value="normal">Normal</option>
@@ -903,7 +903,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                     </div>
                                     <div>
                                         <label class="block text-[10px] text-slate-500 mb-0.5">Estilo</label>
-                                        <select x-model="selectedElement.styles.font_style" 
+                                        <select x-model="selectedElement.styles.font_style"
                                                 @change="selectedElement.font_style = selectedElement.styles.font_style; markDirty();"
                                                 class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
                                             <option value="normal">Normal</option>
@@ -915,10 +915,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 <div>
                                     <label class="block text-[10px] text-slate-500 mb-0.5">Color de Texto</label>
                                     <div class="flex items-center gap-2">
-                                        <input type="color" x-model="selectedElement.styles.text_color" 
+                                        <input type="color" x-model="selectedElement.styles.text_color"
                                                @input="selectedElement.text_color = selectedElement.styles.text_color; markDirty();"
                                                class="w-8 h-8 rounded border border-slate-300 cursor-pointer">
-                                        <input type="text" x-model="selectedElement.styles.text_color" 
+                                        <input type="text" x-model="selectedElement.styles.text_color"
                                                @input="selectedElement.text_color = selectedElement.styles.text_color; markDirty();"
                                                class="flex-1 py-1 px-2 text-xs border border-slate-300 rounded font-mono uppercase bg-white">
                                     </div>
@@ -930,7 +930,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <template x-if="isImageType(selectedElement.type) || isSignatureType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recurso Institucional</label>
-                                <select x-model="selectedElement.asset_id" 
+                                <select x-model="selectedElement.asset_id"
                                         @change="
                                             const found = filteredAssets.find(a => a.id == selectedElement.asset_id);
                                             if (found) {
@@ -975,11 +975,11 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <!-- ================================================== -->
                 <template x-if="!selectedElement">
                     <div class="space-y-4">
-                        
+
                         <!-- General Template Settings -->
                         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                             <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lienzo y Formato General</span>
-                            
+
                             <div>
                                 <label class="block text-[10px] text-slate-500 mb-0.5">Categoría</label>
                                 <select x-model="category" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
@@ -1026,7 +1026,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <!-- Global Palettes -->
                         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                             <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paleta Oficial de Colores</span>
-                            
+
                             <div>
                                 <label class="block text-[10px] text-slate-500 mb-0.5">Color Primario (Azul UMSA)</label>
                                 <div class="flex items-center gap-2">
@@ -1074,7 +1074,7 @@ function certificateStudio(config) {
         schema: config.initialSchema || {},
         elements: config.initialElements || [],
         assets: config.assets || {},
-        
+
         // Studio Interface State
         leftTab: 'tools',
         libFilter: 'all',
@@ -1085,7 +1085,7 @@ function certificateStudio(config) {
         showSnapY: false,
         isDirty: false,
         activePanel: 'canvas', // For responsive smaller screens
-        
+
         // Drag and Resize Tracking
         isDragging: false,
         isResizing: false,
