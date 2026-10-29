@@ -97,7 +97,7 @@
                             <td class="px-5 py-2.5 text-slate-700 max-w-xs truncate">{{ $cert->activity->name }}</td>
                             <td class="px-5 py-2.5 text-slate-600">{{ $cert->certificateType->name }}</td>
                             <td class="px-5 py-2.5 text-slate-600">{{ $cert->issue_date->format('d/m/Y') }}</td>
-                            <td class="px-5 py-2.5 text-slate-600">{{ $cert->expiration_date->format('d/m/Y') }}</td>
+                            <td class="px-5 py-2.5 text-slate-600">{{ $cert->isPermanent() ? '♾️ Permanente' : ($cert->expiration_date?->format('d/m/Y') ?? '---') }}</td>
                             <td class="px-5 py-2.5">
                                 @if($cert->isRevoked())
                                     <span class="text-red-700 font-bold">REVOCADO</span>

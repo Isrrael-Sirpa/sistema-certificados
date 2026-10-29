@@ -115,9 +115,10 @@
             @php
                 $showQrCard = ($settings['portal_verify_show_qr_card'] ?? '1') == '1';
                 $showValCard = ($settings['portal_verify_show_validity_card'] ?? '1') == '1';
+                $showTypesCard = ($settings['portal_verify_show_types_card'] ?? '1') == '1';
             @endphp
 
-            @if($showQrCard || $showValCard)
+            @if($showQrCard || $showValCard || $showTypesCard)
                 <div class="mt-8 pt-8 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-500">
                     @if($showQrCard)
                         <div @click="openScannerModal()" class="flex items-start gap-3.5 p-4 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/80 cursor-pointer transition-all group">
@@ -142,7 +143,23 @@
                                 <span class="font-bold text-slate-800 block text-xs">
                                     {{ $settings['portal_verify_validity_card_title'] ?? 'Vigencia Institucional' }}
                                 </span>
-                                {{ $settings['portal_verify_validity_card_desc'] ?? 'Certificados con validez curricular de 3 años calendario reglamentarios según normativa facultativa.' }}
+                                {{ $settings['portal_verify_validity_card_desc'] ?? 'Certificados con vigencia permanente o validez reglamentaria según el tipo de mérito académico acreditado.' }}
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($showTypesCard)
+                        <div class="flex items-start gap-3.5 p-4 bg-slate-50 rounded-2xl border border-slate-200/80 sm:col-span-2">
+                            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0 border border-purple-100 font-bold text-lg">
+                                🎓
+                            </div>
+                            <div>
+                                <span class="font-bold text-slate-800 block text-xs">
+                                    {{ $settings['portal_verify_types_card_title'] ?? 'Tipos de Certificación Institucional' }}
+                                </span>
+                                <span class="text-slate-500 text-[11px] block mt-0.5">
+                                    {{ $settings['portal_verify_types_card_desc'] ?? 'Acreditaciones oficiales emitidas por la Facultad: Aprobación con evaluación, Asistencia, Disertante y Reconocimientos Vitalicios.' }}
+                                </span>
                             </div>
                         </div>
                     @endif

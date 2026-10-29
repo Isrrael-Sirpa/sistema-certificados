@@ -45,7 +45,10 @@ class ActivityController extends Controller
 
     public function create()
     {
-        return view('activities.create');
+        $types = CertificateType::where('is_active', true)->get();
+        $templates = CertificateTemplate::where('is_active', true)->get();
+
+        return view('activities.create', compact('types', 'templates'));
     }
 
     public function store(Request $request)
@@ -54,6 +57,7 @@ class ActivityController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'activity_type' => ['required', 'string', 'max:80'],
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'academic_hours' => ['required', 'integer', 'min:0', 'max:1000'],
@@ -61,9 +65,38 @@ class ActivityController extends Controller
             'organizer' => ['nullable', 'string', 'max:255'],
             'responsible_authority' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:activa,finalizada,cancelada'],
+
+            'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
+            'validity_mode' => ['nullable', 'string', 'in:permanent,temporal,custom'],
+            'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'show_score_on_pdf' => ['nullable', 'boolean'],
+            'show_score_on_portal' => ['nullable', 'boolean'],
         ]);
 
-        $activity = Activity::create($validated);
+        $activityData = collect($validated)->only([
+            'name', 'description', 'activity_type', 'certificate_type_id',
+            'start_date', 'end_date', 'academic_hours', 'location',
+            'organizer', 'responsible_authority', 'status',
+        ])->toArray();
+
+        $activity = Activity::create($activityData);
+
+        if ($activity->certificate_type_id || ! empty($validated['certificate_template_id']) || ! empty($validated['validity_mode'])) {
+            $certType = $activity->certificateType;
+            $validityMode = $validated['validity_mode'] ?? ($certType?->validity_mode ?? 'temporal');
+            $validityYears = isset($validated['validity_years'])
+                ? (int) $validated['validity_years']
+                : ($certType?->default_validity_years ?? 3);
+
+            ActivityCertificateConfig::create([
+                'activity_id' => $activity->id,
+                'certificate_template_id' => $validated['certificate_template_id'] ?? null,
+                'validity_mode' => $validityMode,
+                'validity_years' => $validityYears,
+                'show_score_on_pdf' => $request->boolean('show_score_on_pdf', true),
+                'show_score_on_portal' => $request->boolean('show_score_on_portal', true),
+            ]);
+        }
 
         AuditLog::log('activity_created', "Actividad '{$activity->name}' registrada", $activity);
 
@@ -98,7 +131,11 @@ class ActivityController extends Controller
 
     public function edit(Activity $activity)
     {
-        return view('activities.edit', compact('activity'));
+        $types = CertificateType::where('is_active', true)->get();
+        $templates = CertificateTemplate::where('is_active', true)->get();
+        $config = $activity->certificateConfig;
+
+        return view('activities.edit', compact('activity', 'types', 'templates', 'config'));
     }
 
     public function update(Request $request, Activity $activity)
@@ -107,6 +144,7 @@ class ActivityController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'activity_type' => ['required', 'string', 'max:80'],
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'academic_hours' => ['required', 'integer', 'min:0', 'max:1000'],
@@ -114,10 +152,36 @@ class ActivityController extends Controller
             'organizer' => ['nullable', 'string', 'max:255'],
             'responsible_authority' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'string', 'in:activa,finalizada,cancelada'],
+
+            'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
+            'validity_mode' => ['nullable', 'string', 'in:permanent,temporal,custom'],
+            'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'show_score_on_pdf' => ['nullable', 'boolean'],
+            'show_score_on_portal' => ['nullable', 'boolean'],
         ]);
 
         $old = $activity->toArray();
-        $activity->update($validated);
+        $activityData = collect($validated)->only([
+            'name', 'description', 'activity_type', 'certificate_type_id',
+            'start_date', 'end_date', 'academic_hours', 'location',
+            'organizer', 'responsible_authority', 'status',
+        ])->toArray();
+
+        $activity->update($activityData);
+
+        if ($request->has('validity_mode') || $request->has('certificate_template_id')) {
+            $certType = $activity->certificateType;
+            ActivityCertificateConfig::updateOrCreate(
+                ['activity_id' => $activity->id],
+                [
+                    'certificate_template_id' => $validated['certificate_template_id'] ?? null,
+                    'validity_mode' => $validated['validity_mode'] ?? ($certType?->validity_mode ?? 'temporal'),
+                    'validity_years' => isset($validated['validity_years']) ? (int) $validated['validity_years'] : ($certType?->default_validity_years ?? 3),
+                    'show_score_on_pdf' => $request->boolean('show_score_on_pdf', true),
+                    'show_score_on_portal' => $request->boolean('show_score_on_portal', true),
+                ]
+            );
+        }
 
         AuditLog::log('activity_updated', "Actividad '{$activity->name}' modificada", $activity, $old, $activity->toArray());
 
@@ -142,7 +206,12 @@ class ActivityController extends Controller
     public function updateCertificateConfig(Request $request, Activity $activity)
     {
         $validated = $request->validate([
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
+            'validity_mode' => ['nullable', 'string', 'in:permanent,temporal,custom'],
+            'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'show_score_on_pdf' => ['nullable', 'boolean'],
+            'show_score_on_portal' => ['nullable', 'boolean'],
             'custom_title' => ['nullable', 'string', 'max:255'],
             'custom_body_text' => ['nullable', 'string'],
             'primary_color' => ['nullable', 'string', 'max:20'],
@@ -151,7 +220,11 @@ class ActivityController extends Controller
             'modality' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $customFields = [];
+        if (array_key_exists('certificate_type_id', $validated)) {
+            $activity->update(['certificate_type_id' => $validated['certificate_type_id']]);
+        }
+
+        $customFields = $activity->certificateConfig?->custom_fields_schema ?? [];
         if (! empty($validated['resolution_number'])) {
             $customFields['resolucion'] = $validated['resolution_number'];
         }
@@ -159,10 +232,20 @@ class ActivityController extends Controller
             $customFields['modalidad'] = $validated['modality'];
         }
 
+        $certType = $activity->fresh()->certificateType;
+        $validityMode = $validated['validity_mode'] ?? ($activity->certificateConfig?->validity_mode ?? ($certType?->validity_mode ?? 'temporal'));
+        $validityYears = isset($validated['validity_years'])
+            ? (int) $validated['validity_years']
+            : ($activity->certificateConfig?->validity_years ?? ($certType?->default_validity_years ?? 3));
+
         ActivityCertificateConfig::updateOrCreate(
             ['activity_id' => $activity->id],
             [
                 'certificate_template_id' => $validated['certificate_template_id'] ?? null,
+                'validity_mode' => $validityMode,
+                'validity_years' => $validityYears,
+                'show_score_on_pdf' => $request->boolean('show_score_on_pdf', true),
+                'show_score_on_portal' => $request->boolean('show_score_on_portal', true),
                 'custom_title' => $validated['custom_title'] ?? null,
                 'custom_body_text' => $validated['custom_body_text'] ?? null,
                 'primary_color' => $validated['primary_color'] ?? null,
@@ -188,10 +271,18 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'beneficiary_ids' => ['required', 'array', 'min:1'],
             'beneficiary_ids.*' => ['exists:beneficiaries,id'],
-            'certificate_type_id' => ['required', 'exists:certificate_types,id'],
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'issue_date' => ['required', 'date'],
         ]);
+
+        $typeId = $validated['certificate_type_id']
+            ?? $activity->certificate_type_id
+            ?? CertificateType::first()?->id;
+
+        if (! $typeId) {
+            return back()->with('error', 'Debe seleccionar o configurar un tipo de certificado para emitir.');
+        }
 
         $templateId = $validated['certificate_template_id']
             ?? $activity->certificateConfig?->certificate_template_id
@@ -203,7 +294,7 @@ class ActivityController extends Controller
         foreach ($validated['beneficiary_ids'] as $beneficiaryId) {
             $alreadyExists = $activity->certificates()
                 ->where('beneficiary_id', $beneficiaryId)
-                ->where('certificate_type_id', $validated['certificate_type_id'])
+                ->where('certificate_type_id', $typeId)
                 ->whereNull('revoked_at')
                 ->exists();
 
@@ -216,7 +307,7 @@ class ActivityController extends Controller
             $certificateService->issueCertificate([
                 'beneficiary_id' => $beneficiaryId,
                 'activity_id' => $activity->id,
-                'certificate_type_id' => $validated['certificate_type_id'],
+                'certificate_type_id' => $typeId,
                 'certificate_template_id' => $templateId,
                 'issue_date' => $validated['issue_date'],
             ], $request->user());
@@ -282,10 +373,18 @@ class ActivityController extends Controller
     public function confirmRosterIssuance(Request $request, Activity $activity, BeneficiaryImportService $importService, CertificateService $certificateService)
     {
         $validated = $request->validate([
-            'certificate_type_id' => ['required', 'exists:certificate_types,id'],
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'issue_date' => ['required', 'date'],
         ]);
+
+        $typeId = $validated['certificate_type_id']
+            ?? $activity->certificate_type_id
+            ?? CertificateType::first()?->id;
+
+        if (! $typeId) {
+            return back()->with('error', 'Debe seleccionar o configurar un tipo de certificado para emitir.');
+        }
 
         $preview = session("activity_roster_preview_{$activity->id}");
         $rows = $request->input('rows') ?? ($preview['rows'] ?? []);
@@ -306,7 +405,7 @@ class ActivityController extends Controller
             $result = $importService->executeActivityBulkIssuance(
                 $rows,
                 $activity,
-                (int) $validated['certificate_type_id'],
+                (int) $typeId,
                 $templateId ? (int) $templateId : null,
                 $validated['issue_date'],
                 $request->user(),
@@ -315,7 +414,13 @@ class ActivityController extends Controller
 
             session()->forget("activity_roster_preview_{$activity->id}");
 
-            $msg = "Emisión masiva completada: {$result['issued_count']} certificado(s) emitidos ({$result['new_students_count']} nuevo(s) estudiante(s) registrado(s) en el padrón, {$result['existing_students_count']} estudiante(s) existente(s) asociado(s) al evento).";
+            $msg = "Emisión masiva completada: {$result['issued_count']} certificado(s) emitidos ({$result['new_students_count']} nuevo(s) estudiante(s) en padrón, {$result['existing_students_count']} asociado(s)).";
+            if (($result['failing_count'] ?? 0) > 0) {
+                $msg .= " Se omitieron {$result['failing_count']} estudiante(s) reprobados (calificación menor a 51 pts).";
+            }
+            if (($result['unscored_count'] ?? 0) > 0) {
+                $msg .= " Se omitieron {$result['unscored_count']} estudiante(s) sin calificación.";
+            }
             if ($result['skipped_count'] > 0) {
                 $msg .= " Se omitieron {$result['skipped_count']} participante(s) por ya poseer certificado activo en este evento o datos incompletos.";
             }
@@ -439,6 +544,8 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'beneficiary_id' => ['required', 'exists:beneficiaries,id'],
             'role' => ['nullable', 'string', 'max:50'],
+            'score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'score_label' => ['nullable', 'string', 'max:100'],
         ]);
 
         $beneficiaryId = (int) $validated['beneficiary_id'];
@@ -452,12 +559,57 @@ class ActivityController extends Controller
             ->whereNull('revoked_at')
             ->exists();
 
+        $certType = $activity->certificateType;
+        $hasScoreRule = $certType && $certType->supportsScore();
+        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+        $score = isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null;
+
+        $participantStatus = $hasCert ? 'certificado' : (($hasScoreRule && $score !== null && $score < $minScore) ? 'reprobado' : 'inscrito');
+
         $activity->participants()->attach($beneficiaryId, [
             'role' => $validated['role'] ?? 'Participante',
-            'status' => $hasCert ? 'certificado' : 'inscrito',
+            'score' => $score,
+            'score_label' => $validated['score_label'] ?? null,
+            'status' => $participantStatus,
         ]);
 
         return redirect()->route('activities.show', $activity)->with('success', 'Participante agregado exitosamente a la nómina del evento.');
+    }
+
+    /**
+     * Actualiza la información académica de un participante en la nómina (nota, mención, rol).
+     */
+    public function updateParticipant(Request $request, Activity $activity, Beneficiary $beneficiary)
+    {
+        $validated = $request->validate([
+            'role' => ['nullable', 'string', 'max:50'],
+            'score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'score_label' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $certType = $activity->certificateType;
+        $hasScoreRule = $certType && $certType->supportsScore();
+        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+        $score = isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null;
+
+        $hasCert = $activity->certificates()
+            ->where('beneficiary_id', $beneficiary->id)
+            ->whereNull('revoked_at')
+            ->exists();
+
+        $updateData = [
+            'role' => $validated['role'] ?? 'Participante',
+            'score' => $score,
+            'score_label' => $validated['score_label'] ?? null,
+        ];
+
+        if (! $hasCert) {
+            $updateData['status'] = ($hasScoreRule && $score !== null && $score < $minScore) ? 'reprobado' : 'inscrito';
+        }
+
+        $activity->participants()->updateExistingPivot($beneficiary->id, $updateData);
+
+        return redirect()->route('activities.show', $activity)->with('success', "Datos de {$beneficiary->full_name} actualizados en la nómina.");
     }
 
     /**
@@ -480,17 +632,26 @@ class ActivityController extends Controller
     }
 
     /**
-     * Emite masivamente los certificados para todos los participantes registrados en la nómina de la actividad.
+     * Emite masivamente los certificados para todos los participantes registrados en la nómina de la actividad,
+     * omitiendo automáticamente a reprobados o sin calificación.
      */
     public function issueToRoster(Request $request, Activity $activity, BeneficiaryImportService $importService, CertificateService $certificateService)
     {
         $validated = $request->validate([
-            'certificate_type_id' => ['required', 'exists:certificate_types,id'],
+            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'issue_date' => ['required', 'date'],
             'beneficiary_ids' => ['nullable', 'array'],
             'beneficiary_ids.*' => ['exists:beneficiaries,id'],
         ]);
+
+        $typeId = $validated['certificate_type_id']
+            ?? $activity->certificate_type_id
+            ?? CertificateType::first()?->id;
+
+        if (! $typeId) {
+            return back()->with('error', 'Debe seleccionar o configurar un tipo de certificado para emitir.');
+        }
 
         $templateId = $validated['certificate_template_id']
             ?? $activity->certificateConfig?->certificate_template_id
@@ -499,7 +660,7 @@ class ActivityController extends Controller
         try {
             $result = $importService->issueCertificatesToActivityParticipants(
                 $activity,
-                (int) $validated['certificate_type_id'],
+                (int) $typeId,
                 $templateId ? (int) $templateId : null,
                 $validated['issue_date'],
                 $request->user(),
@@ -507,9 +668,31 @@ class ActivityController extends Controller
                 $validated['beneficiary_ids'] ?? null
             );
 
-            $msg = "Emisión masiva completada: {$result['issued_count']} certificado(s) emitido(s) exitosamente.";
+            if ($result['issued_count'] === 0) {
+                $failing = $result['failing_count'] ?? 0;
+                $unscored = $result['unscored_count'] ?? 0;
+                if ($failing > 0 || $unscored > 0) {
+                    $warnMsg = 'No se emitió ningún certificado: ';
+                    if ($failing > 0) {
+                        $warnMsg .= "{$failing} participante(s) tienen notas reprobatorias (< 51 pts). ";
+                    }
+                    if ($unscored > 0) {
+                        $warnMsg .= "{$unscored} participante(s) no tienen nota registrada.";
+                    }
+
+                    return redirect()->route('activities.show', $activity)->with('warning', $warnMsg);
+                }
+            }
+
+            $msg = "Emisión masiva completada: {$result['issued_count']} certificado(s) emitido(s) para estudiantes aprobados.";
+            if (($result['failing_count'] ?? 0) > 0) {
+                $msg .= " Se omitieron {$result['failing_count']} estudiante(s) reprobados (calificación menor a 51 pts).";
+            }
+            if (($result['unscored_count'] ?? 0) > 0) {
+                $msg .= " Se omitieron {$result['unscored_count']} estudiante(s) sin calificación registrada.";
+            }
             if ($result['skipped_count'] > 0) {
-                $msg .= " ({$result['skipped_count']} participante(s) omitidos por ya contar con certificado).";
+                $msg .= " ({$result['skipped_count']} participante(s) ya contaban con certificado previo).";
             }
 
             return redirect()->route('activities.show', $activity)->with('success', $msg);

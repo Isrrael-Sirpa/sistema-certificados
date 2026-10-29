@@ -27,13 +27,44 @@ class CertificateService
     {
         $issueDate = $data['issue_date'] ?? now()->toDateString();
         $issueCarbon = Carbon::parse($issueDate);
-        $expirationDate = $issueCarbon->copy()->addYears(3)->toDateString();
 
         $beneficiary = Beneficiary::findOrFail($data['beneficiary_id']);
         $activity = Activity::findOrFail($data['activity_id']);
         $certificateType = CertificateType::findOrFail($data['certificate_type_id']);
-        
-        $templateId = $data['certificate_template_id'] 
+
+        // 1. Resolver modo de vigencia y fecha de vencimiento
+        $validityType = $data['validity_type']
+            ?? $activity->certificateConfig?->validity_mode
+            ?? ($certificateType->isPermanentByDefault() ? Certificate::VALIDITY_PERMANENT : Certificate::VALIDITY_YEARS);
+
+        if ($validityType === Certificate::VALIDITY_PERMANENT) {
+            $expirationDate = null;
+        } elseif (! empty($data['expiration_date'])) {
+            $expirationDate = $data['expiration_date'];
+        } else {
+            $years = $data['validity_years']
+                ?? $activity->certificateConfig?->validity_years
+                ?? $certificateType->default_validity_years
+                ?? 3;
+            $expirationDate = $issueCarbon->copy()->addYears((int) $years)->toDateString();
+        }
+
+        // 2. Resolver calificación y puntaje
+        $score = isset($data['score']) && $data['score'] !== '' ? (float) $data['score'] : null;
+        $scoreLabel = ! empty($data['score_label']) ? trim((string) $data['score_label']) : null;
+        if (! empty($score) && empty($scoreLabel)) {
+            $scoreLabel = $score.' pts';
+        }
+
+        // Validación de aprobación institucional: si el tipo de certificado evalúa notas, no se emite a reprobados
+        if ($certificateType->supportsScore()) {
+            $minScore = (float) ($certificateType->min_passing_score ?? 51.0);
+            if ($score !== null && $score < $minScore) {
+                throw new \InvalidArgumentException("No se puede emitir un '{$certificateType->name}' con calificación de {$score} pts. La nota mínima reglamentaria de aprobación es de {$minScore} pts.");
+            }
+        }
+
+        $templateId = $data['certificate_template_id']
             ?? $activity->certificateConfig?->certificate_template_id
             ?? CertificateTemplate::where('is_default', true)->first()?->id
             ?? CertificateTemplate::where('is_active', true)->first()?->id
@@ -54,7 +85,11 @@ class CertificateService
             $template,
             $issueDate,
             $code,
-            $customFields
+            $customFields,
+            $expirationDate,
+            $score,
+            $scoreLabel,
+            $validityType
         );
 
         // Hash SHA-256 de integridad para prevenir cualquier falsificación o alteración
@@ -65,6 +100,9 @@ class CertificateService
             'activity_id' => $activity->id,
             'issue_date' => $issueDate,
             'expiration_date' => $expirationDate,
+            'validity_type' => $validityType,
+            'score' => $score,
+            'score_label' => $scoreLabel,
             'template_id' => $template->id,
             'version' => $template->current_version,
             'snapshot_hash' => hash('sha256', json_encode($immutableSnapshot)),
@@ -81,6 +119,9 @@ class CertificateService
             'generated_by_user_id' => $generatedBy->id,
             'issue_date' => $issueDate,
             'expiration_date' => $expirationDate,
+            'validity_type' => $validityType,
+            'score' => $score,
+            'score_label' => $scoreLabel,
             'status' => Certificate::STATUS_VIGENTE,
             'integrity_hash' => $integrityHash,
             'snapshot_data' => $immutableSnapshot,

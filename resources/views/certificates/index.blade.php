@@ -113,7 +113,13 @@
                                 {{ $cert->issue_date->format('d/m/Y') }}
                             </td>
                             <td class="px-5 py-3 text-slate-600">
-                                {{ $cert->expiration_date->format('d/m/Y') }}
+                                @if($cert->isPermanent())
+                                    <span class="inline-flex items-center gap-1 font-bold text-purple-700 text-[11px]">
+                                        <span>♾️</span> Vitalicio
+                                    </span>
+                                @else
+                                    {{ $cert->expiration_date?->format('d/m/Y') ?? '---' }}
+                                @endif
                             </td>
                             <td class="px-5 py-3">
                                 @if($cert->isRevoked())

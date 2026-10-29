@@ -13,6 +13,10 @@ class ActivityCertificateConfig extends Model
     protected $fillable = [
         'activity_id',
         'certificate_template_id',
+        'validity_mode',
+        'validity_years',
+        'show_score_on_pdf',
+        'show_score_on_portal',
         'custom_title',
         'custom_body_text',
         'primary_color',
@@ -25,6 +29,9 @@ class ActivityCertificateConfig extends Model
     protected function casts(): array
     {
         return [
+            'validity_years' => 'integer',
+            'show_score_on_pdf' => 'boolean',
+            'show_score_on_portal' => 'boolean',
             'selected_asset_ids' => 'array',
             'custom_signatures' => 'array',
             'custom_fields_schema' => 'array',

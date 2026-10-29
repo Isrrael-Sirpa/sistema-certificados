@@ -73,10 +73,7 @@
                                 </span>
                             </td>
                             <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-                                <a href="{{ route('certificates.create', ['beneficiary_id' => $ben->id]) }}" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded inline-block" title="Emitir Certificado">
-                                    ⚡
-                                </a>
-                                <a href="{{ route('beneficiaries.show', $ben) }}" class="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-slate-100 rounded inline-block" title="Ver Historial">
+                                <a href="{{ route('beneficiaries.show', $ben) }}" class="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-slate-100 rounded inline-block" title="Ver Historial y Perfil">
                                     👁️
                                 </a>
                                 <a href="{{ route('beneficiaries.edit', $ben) }}" class="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-slate-100 rounded inline-block" title="Editar">

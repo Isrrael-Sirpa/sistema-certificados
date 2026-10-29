@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -23,6 +24,7 @@ class Activity extends Model
         'location',
         'organizer',
         'responsible_authority',
+        'certificate_type_id',
         'status',
     ];
 
@@ -35,6 +37,11 @@ class Activity extends Model
         ];
     }
 
+    public function certificateType(): BelongsTo
+    {
+        return $this->belongsTo(CertificateType::class);
+    }
+
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
@@ -43,7 +50,7 @@ class Activity extends Model
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(Beneficiary::class, 'activity_participants')
-            ->withPivot(['id', 'role', 'status'])
+            ->withPivot(['id', 'role', 'status', 'score', 'score_label'])
             ->withTimestamps();
     }
 

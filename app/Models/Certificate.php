@@ -14,8 +14,16 @@ class Certificate extends Model
     use HasFactory;
 
     public const STATUS_VIGENTE = 'VIGENTE';
+
     public const STATUS_EXPIRADO = 'EXPIRADO';
+
     public const STATUS_REVOCADO = 'REVOCADO';
+
+    public const VALIDITY_PERMANENT = 'permanent';
+
+    public const VALIDITY_YEARS = 'years';
+
+    public const VALIDITY_CUSTOM = 'custom_date';
 
     protected $fillable = [
         'certificate_code',
@@ -28,6 +36,7 @@ class Certificate extends Model
         'generated_by_user_id',
         'issue_date',
         'expiration_date',
+        'validity_type',
         'status',
         'revoked_at',
         'revocation_reason',
@@ -35,6 +44,8 @@ class Certificate extends Model
         'pdf_path',
         'qr_path',
         'integrity_hash',
+        'score',
+        'score_label',
         'snapshot_data',
         'custom_fields_data',
     ];
@@ -45,6 +56,7 @@ class Certificate extends Model
             'issue_date' => 'date',
             'expiration_date' => 'date',
             'revoked_at' => 'datetime',
+            'score' => 'float',
             'snapshot_data' => 'array',
             'custom_fields_data' => 'array',
         ];
@@ -61,8 +73,14 @@ class Certificate extends Model
                 $certificate->issue_date = now()->toDateString();
             }
 
-            // Regla de Negocio: Vigencia estricta de 3 años desde la fecha de emisión
-            if (empty($certificate->expiration_date)) {
+            if (empty($certificate->validity_type)) {
+                $certificate->validity_type = self::VALIDITY_YEARS;
+            }
+
+            // Si es permanente, la fecha de vencimiento es nula
+            if ($certificate->validity_type === self::VALIDITY_PERMANENT) {
+                $certificate->expiration_date = null;
+            } elseif (empty($certificate->expiration_date)) {
                 $issueCarbon = Carbon::parse($certificate->issue_date);
                 $certificate->expiration_date = $issueCarbon->copy()->addYears(3)->toDateString();
             }
@@ -83,7 +101,7 @@ class Certificate extends Model
     public static function generateUniqueCode(?string $issueDate = null): string
     {
         $year = $issueDate ? Carbon::parse($issueDate)->format('Y') : now()->format('Y');
-        
+
         // Obtener el conteo anual para la secuencia correlativa
         $count = self::whereYear('issue_date', $year)->count() + 1;
         $code = sprintf('CERT-%s-%06d', $year, $count);
@@ -146,11 +164,39 @@ class Certificate extends Model
             return self::STATUS_REVOCADO;
         }
 
+        // Si el certificado es permanente (sin vencimiento), siempre está vigente
+        if ($this->isPermanent()) {
+            return self::STATUS_VIGENTE;
+        }
+
         if ($this->expiration_date && Carbon::now()->startOfDay()->greaterThan($this->expiration_date)) {
             return self::STATUS_EXPIRADO;
         }
 
         return self::STATUS_VIGENTE;
+    }
+
+    public function isPermanent(): bool
+    {
+        return $this->validity_type === self::VALIDITY_PERMANENT || empty($this->expiration_date);
+    }
+
+    public function hasScore(): bool
+    {
+        return $this->score !== null || ! empty($this->score_label);
+    }
+
+    public function getFormattedScoreAttribute(): ?string
+    {
+        if (! $this->hasScore()) {
+            return null;
+        }
+
+        if (! empty($this->score_label)) {
+            return $this->score_label;
+        }
+
+        return $this->score !== null ? ($this->score.' pts') : null;
     }
 
     public function isRevoked(): bool
@@ -170,7 +216,7 @@ class Certificate extends Model
 
     public function getVerificationUrlAttribute(): string
     {
-        return url('/verificar/' . $this->verification_token);
+        return url('/verificar/'.$this->verification_token);
     }
 
     public function revoke(User $user, string $reason): bool
@@ -179,6 +225,7 @@ class Certificate extends Model
         $this->revoked_at = now();
         $this->revoked_by_user_id = $user->id;
         $this->revocation_reason = $reason;
+
         return $this->save();
     }
 }

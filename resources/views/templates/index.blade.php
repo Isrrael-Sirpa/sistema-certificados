@@ -1,285 +1,156 @@
 @extends('layouts.app')
 
-@section('page-title', 'Gestión de Plantillas de Certificados')
-@section('page-subtitle', 'Diseño, versionado, duplicación y configuración de estilos institucionales del Vicedecanato')
+@section('page-title', 'Catálogo de Plantillas Institucionales')
+@section('page-subtitle', 'Organiza los diseños institucionales y personaliza cada certificado en el editor visual')
 
 @section('content')
-<div class="space-y-6" x-data="{ duplicateModalOpen: false, targetTemplateId: null, targetTemplateName: '', newTemplateName: '' }">
-
-    <!-- Top Action Banner -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-            <h2 class="text-lg font-bold text-brand flex items-center gap-2">
-                <span class="w-8 h-8 rounded-xl bg-brand-soft text-brand flex items-center justify-center border border-brand/10">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                </span>
-                <span>Catálogo de Plantillas Institucionales (Facultad de Tecnología)</span>
-            </h2>
-            <p class="text-xs text-slate-500 mt-1">Configure diferentes diseños según las 9 carreras, cursos pre-universitarios, postgrado e institutos de investigación</p>
+<div class="space-y-6" x-data="{ duplicateModalOpen: false, targetTemplateId: null, targetTemplateName: '', newTemplateName: '' }" @keydown.escape.window="duplicateModalOpen = false">
+    <section class="ft-panel bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 border border-border">
+        <div class="min-w-0">
+            <p class="ft-eyebrow">Biblioteca de diseño</p>
+            <h2 class="mt-2 text-xl font-bold text-brand">Un diseño para cada logro académico.</h2>
+            <p class="mt-2 max-w-2xl text-sm text-muted">Abre una plantilla para trabajar sus textos, identidad y composición. Duplica un diseño cuando necesites una variante.</p>
         </div>
+        <a href="{{ route('templates.create') }}" class="inline-flex shrink-0 items-center justify-center gap-2 min-h-11 px-5 py-3 bg-action hover:bg-action-hover text-white text-sm font-semibold rounded-xl transition-colors">
+            <span aria-hidden="true">＋</span> Nueva plantilla
+        </a>
+    </section>
 
-        <div class="flex items-center gap-3">
-            <a href="{{ route('templates.create') }}"
-               class="inline-flex items-center gap-2 px-4 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                <span>Nueva Plantilla</span>
-            </a>
-        </div>
-    </div>
-
-    <!-- Filter Bar -->
-    <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80">
-        <form method="GET" action="{{ route('templates.index') }}" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <div class="relative min-w-[240px]">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Buscar por nombre o descripción..."
-                       class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+    <section class="ft-panel bg-white p-5 border border-border" aria-label="Buscar y filtrar plantillas">
+        <form method="GET" action="{{ route('templates.index') }}" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-end gap-4">
+            <div>
+                <label for="template-search" class="block mb-2 text-xs font-semibold text-ink">Buscar plantilla</label>
+                <input id="template-search" type="search" name="search" value="{{ request('search') }}" placeholder="Nombre o descripción" class="w-full min-w-0 px-3 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand/15">
             </div>
-
-            <select name="category" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                <option value="">Todas las categorías</option>
-                @foreach($categories as $cat)
-                    <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ ucfirst($cat) }}</option>
-                @endforeach
-            </select>
-
-            <select name="orientation" onchange="this.form.submit()" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                <option value="">Cualquier orientación</option>
-                <option value="landscape" {{ request('orientation') === 'landscape' ? 'selected' : '' }}>Horizontal (Landscape)</option>
-                <option value="portrait" {{ request('orientation') === 'portrait' ? 'selected' : '' }}>Vertical (Portrait)</option>
-            </select>
-
-            @if(request()->hasAny(['search', 'category', 'orientation']))
-                <a href="{{ route('templates.index') }}" class="text-xs text-red-500 font-semibold hover:underline">Limpiar filtros</a>
-            @endif
+            <div>
+                <label for="template-category" class="block mb-2 text-xs font-semibold text-ink">Categoría</label>
+                <select id="template-category" name="category" onchange="this.form.submit()" class="w-full px-3 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand/15">
+                    <option value="">Todas las categorías</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat }}" {{ request('category') === $cat ? 'selected' : '' }}>{{ ucfirst($cat) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="template-orientation" class="block mb-2 text-xs font-semibold text-ink">Orientación</label>
+                <select id="template-orientation" name="orientation" onchange="this.form.submit()" class="w-full px-3 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand/15">
+                    <option value="">Todos los formatos</option>
+                    <option value="landscape" {{ request('orientation') === 'landscape' ? 'selected' : '' }}>A4 horizontal</option>
+                    <option value="portrait" {{ request('orientation') === 'portrait' ? 'selected' : '' }}>A4 vertical</option>
+                </select>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="min-h-11 px-4 py-2 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-xl">Aplicar filtros</button>
+                @if(request()->hasAny(['search', 'category', 'orientation']))
+                    <a href="{{ route('templates.index') }}" class="inline-flex min-h-11 items-center text-xs font-semibold text-muted hover:text-action">Limpiar</a>
+                @endif
+            </div>
         </form>
+    </section>
+
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-sm font-semibold text-brand">{{ $templates->total() }} {{ $templates->total() === 1 ? 'plantilla disponible' : 'plantillas disponibles' }}</p>
+        <p class="text-xs text-muted">Vistas de diseño con datos de ejemplo</p>
     </div>
 
-    <!-- Templates Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @forelse($templates as $tpl)
-            <div class="ft-panel bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group">
-                <!-- Preview Canvas Card Header -->
-                <div class="h-44 p-4 relative flex flex-col justify-between overflow-hidden"
-                     style="background: linear-gradient(135deg, {{ $tpl->configuration['primary_color'] ?? '#024966' }} 0%, #01354a 100%);">
-
-                    <!-- Decorative Certificate Mini Border -->
-                    <div class="absolute inset-3 border {{ ($tpl->configuration['border_style'] ?? '') === 'ornamental-double' ? 'border-2 border-dashed' : 'border' }} rounded-lg opacity-40 pointer-events-none"
-                         style="border-color: {{ $tpl->configuration['secondary_color'] ?? '#d4af37' }};"></div>
-
-                    <!-- Watermark Ghost in Mini Preview -->
-                    <div class="absolute inset-0 flex items-center justify-center opacity-10 font-serif font-black text-2xl text-white tracking-widest pointer-events-none select-none">
-                        {{ $tpl->configuration['watermark_text'] ?? 'UMSA' }}
-                    </div>
-
-                    <!-- Badges Top -->
-                    <div class="relative z-10 flex items-center justify-between">
-                        <div class="flex items-center gap-1.5">
-                            @if($tpl->is_default)
-                                <span class="bg-amber-400 text-brand text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                                    <svg class="w-3 h-3 text-brand" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                                    <span>OFICIAL FT</span>
-                                </span>
-                            @endif
-                            <span class="bg-white/20 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                v{{ $tpl->current_version }}.0
-                            </span>
-                        </div>
-
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $tpl->is_active ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/40' : 'bg-red-400/20 text-red-200 border border-red-400/40' }}">
-                            {{ $tpl->is_active ? 'Activa' : 'Inactiva' }}
-                        </span>
-                    </div>
-
-                    <!-- Mini Center Preview Content -->
-                    <div class="relative z-10 text-center py-2">
-                        <p class="text-[10px] uppercase tracking-widest text-amber-300 font-bold">
-                            {{ $tpl->configuration['header_title'] ?? 'UNIVERSIDAD MAYOR DE SAN ANDRÉS' }}
-                        </p>
-                        <h4 class="text-sm font-bold text-white tracking-wide mt-1 truncate">
-                            {{ $tpl->name }}
-                        </h4>
-                        <p class="text-[10px] text-slate-300 italic mt-0.5">
-                            Orientación: {{ strtoupper($tpl->orientation) }}
-                        </p>
-                    </div>
-
-                    <!-- Bottom Tag Bar -->
-                    <div class="relative z-10 flex items-center justify-between text-[10px] text-slate-300">
-                        <span class="bg-black/30 px-2 py-0.5 rounded">Cat: {{ ucfirst($tpl->category) }}</span>
-                        <span>{{ $tpl->certificates_count }} certificados emitidos</span>
-                    </div>
-                </div>
-
-                <!-- Template Details Body -->
-                <div class="p-5 space-y-4 flex-1 flex flex-col justify-between">
-                    <div>
-                        <p class="text-xs text-slate-600 line-clamp-2">{{ $tpl->description }}</p>
-
-                        <!-- Specialization Tag -->
-                        @if(str_contains($tpl->slug, 'industrial'))
-                            <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-brand-soft text-sky-800 border border-sky-200">
-                                    ⚙️ Áreas Mecánica / Eléctrica / Civil
-                                </span>
-                            </div>
-                        @elseif(str_contains($tpl->slug, 'telecom'))
-                            <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                    📡 Telecomunicaciones / Electrónica
-                                </span>
-                            </div>
-                        @elseif(str_contains($tpl->slug, 'iiat'))
-                            <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                                    🔬 Instituto de Investigaciones (IIAT)
-                                </span>
-                            </div>
-                        @elseif(str_contains($tpl->slug, 'postgrado'))
-                            <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
-                                    🎓 Unidad de Postgrado (UPG-FT)
-                                </span>
-                            </div>
-                        @elseif(str_contains($tpl->slug, 'cpu'))
-                            <div class="mt-2">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    📚 Admisión C.P.U. Facultativo
-                                </span>
-                            </div>
+            <article class="ft-panel bg-white border border-border overflow-hidden flex flex-col group">
+                <a href="{{ route('templates.designer', $tpl) }}" class="ft-template-preview relative flex min-h-64 items-center justify-center p-6 bg-surface-muted focus-visible:outline-offset-[-4px]" data-orientation="{{ $tpl->orientation }}" aria-label="Abrir diseñador de {{ $tpl->name }}">
+                    @include('templates.thumbnail', ['tpl' => $tpl])
+                </a>
+                <div class="p-5 flex flex-1 flex-col gap-4">
+                    <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+                        @if($tpl->is_default)
+                            <span class="px-2.5 py-1 rounded-full bg-accent-soft text-[#946000] border border-accent/40">PREDETERMINADA</span>
                         @endif
-
-                        <!-- Color Palette Preview Dots -->
-                        <div class="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100">
-                            <span class="text-[11px] text-slate-400 font-medium">Paleta:</span>
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-4 h-4 rounded-full border border-slate-300 shadow-xs" title="Color Primario" style="background-color: {{ $tpl->configuration['primary_color'] ?? '#024966' }};"></span>
-                                <span class="w-4 h-4 rounded-full border border-slate-300 shadow-xs" title="Color Secundario" style="background-color: {{ $tpl->configuration['secondary_color'] ?? '#d4af37' }};"></span>
-                                <span class="w-4 h-4 rounded-full border border-slate-300 shadow-xs" title="Color Acento" style="background-color: {{ $tpl->configuration['accent_color'] ?? '#b45309' }};"></span>
-                            </div>
-                            <span class="text-[10px] text-slate-400 ml-auto font-mono">
-                                {{ count($tpl->configuration['signatures'] ?? []) }} firma(s)
-                            </span>
-                        </div>
+                        <span class="px-2.5 py-1 rounded-full {{ $tpl->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">{{ $tpl->is_active ? 'ACTIVA' : 'INACTIVA' }}</span>
+                        <span class="ml-auto text-muted font-mono">v{{ $tpl->current_version }}.0</span>
                     </div>
-
-                    <!-- Action Buttons -->
-                    <div class="space-y-2 pt-2 border-t border-slate-100">
-                        <div class="grid grid-cols-2 gap-2">
-                            <a href="{{ route('templates.designer', $tpl) }}"
-                               class="inline-flex items-center justify-center gap-1.5 py-2 px-3 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-xs transition-all">
-                                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                <span>Diseñador</span>
-                            </a>
-
-                            <button @click="targetTemplateId = {{ $tpl->id }}; targetTemplateName = '{{ addslashes($tpl->name) }}'; newTemplateName = 'Copia de {{ addslashes($tpl->name) }}'; duplicateModalOpen = true;"
-                                    class="inline-flex items-center justify-center gap-1.5 py-2 px-3 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer">
-                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                <span>Duplicar</span>
-                            </button>
-                        </div>
-
-                        <!-- Secondary Actions Row -->
-                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[11px] pt-1 text-slate-500">
-                            <!-- Toggle Active Form -->
+                    <div class="min-w-0">
+                        <h3 class="text-base font-bold text-brand break-words"><a href="{{ route('templates.designer', $tpl) }}" class="hover:text-action">{{ $tpl->name }}</a></h3>
+                        <p class="mt-2 text-xs leading-relaxed text-muted line-clamp-2">{{ $tpl->description ?: 'Diseño institucional listo para personalizar en el editor visual.' }}</p>
+                        @if(str_contains($tpl->slug, 'industrial'))
+                            <p class="mt-2 text-[11px] font-medium text-brand">Mecánica · Eléctrica · Civil</p>
+                        @elseif(str_contains($tpl->slug, 'telecom'))
+                            <p class="mt-2 text-[11px] font-medium text-brand">Telecomunicaciones · Electrónica</p>
+                        @elseif(str_contains($tpl->slug, 'iiat'))
+                            <p class="mt-2 text-[11px] font-medium text-brand">Instituto de Investigaciones (IIAT)</p>
+                        @elseif(str_contains($tpl->slug, 'postgrado'))
+                            <p class="mt-2 text-[11px] font-medium text-brand">Unidad de Postgrado</p>
+                        @elseif(str_contains($tpl->slug, 'cpu'))
+                            <p class="mt-2 text-[11px] font-medium text-brand">Admisión C.P.U. Facultativo</p>
+                        @endif
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted">
+                        <span>{{ ucfirst($tpl->category) }}</span>
+                        <span>A4 {{ $tpl->orientation === 'portrait' ? 'vertical' : 'horizontal' }}</span>
+                        <span>{{ $tpl->certificates_count }} emitidos</span>
+                    </div>
+                    <div class="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <a href="{{ route('templates.designer', $tpl) }}" class="inline-flex min-h-11 items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-brand hover:bg-brand-deep text-white text-xs font-semibold transition-colors">Abrir diseñador <span aria-hidden="true">↗</span></a>
+                        <button type="button" @click="targetTemplateId = {{ $tpl->id }}; targetTemplateName = @js($tpl->name); newTemplateName = 'Copia de ' + targetTemplateName; duplicateModalOpen = true; $nextTick(() => $refs.duplicateName.focus());" class="min-h-11 px-3 py-2.5 rounded-xl border border-border hover:bg-surface-muted text-brand text-xs font-semibold transition-colors">Duplicar plantilla</button>
+                    </div>
+                    <details class="border-t border-border pt-3">
+                        <summary class="flex min-h-11 items-center justify-between gap-2 text-xs font-semibold text-muted cursor-pointer">Administrar plantilla <span aria-hidden="true">＋</span></summary>
+                        <div class="flex flex-wrap items-center gap-2 pt-2">
                             <form method="POST" action="{{ route('templates.toggle-status', $tpl) }}">
                                 @csrf
-                                <button type="submit" class="hover:text-slate-800 font-medium">
-                                    {{ $tpl->is_active ? 'Desactivar' : 'Activar' }}
-                                </button>
+                                <button type="submit" class="min-h-11 px-3 py-2 text-xs font-medium text-ink rounded-lg hover:bg-surface-muted">{{ $tpl->is_active ? 'Desactivar' : 'Activar' }}</button>
                             </form>
-
-                            <!-- Set Default Form -->
                             @if(!$tpl->is_default)
                                 <form method="POST" action="{{ route('templates.set-default', $tpl) }}">
                                     @csrf
-                                    <button type="submit" class="text-amber-600 hover:text-amber-700 font-semibold">
-                                        Hacer Predeterminada
-                                    </button>
+                                    <button type="submit" class="min-h-11 px-3 py-2 text-xs font-semibold text-brand rounded-lg hover:bg-brand-soft">Hacer predeterminada</button>
                                 </form>
                             @endif
-
-                            <!-- Delete Form (Only when 0 certs) -->
                             @if($tpl->certificates_count == 0)
                                 <form method="POST" action="{{ route('templates.destroy', $tpl) }}" onsubmit="return confirm('¿Seguro que desea eliminar esta plantilla?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-500 hover:text-red-700 font-medium">
-                                        Eliminar
-                                    </button>
+                                    <button type="submit" class="min-h-11 px-3 py-2 text-xs font-medium text-action rounded-lg hover:bg-action-soft">Eliminar</button>
                                 </form>
                             @else
-                                <span class="text-slate-400 italic text-[10px]" title="No se puede eliminar porque tiene certificados emitidos">En uso</span>
+                                <span class="px-3 py-2 text-[11px] text-muted" title="No se puede eliminar porque tiene certificados emitidos">En uso · eliminación no disponible</span>
                             @endif
                         </div>
-                    </div>
+                    </details>
                 </div>
-            </div>
+            </article>
         @empty
-            <div class="col-span-full ft-panel bg-white rounded-2xl p-12 text-center border border-slate-200">
-                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto text-2xl mb-3">
-                    🎨
-                </div>
-                <h3 class="text-sm font-bold text-slate-800">No se encontraron plantillas</h3>
-                <p class="text-xs text-slate-500 mt-1">Cree una nueva plantilla o utilice una de las predeterminadas institucionales.</p>
+            <div class="col-span-full ft-panel bg-white p-8 sm:p-12 text-center border border-border">
+                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-soft text-brand text-2xl" aria-hidden="true">▧</div>
+                <h3 class="text-lg font-bold text-brand">No encontramos plantillas</h3>
+                <p class="mt-2 text-sm text-muted">Prueba con otros filtros o crea un diseño para comenzar.</p>
+                <a href="{{ route('templates.create') }}" class="mt-5 inline-flex min-h-11 items-center px-5 py-3 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-semibold">Crear plantilla</a>
             </div>
         @endforelse
     </div>
 
-    <!-- Pagination -->
-    <div class="mt-4">
-        {{ $templates->links() }}
-    </div>
+    <div>{{ $templates->links() }}</div>
 
-    <!-- Duplicate Modal -->
-    <div x-show="duplicateModalOpen"
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         style="display: none;">
-
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto"
-             @click.away="duplicateModalOpen = false">
-
-            <div class="bg-brand text-white p-5 flex items-center justify-between">
+    <div x-show="duplicateModalOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 p-4 flex items-center justify-center bg-brand-deep/70 backdrop-blur-xs" role="dialog" aria-modal="true" aria-labelledby="duplicate-title" style="display: none;" @click.self="duplicateModalOpen = false">
+        <div class="ft-panel w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border border-border p-6" @click.away="duplicateModalOpen = false">
+            <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h3 class="text-base font-bold">Duplicar Plantilla</h3>
-                    <p class="text-xs text-slate-200 mt-0.5">Copia íntegra de diseño, logos, firmas y estilos</p>
+                    <p class="ft-eyebrow">Nueva variante</p>
+                    <h3 id="duplicate-title" class="mt-2 text-xl font-bold text-brand">Duplicar plantilla</h3>
                 </div>
-                <button @click="duplicateModalOpen = false" class="text-slate-300 hover:text-white text-xl font-bold">&times;</button>
+                <button type="button" @click="duplicateModalOpen = false" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-muted hover:bg-surface-muted" aria-label="Cerrar ventana">✕</button>
             </div>
-
-            <form method="POST" :action="'/plantillas/' + targetTemplateId + '/duplicar'" class="p-6 space-y-4">
+            <form method="POST" :action="'/plantillas/' + targetTemplateId + '/duplicar'" class="mt-5 space-y-5">
                 @csrf
-                <p class="text-xs text-slate-600">
-                    Se creará una nueva plantilla independiente a partir de: <strong x-text="targetTemplateName"></strong>
-                </p>
-
+                <p class="text-sm text-muted">Crearás una copia independiente de <strong class="text-ink" x-text="targetTemplateName"></strong>.</p>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Nombre de la Nueva Plantilla <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="name" x-model="newTemplateName" required
-                           class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                    <label for="duplicate-name" class="block mb-2 text-xs font-semibold text-ink">Nombre de la nueva plantilla</label>
+                    <input id="duplicate-name" x-ref="duplicateName" type="text" name="name" x-model="newTemplateName" required class="w-full px-3 py-2.5 border border-border rounded-xl focus:ring-2 focus:ring-brand/15">
                 </div>
-
-                <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                    <button type="button" @click="duplicateModalOpen = false"
-                            class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50">
-                        Cancelar
-                    </button>
-                    <button type="submit"
-                            class="px-5 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs">
-                        Crear Duplicado
-                    </button>
+                <div class="flex flex-wrap justify-end gap-3 border-t border-border pt-4">
+                    <button type="button" @click="duplicateModalOpen = false" class="min-h-11 px-4 py-2.5 text-sm font-semibold text-muted rounded-xl hover:bg-surface-muted">Cancelar</button>
+                    <button type="submit" class="min-h-11 px-5 py-2.5 rounded-xl bg-action hover:bg-action-hover text-white text-sm font-semibold">Crear copia</button>
                 </div>
             </form>
         </div>
     </div>
-
 </div>
 @endsection

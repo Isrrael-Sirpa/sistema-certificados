@@ -104,6 +104,31 @@ class TemplateEngineService
             $replacements['{{certificado.lugar_fecha_emision}}'] = "Dado en la ciudad de {$city}, a los {$day} días del mes de {$month} de {$year}.";
             $replacements['{{certificado.fecha_emision_larga}}'] = "a los {$day} días del mes de {$month} del año {$year}";
 
+            // Calificación, Puntaje y Mención
+            $score = is_array($c) ? ($c['score'] ?? null) : ($c->score ?? null);
+            $scoreLabel = is_array($c) ? ($c['score_label'] ?? null) : ($c->score_label ?? null);
+            $formattedScore = is_array($c)
+                ? ($c['formatted_score'] ?? ($scoreLabel ?: ($score !== null ? $score.' pts' : '')))
+                : ($c->formatted_score ?? '');
+
+            $replacements['{{certificado.puntaje}}'] = $score !== null ? (string) $score : ($scoreLabel ?? '');
+            $replacements['{{certificado.calificacion}}'] = $formattedScore ?: '';
+            $replacements['{{certificado.mencion}}'] = $scoreLabel ?: '';
+
+            // Vigencia y Validez
+            $isPermanent = is_array($c)
+                ? (! empty($c['is_permanent']) || ($c['validity_type'] ?? '') === 'permanent' || empty($c['expiration_date']))
+                : ($c->isPermanent() ?? false);
+
+            if ($isPermanent) {
+                $replacements['{{certificado.vigencia}}'] = 'Vigencia Permanente / No expira';
+                $replacements['{{certificado.vigencia_corta}}'] = 'PERMANENTE';
+            } else {
+                $expFormatted = $replacements['{{certificado.fecha_vencimiento}}'] ?? '';
+                $replacements['{{certificado.vigencia}}'] = $expFormatted ? "Válido hasta el {$expFormatted}" : 'Vigencia Temporal';
+                $replacements['{{certificado.vigencia_corta}}'] = $expFormatted ? "Hasta {$expFormatted}" : 'Temporal';
+            }
+
             // Resolución Facultativa
             $resolution = '';
             if (isset($context['activity'])) {

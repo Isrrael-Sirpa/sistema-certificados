@@ -416,8 +416,15 @@
                                     <td style="vertical-align: middle; text-align: left; padding-left: 8px; line-height: 1.3;">
                                         <div style="font-size: 7.5px; font-weight: bold; color: #475569; letter-spacing: 0.5px;">VERIFICACIÓN DIGITAL UMSA</div>
                                         <div style="font-size: 8.5px; font-family: monospace; font-weight: bold; color: #024966; letter-spacing: 0.3px; margin: 2px 0;">{{ $certificate->certificate_code }}</div>
-                                        <div style="font-size: 7px; font-weight: bold; color: #047857;">✓ DOCUMENTO OFICIAL ACREDITADO</div>
-                                        <div style="font-size: 6.5px; color: #64748b;">Escanee para validar autenticidad y vigencia</div>
+                                        @if($certificate->isPermanent())
+                                            <div style="font-size: 7px; font-weight: bold; color: #047857;">✓ VIGENCIA PERMANENTE</div>
+                                        @else
+                                            <div style="font-size: 7px; font-weight: bold; color: #047857;">✓ VÁLIDO HASTA {{ \Carbon\Carbon::parse($certificate->expiration_date)->format('d/m/Y') }}</div>
+                                        @endif
+                                        @if($certificate->hasScore())
+                                            <div style="font-size: 7px; font-weight: bold; color: #1e40af;">Nota: {{ $certificate->formatted_score }}</div>
+                                        @endif
+                                        <div style="font-size: 6.5px; color: #64748b;">Escanee para validar autenticidad</div>
                                     </td>
                                 </tr>
                             </table>
@@ -429,7 +436,14 @@
                                 @endif
                                 @if(!empty($el['show_code']))
                                     <div style="font-size: 8px; font-family: monospace; font-weight: bold; color: #024966; letter-spacing: 0.3px;">{{ $certificate->certificate_code }}</div>
-                                    <div style="font-size: 7px; font-weight: bold; color: #047857; margin-top: 1px;">✓ VIGENCIA 3 AÑOS</div>
+                                    @if($certificate->isPermanent())
+                                        <div style="font-size: 7px; font-weight: bold; color: #047857; margin-top: 1px;">✓ VIGENCIA PERMANENTE</div>
+                                    @else
+                                        <div style="font-size: 7px; font-weight: bold; color: #047857; margin-top: 1px;">✓ VÁLIDO HASTA {{ \Carbon\Carbon::parse($certificate->expiration_date)->format('d/m/Y') }}</div>
+                                    @endif
+                                    @if($certificate->hasScore())
+                                        <div style="font-size: 7px; font-weight: bold; color: #1e40af; margin-top: 1px;">NOTA: {{ $certificate->formatted_score }}</div>
+                                    @endif
                                 @endif
                             </div>
                         @endif
@@ -486,6 +500,14 @@
                 {!! nl2br(e($resolved_body_text)) !!}
             </div>
 
+            @if($certificate->hasScore())
+                <div style="margin: 2px auto 8px auto; text-align: center; position: relative; z-index: 10;">
+                    <span style="display: inline-block; padding: 3px 14px; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 10.5px; font-weight: bold; color: #1e3a8a;">
+                        Calificación Oficial: <span style="color: #024966;">{{ $certificate->formatted_score }}</span>
+                    </span>
+                </div>
+            @endif
+
             <!-- Footer Signatures, Stamp & QR Table -->
             <table class="footer-table">
                 <tr>
@@ -522,8 +544,15 @@
                             <div class="meta-info">
                                 <div>Código: <span class="cert-code">{{ $certificate->certificate_code }}</span></div>
                                 <div>Emisión: {{ \Carbon\Carbon::parse($certificate->issue_date)->translatedFormat('d/m/Y') }}</div>
-                                <div>Vigencia: Hasta {{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d/m/Y') }}</div>
-                                <div><span class="validity-tag">✓ Vigencia 3 Años</span></div>
+                                @if($certificate->isPermanent())
+                                    <div><span class="validity-tag">✓ Vigencia Permanente</span></div>
+                                @else
+                                    <div>Vigencia: Hasta {{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d/m/Y') }}</div>
+                                    <div><span class="validity-tag">✓ Documento Válido</span></div>
+                                @endif
+                                @if($certificate->hasScore())
+                                    <div style="font-size: 8px; font-weight: bold; color: #1e40af; margin-top: 1px;">Nota: {{ $certificate->formatted_score }}</div>
+                                @endif
                             </div>
                         </td>
                     @endif

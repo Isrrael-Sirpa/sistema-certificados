@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
+use App\Models\CertificateType;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class BeneficiaryImportService
         ],
         'institution_or_department' => [
             'carrera', 'departamento', 'unidad', 'facultad', 'institucion', 'institución',
-            'mencion', 'mención', 'programa', 'department', 'area', 'área',
+            'programa', 'department', 'area', 'área',
         ],
         'email' => [
             'correo', 'email', 'e-mail', 'correo_electronico', 'correo_electrónico',
@@ -49,6 +50,14 @@ class BeneficiaryImportService
         ],
         'phone' => [
             'telefono', 'teléfono', 'celular', 'movil', 'móvil', 'phone', 'contacto', 'whatsapp', 'fono', 'cel',
+        ],
+        'score' => [
+            'nota', 'puntaje', 'calificacion', 'calificación', 'score', 'puntos', 'grade',
+            'promedio', 'evaluacion', 'evaluación', 'nota_final', 'puntaje_final', 'nota_examen',
+        ],
+        'score_label' => [
+            'mencion', 'mención', 'mencion_honor', 'mención_honor', 'distincion', 'distinción', 'honor', 'estado_academico',
+            'observacion_nota', 'calificacion_cualitativa', 'merito', 'mérito', 'mencion_academica',
         ],
     ];
 
@@ -288,10 +297,16 @@ class BeneficiaryImportService
             ->flip()
             ->toArray();
 
+        $certType = $certificateTypeId ? CertificateType::find($certificateTypeId) : $activity->certificateType;
+        $hasScoreRule = $certType && $certType->supportsScore();
+        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+
         $processedRows = [];
         $newStudentsCount = 0;
         $existingStudentsCount = 0;
         $alreadyCertifiedCount = 0;
+        $failingStudentsCount = 0;
+        $unscoredStudentsCount = 0;
         $errorCount = 0;
         $seenInFile = [];
 
@@ -338,12 +353,32 @@ class BeneficiaryImportService
                 $errorMsg = 'Nuevo estudiante. Se registrará en el padrón y se emitirá su certificado.';
             }
 
+            // Validación de aprobación si el tipo de certificado evalúa notas
+            if ($hasScoreRule && ($rowStatus === 'new_student' || $rowStatus === 'existing_student')) {
+                $rawScore = $extracted['score'] ?? null;
+                $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
+
+                if ($scoreNum === null) {
+                    $rowStatus = 'unscored_student';
+                    $errorMsg = 'Sin calificación registrada. Se agregará a la nómina pero no califica para emisión de certificado hasta calificar.';
+                } elseif ($scoreNum < $minScore) {
+                    $rowStatus = 'failing_student';
+                    $errorMsg = "Estudiante reprobado ({$scoreNum} pts < {$minScore} pts). Se registrará en la nómina como observado sin emitir certificado.";
+                }
+            }
+
             if ($rowStatus === 'new_student') {
                 $seenInFile[$docNumber] = true;
                 $newStudentsCount++;
             } elseif ($rowStatus === 'existing_student') {
                 $seenInFile[$docNumber] = true;
                 $existingStudentsCount++;
+            } elseif ($rowStatus === 'failing_student') {
+                $seenInFile[$docNumber] = true;
+                $failingStudentsCount++;
+            } elseif ($rowStatus === 'unscored_student') {
+                $seenInFile[$docNumber] = true;
+                $unscoredStudentsCount++;
             } elseif ($rowStatus === 'already_certified') {
                 $alreadyCertifiedCount++;
             } else {
@@ -370,6 +405,8 @@ class BeneficiaryImportService
                 'new_students' => $newStudentsCount,
                 'existing_students' => $existingStudentsCount,
                 'already_certified' => $alreadyCertifiedCount,
+                'failing_students' => $failingStudentsCount,
+                'unscored_students' => $unscoredStudentsCount,
                 'errors' => $errorCount,
                 'ready_to_certify' => $readyToCertify,
             ],
@@ -397,6 +434,12 @@ class BeneficiaryImportService
             $newStudentsCount = 0;
             $existingStudentsCount = 0;
             $skippedCount = 0;
+            $failingCount = 0;
+            $unscoredCount = 0;
+
+            $certType = CertificateType::find($certificateTypeId);
+            $hasScoreRule = $certType && $certType->supportsScore();
+            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
 
             // Cache de beneficiarios existentes
             $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
@@ -469,17 +512,57 @@ class BeneficiaryImportService
                     continue;
                 }
 
-                // 3. Emitir el certificado institucional con snapshot inmutable y token QR
+                // 3. Validación de aprobación reglamentaria: si exige puntaje, omitir a reprobados o sin nota
+                $rawScore = $data['score'] ?? null;
+                $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
+
+                if ($hasScoreRule) {
+                    if ($scoreNum === null) {
+                        $unscoredCount++;
+                        $activity->participants()->syncWithoutDetaching([
+                            $beneficiary->id => [
+                                'role' => 'Participante',
+                                'status' => 'observado',
+                                'score' => null,
+                                'score_label' => $data['score_label'] ?? null,
+                            ],
+                        ]);
+
+                        continue;
+                    }
+                    if ($scoreNum < $minScore) {
+                        $failingCount++;
+                        $activity->participants()->syncWithoutDetaching([
+                            $beneficiary->id => [
+                                'role' => 'Participante',
+                                'status' => 'reprobado',
+                                'score' => $scoreNum,
+                                'score_label' => $data['score_label'] ?? null,
+                            ],
+                        ]);
+
+                        continue;
+                    }
+                }
+
+                // 4. Emitir el certificado institucional con snapshot inmutable y token QR
                 $certificateService->issueCertificate([
                     'beneficiary_id' => $beneficiary->id,
                     'activity_id' => $activity->id,
                     'certificate_type_id' => $certificateTypeId,
                     'certificate_template_id' => $templateId,
                     'issue_date' => $issueDate,
+                    'score' => $scoreNum,
+                    'score_label' => $data['score_label'] ?? null,
                 ], $user);
 
                 $activity->participants()->syncWithoutDetaching([
-                    $beneficiary->id => ['role' => 'Participante', 'status' => 'certificado'],
+                    $beneficiary->id => [
+                        'role' => 'Participante',
+                        'status' => 'certificado',
+                        'score' => $scoreNum,
+                        'score_label' => $data['score_label'] ?? null,
+                    ],
                 ]);
 
                 $alreadyCertifiedBeneficiaryIds[$beneficiary->id] = true;
@@ -489,7 +572,7 @@ class BeneficiaryImportService
             // Registrar en auditoría
             AuditLog::log(
                 'activity_bulk_certified',
-                "Emisión masiva en actividad '{$activity->name}': {$issuedCount} certificados emitidos ({$newStudentsCount} nuevos beneficiarios creados en el padrón, {$existingStudentsCount} beneficiarios existentes asociados, {$skippedCount} omitidos).",
+                "Emisión masiva en actividad '{$activity->name}': {$issuedCount} certificados emitidos ({$newStudentsCount} nuevos beneficiarios creados en el padrón, {$existingStudentsCount} beneficiarios existentes asociados, {$failingCount} reprobados omitidos, {$skippedCount} omitidos).",
                 $activity,
                 null,
                 [
@@ -499,6 +582,8 @@ class BeneficiaryImportService
                     'new_students_count' => $newStudentsCount,
                     'existing_students_count' => $existingStudentsCount,
                     'skipped_count' => $skippedCount,
+                    'failing_count' => $failingCount,
+                    'unscored_count' => $unscoredCount,
                     'executed_by_user_id' => $user->id,
                 ]
             );
@@ -508,6 +593,8 @@ class BeneficiaryImportService
                 'new_students_count' => $newStudentsCount,
                 'existing_students_count' => $existingStudentsCount,
                 'skipped_count' => $skippedCount,
+                'failing_count' => $failingCount,
+                'unscored_count' => $unscoredCount,
                 'total_processed' => count($rows),
             ];
         });
@@ -524,6 +611,10 @@ class BeneficiaryImportService
             $newStudentsCount = 0;
             $alreadyEnrolledCount = 0;
             $errorCount = 0;
+
+            $certType = $activity->certificateType;
+            $hasScoreRule = $certType && $certType->supportsScore();
+            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
 
             $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
                 return [$this->normalizeDocumentNumber($ben->document_number) => $ben];
@@ -561,7 +652,22 @@ class BeneficiaryImportService
                     $newStudentsCount++;
                 }
 
+                $rawScore = $data['score'] ?? null;
+                $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
+                $isFailing = $hasScoreRule && ($scoreNum !== null && $scoreNum < $minScore);
+
                 if (isset($currentlyEnrolledIds[$beneficiary->id])) {
+                    if (isset($data['score']) || isset($data['score_label'])) {
+                        $updateData = array_filter([
+                            'score' => $scoreNum,
+                            'score_label' => ! empty($data['score_label']) ? trim((string) $data['score_label']) : null,
+                        ], fn ($v) => $v !== null);
+
+                        if ($isFailing) {
+                            $updateData['status'] = 'reprobado';
+                        }
+                        $activity->participants()->updateExistingPivot($beneficiary->id, $updateData);
+                    }
                     $alreadyEnrolledCount++;
 
                     continue;
@@ -573,9 +679,13 @@ class BeneficiaryImportService
                     ->whereNull('revoked_at')
                     ->exists();
 
+                $participantStatus = $hasCert ? 'certificado' : ($isFailing ? 'reprobado' : 'inscrito');
+
                 $activity->participants()->attach($beneficiary->id, [
                     'role' => 'Participante',
-                    'status' => $hasCert ? 'certificado' : 'inscrito',
+                    'status' => $participantStatus,
+                    'score' => $scoreNum,
+                    'score_label' => ! empty($data['score_label']) ? trim((string) $data['score_label']) : null,
                 ]);
 
                 $currentlyEnrolledIds[$beneficiary->id] = true;
@@ -600,7 +710,7 @@ class BeneficiaryImportService
 
     /**
      * Emite masivamente los certificados para los participantes registrados en la nómina de la actividad
-     * que se encuentren pendientes de certificado.
+     * que se encuentren pendientes de certificado, omitiendo automáticamente a estudiantes reprobados.
      */
     public function issueCertificatesToActivityParticipants(
         Activity $activity,
@@ -618,8 +728,14 @@ class BeneficiaryImportService
             }
             $participants = $query->get();
 
+            $certType = CertificateType::find($certificateTypeId);
+            $hasScoreRule = $certType && $certType->supportsScore();
+            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+
             $issuedCount = 0;
             $skippedCount = 0;
+            $failingCount = 0;
+            $unscoredCount = 0;
 
             $alreadyCertifiedBeneficiaryIds = Certificate::where('activity_id', $activity->id)
                 ->where('certificate_type_id', $certificateTypeId)
@@ -636,12 +752,32 @@ class BeneficiaryImportService
                     continue;
                 }
 
+                $score = $participant->pivot->score !== null ? (float) $participant->pivot->score : null;
+
+                // Validación de aprobación reglamentaria: si el tipo exige puntaje, omitir reprobados o sin nota
+                if ($hasScoreRule) {
+                    if ($score === null) {
+                        $unscoredCount++;
+                        $activity->participants()->updateExistingPivot($participant->id, ['status' => 'observado']);
+
+                        continue;
+                    }
+                    if ($score < $minScore) {
+                        $failingCount++;
+                        $activity->participants()->updateExistingPivot($participant->id, ['status' => 'reprobado']);
+
+                        continue;
+                    }
+                }
+
                 $certificateService->issueCertificate([
                     'beneficiary_id' => $participant->id,
                     'activity_id' => $activity->id,
                     'certificate_type_id' => $certificateTypeId,
                     'certificate_template_id' => $templateId,
                     'issue_date' => $issueDate,
+                    'score' => $score,
+                    'score_label' => $participant->pivot->score_label ?? null,
                 ], $user);
 
                 $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
@@ -651,13 +787,15 @@ class BeneficiaryImportService
 
             AuditLog::log(
                 'activity_bulk_certified',
-                "Emisión masiva a la nómina de '{$activity->name}': {$issuedCount} certificados emitidos ({$skippedCount} omitidos por ya poseer certificado).",
+                "Emisión masiva a la nómina de '{$activity->name}': {$issuedCount} certificados emitidos ({$failingCount} reprobados omitidos, {$skippedCount} ya contaban con certificado).",
                 $activity
             );
 
             return [
                 'issued_count' => $issuedCount,
                 'skipped_count' => $skippedCount,
+                'failing_count' => $failingCount,
+                'unscored_count' => $unscoredCount,
                 'total_candidates' => $participants->count(),
             ];
         });
@@ -674,17 +812,35 @@ class BeneficiaryImportService
             $cleanHeader = $this->sanitizeString($headerText);
             $matchedField = null;
 
+            // 1. Primero intentar coincidencia exacta
             foreach ($this->headerSynonyms as $field => $synonyms) {
                 foreach ($synonyms as $synonym) {
                     $cleanSynonym = $this->sanitizeString($synonym);
-                    if ($cleanHeader === $cleanSynonym || str_contains($cleanHeader, $cleanSynonym)) {
+                    if ($cleanHeader === $cleanSynonym) {
                         $matchedField = $field;
                         break 2;
                     }
                 }
             }
 
-            if ($matchedField) {
+            // 2. Segundo intento: coincidencia de palabra completa o subcadena segura (mínimo 4 caracteres)
+            if (! $matchedField) {
+                foreach ($this->headerSynonyms as $field => $synonyms) {
+                    foreach ($synonyms as $synonym) {
+                        $cleanSynonym = $this->sanitizeString($synonym);
+                        if (strlen($cleanSynonym) >= 4 && str_contains($cleanHeader, $cleanSynonym)) {
+                            $matchedField = $field;
+                            break 2;
+                        } elseif (preg_match('/(^|_|\s)'.preg_quote($cleanSynonym, '/').'($|_|\s)/', $cleanHeader)) {
+                            $matchedField = $field;
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            // No sobreescribir un campo que ya fue asignado por una columna previa más específica
+            if ($matchedField && ! isset($mapped[$matchedField])) {
                 $mapped[$matchedField] = $colIndex;
             }
         }
@@ -706,6 +862,8 @@ class BeneficiaryImportService
             'institution_or_department' => 'Facultad de Tecnología - UMSA',
             'email' => null,
             'phone' => null,
+            'score' => null,
+            'score_label' => null,
         ];
 
         foreach ($mappedColumns as $field => $colIndex) {
@@ -733,6 +891,30 @@ class BeneficiaryImportService
             [$firstName, $lastName] = $this->splitFullName($data['first_name']);
             $data['first_name'] = $firstName;
             $data['last_name'] = $lastName;
+        }
+
+        // Procesar y normalizar calificación/puntaje si existe en el archivo
+        if (isset($data['score'])) {
+            $rawScore = trim((string) $data['score']);
+            if ($rawScore !== '') {
+                // Verificar si contiene número (ej. "85", "92.5", "85/100")
+                if (preg_match('/^([0-9]+(?:[\.,][0-9]+)?)/', $rawScore, $matches)) {
+                    $numericVal = (float) str_replace(',', '.', $matches[1]);
+                    $data['score'] = $numericVal;
+                    // Si no había score_label explícito, usar el texto raw si aporta contexto (ej. "85/100")
+                    if (empty($data['score_label']) && str_contains($rawScore, '/')) {
+                        $data['score_label'] = $rawScore;
+                    }
+                } else {
+                    // Si el contenido era puramente texto cualitativo (ej. "Aprobado con Excelencia")
+                    if (empty($data['score_label'])) {
+                        $data['score_label'] = $rawScore;
+                    }
+                    $data['score'] = null;
+                }
+            } else {
+                $data['score'] = null;
+            }
         }
 
         return $data;
@@ -952,12 +1134,12 @@ class BeneficiaryImportService
      */
     public function generateTemplateCsv(): string
     {
-        $headers = ['CI', 'NOMBRES', 'APELLIDOS', 'TITULO_GRADO', 'CARRERA_UNIDAD', 'CORREO_ELECTRONICO', 'TELEFONO'];
+        $headers = ['CI', 'NOMBRES', 'APELLIDOS', 'TITULO_GRADO', 'CARRERA_UNIDAD', 'CORREO_ELECTRONICO', 'TELEFONO', 'NOTA', 'MENCION'];
         $sampleRows = [
-            ['8492019', 'Juan Carlos', 'Mamani Quispe', 'Univ.', 'Licenciatura en Informática', 'juan.mamani@umsa.bo', '71234567'],
-            ['6948201', 'Carla Patricia', 'Flores Choque', 'Univ.', 'Ingeniería Electrónica', 'carla.flores@umsa.bo', '76543210'],
-            ['5123940', 'Rodrigo Fernando', 'Gutiérrez Condori', 'Lic.', 'Química Industrial', 'rodrigo.gutierrez@umsa.bo', '70112233'],
-            ['7234912', 'Elena Beatriz', 'Ramos Fernández', 'Univ.', 'Mecánica Automotriz', 'elena.ramos@umsa.bo', '72098765'],
+            ['8492019', 'Juan Carlos', 'Mamani Quispe', 'Univ.', 'Licenciatura en Informática', 'juan.mamani@umsa.bo', '71234567', '92.5', 'Aprobado con Excelencia'],
+            ['6948201', 'Carla Patricia', 'Flores Choque', 'Univ.', 'Ingeniería Electrónica', 'carla.flores@umsa.bo', '76543210', '85.0', 'Aprobado'],
+            ['5123940', 'Rodrigo Fernando', 'Gutiérrez Condori', 'Lic.', 'Química Industrial', 'rodrigo.gutierrez@umsa.bo', '70112233', '98.0', 'Mención de Honor'],
+            ['7234912', 'Elena Beatriz', 'Ramos Fernández', 'Univ.', 'Mecánica Automotriz', 'elena.ramos@umsa.bo', '72098765', '75.0', 'Aprobado'],
         ];
 
         $output = "\xEF\xBB\xBF"; // UTF-8 BOM para que Microsoft Excel lo abra con tildes y caracteres en español

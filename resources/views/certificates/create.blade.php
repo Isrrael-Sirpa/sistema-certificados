@@ -8,8 +8,17 @@
     issueDate: '{{ now()->toDateString() }}',
     selectedBeneficiaryId: '{{ old('beneficiary_id', $selectedBeneficiaryId) }}',
     selectedActivity: '{{ old('activity_id', $selectedActivityId) }}',
-    selectedTypeId: '{{ old('certificate_type_id') }}',
+    selectedTypeId: '{{ old('certificate_type_id', $types->firstWhere('slug', 'aprobacion')?->id ?? $types->first()?->id) }}',
     selectedTemplate: '{{ old('certificate_template_id', $templates->where('is_default', true)->first()?->id ?? $templates->first()?->id) }}',
+
+    // Validity Scheme (Permanent vs Temporal vs Custom)
+    validityType: '{{ old('validity_type', 'permanent') }}',
+    validityYears: {{ old('validity_years', 3) }},
+    customExpirationDate: '{{ old('expiration_date', '') }}',
+
+    // Academic Score / Grade
+    score: '{{ old('score', '') }}',
+    scoreLabel: '{{ old('score_label', '') }}',
 
     // Graphic Customization (.png, .jpg, .svg)
     showCustomSection: true,
@@ -26,11 +35,12 @@
     logosData: {{ Js::from($logos->keyBy('id')) }},
     watermarksData: {{ Js::from($watermarks->keyBy('id')) }},
 
-    get expirationDate() {
-        if (!this.issueDate) return '';
-        const d = new Date(this.issueDate + 'T00:00:00');
-        d.setFullYear(d.getFullYear() + 3);
-        return d.toISOString().split('T')[0];
+    init() {
+        if (this.selectedActivity) {
+            this.onActivityChange();
+        } else if (this.selectedTypeId) {
+            this.onTypeChange();
+        }
     },
 
     get currentBeneficiary() {
@@ -49,10 +59,45 @@
         return this.typesData[this.selectedTypeId] || null;
     },
 
+    get calculatedExpirationDate() {
+        if (this.validityType === 'permanent') {
+            return null;
+        }
+        if (this.validityType === 'custom') {
+            return this.customExpirationDate || null;
+        }
+        if (!this.issueDate) return null;
+        const d = new Date(this.issueDate + 'T00:00:00');
+        d.setFullYear(d.getFullYear() + parseInt(this.validityYears || 3));
+        return d.toISOString().split('T')[0];
+    },
+
     onActivityChange() {
         const act = this.currentActivity;
-        if (act && act.certificate_config && act.certificate_config.certificate_template_id) {
-            this.selectedTemplate = act.certificate_config.certificate_template_id;
+        if (!act) return;
+
+        if (act.certificate_type_id) {
+            this.selectedTypeId = act.certificate_type_id;
+        }
+
+        if (act.certificate_config) {
+            if (act.certificate_config.certificate_template_id) {
+                this.selectedTemplate = act.certificate_config.certificate_template_id;
+            }
+            if (act.certificate_config.validity_mode) {
+                this.validityType = act.certificate_config.validity_mode;
+                this.validityYears = act.certificate_config.validity_years || 3;
+            }
+        } else if (this.currentType) {
+            this.onTypeChange();
+        }
+    },
+
+    onTypeChange() {
+        const tp = this.currentType;
+        if (tp) {
+            this.validityType = tp.validity_mode || 'permanent';
+            this.validityYears = tp.default_validity_years || 3;
         }
     }
 }" class="space-y-6">
@@ -60,7 +105,7 @@
     <!-- Top Breadcrumb & Return -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-2 text-xs text-slate-500">
-            <a href="{{ route('certificates.index') }}" class="hover:text-brand-hover font-medium transition-colors">Certificados</a>
+            <a href="{{ route('certificates.index') }}" class="hover:text-brand font-medium transition-colors">Certificados</a>
             <span>/</span>
             <span class="text-slate-800 font-bold">Emisión y Personalización</span>
         </div>
@@ -80,6 +125,12 @@
             <form id="issueForm" method="POST" action="{{ route('certificates.store') }}" class="space-y-6">
                 @csrf
 
+                <!-- Hidden inputs for calculated validity and template -->
+                <input type="hidden" name="certificate_template_id" :value="selectedTemplate">
+                <input type="hidden" name="validity_type" :value="validityType">
+                <input type="hidden" name="validity_years" :value="validityYears">
+                <input type="hidden" name="expiration_date" :value="calculatedExpirationDate">
+
                 <!-- CARD 1: BENEFICIARIO Y ACTIVIDAD -->
                 <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 space-y-5">
                     <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
@@ -96,7 +147,7 @@
                             <label for="beneficiary_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                 Beneficiario del Certificado <span class="text-red-500">*</span>
                             </label>
-                            <a href="{{ route('beneficiaries.create') }}" target="_blank" class="text-xs text-brand-hover font-bold hover:underline flex items-center gap-1">
+                            <a href="{{ route('beneficiaries.create') }}" target="_blank" class="text-xs text-brand hover:underline flex items-center gap-1">
                                 + Nuevo participante
                             </a>
                         </div>
@@ -126,7 +177,7 @@
                             <label for="activity_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                 Actividad Académica / Evento <span class="text-red-500">*</span>
                             </label>
-                            <a href="{{ route('activities.create') }}" target="_blank" class="text-xs text-brand-hover font-bold hover:underline flex items-center gap-1">
+                            <a href="{{ route('activities.create') }}" target="_blank" class="text-xs text-brand hover:underline flex items-center gap-1">
                                 + Nueva actividad
                             </a>
                         </div>
@@ -136,9 +187,6 @@
                             @foreach($activities as $act)
                                 <option value="{{ $act->id }}" {{ (old('activity_id', $selectedActivityId) == $act->id) ? 'selected' : '' }}>
                                     [{{ $act->activity_type }}] {{ $act->name }} ({{ $act->academic_hours }} hrs)
-                                    @if($act->certificateConfig && $act->certificateConfig->template)
-                                        ★ (Plantilla: {{ $act->certificateConfig->template->name }})
-                                    @endif
                                 </option>
                             @endforeach
                         </select>
@@ -156,17 +204,48 @@
                     <!-- 3. Tipo de Mérito / Certificado -->
                     <div>
                         <label for="certificate_type_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Tipo de Mérito o Otorgación <span class="text-red-500">*</span>
+                            Tipo de Mérito o Certificación <span class="text-red-500">*</span>
                         </label>
-                        <select name="certificate_type_id" id="certificate_type_id" x-model="selectedTypeId" required
+                        <select name="certificate_type_id" id="certificate_type_id" x-model="selectedTypeId" @change="onTypeChange()" required
                                 class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand bg-white">
                             <option value="">-- Seleccione el tipo de mérito académico --</option>
                             @foreach($types as $tp)
-                                <option value="{{ $tp->id }}" {{ old('certificate_type_id') == $tp->id ? 'selected' : '' }}>
-                                    {{ $tp->name }}
+                                <option value="{{ $tp->id }}">
+                                    {{ $tp->icon ?? '📜' }} {{ $tp->name }} ({{ $tp->validity_mode === 'permanent' ? 'Vitalicio' : 'Temporal' }})
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <!-- 4. Calificación / Puntaje (Opcional o según el tipo) -->
+                    <div class="p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                <span>📊</span> Calificación Académica / Nota Obtenida (Opcional)
+                            </label>
+                            <span class="text-[10px] text-amber-800 font-semibold" x-show="currentType && currentType.has_score">Recomendado para este tipo</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="score" class="block text-[11px] font-bold text-slate-700 mb-1">
+                                    Nota Numérica (Ej: 85 ó 92.5)
+                                </label>
+                                <input type="number" step="0.1" name="score" id="score" x-model="score" min="0" max="1000"
+                                       placeholder="Ej: 85"
+                                       class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-brand">
+                            </div>
+
+                            <div>
+                                <label for="score_label" class="block text-[11px] font-bold text-slate-700 mb-1">
+                                    Mención / Texto Descriptivo
+                                </label>
+                                <input type="text" name="score_label" id="score_label" x-model="scoreLabel"
+                                       placeholder="Ej: 85/100 ó Aprobado con Excelencia"
+                                       class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-brand">
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Ambos campos se reflejarán tanto en el documento impreso como en la página pública de escaneo QR.</p>
                     </div>
 
                 </div>
@@ -181,13 +260,10 @@
                             </h3>
                             <p class="text-xs text-slate-500 mt-0.5">Haga clic sobre una plantilla para aplicarla instantáneamente al certificado</p>
                         </div>
-                        <a href="{{ route('templates.index') }}" target="_blank" class="text-xs font-bold text-brand-hover hover:underline flex items-center gap-1">
+                        <a href="{{ route('templates.index') }}" target="_blank" class="text-xs font-bold text-brand hover:underline flex items-center gap-1">
                             Ver diseñador &rarr;
                         </a>
                     </div>
-
-                    <!-- Hidden input to submit selected template -->
-                    <input type="hidden" name="certificate_template_id" :value="selectedTemplate">
 
                     <!-- Visual Grid of Template Cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 pt-1">
@@ -246,10 +322,7 @@
                             Personalice las imágenes que figurarán en el documento. Si no selecciona ninguna, el sistema utilizará los escudos y logos predeterminados de la plantilla.
                         </p>
 
-                        <!-- Logos Selection Grid -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                            <!-- Logo Izquierdo -->
                             <div class="space-y-2">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                     Logo Superior Izquierdo (.png, .jpg, .svg)
@@ -263,18 +336,8 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <template x-if="logosData[selectedLogoLeft]">
-                                    <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                                        <img :src="logosData[selectedLogoLeft].url" class="w-10 h-10 object-contain" alt="Logo preview">
-                                        <div class="text-[11px] text-slate-600 truncate">
-                                            <p class="font-bold truncate" x-text="logosData[selectedLogoLeft].name"></p>
-                                            <span class="text-slate-400">Incrustado en Base64</span>
-                                        </div>
-                                    </div>
-                                </template>
                             </div>
 
-                            <!-- Logo Derecho -->
                             <div class="space-y-2">
                                 <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                     Logo Superior Derecho (.png, .jpg, .svg)
@@ -288,20 +351,9 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <template x-if="logosData[selectedLogoRight]">
-                                    <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                                        <img :src="logosData[selectedLogoRight].url" class="w-10 h-10 object-contain" alt="Logo preview">
-                                        <div class="text-[11px] text-slate-600 truncate">
-                                            <p class="font-bold truncate" x-text="logosData[selectedLogoRight].name"></p>
-                                            <span class="text-slate-400">Incrustado en Base64</span>
-                                        </div>
-                                    </div>
-                                </template>
                             </div>
-
                         </div>
 
-                        <!-- Marca de Agua Gráfica -->
                         <div class="space-y-2 pt-2 border-t border-slate-100">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                 Marca de Agua Gráfica de Fondo (.png transparente / .jpg / escudo)
@@ -315,18 +367,8 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <template x-if="watermarksData[selectedWatermark]">
-                                <div class="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
-                                    <img :src="watermarksData[selectedWatermark].url" class="w-10 h-10 object-contain opacity-40" alt="Watermark preview">
-                                    <div class="text-[11px] text-slate-600">
-                                        <p class="font-bold" x-text="watermarksData[selectedWatermark].name"></p>
-                                        <span class="text-slate-400">Se estampará centrada con opacidad elegante sin tapar los textos</span>
-                                    </div>
-                                </div>
-                            </template>
                         </div>
 
-                        <!-- Special Note -->
                         <div class="pt-2 border-t border-slate-100">
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                 Mención de Honor / Nota Aclaratoria Específica (Opcional)
@@ -335,18 +377,17 @@
                                    placeholder="Ej: Con mención de honor por obtener el primer lugar del certamen"
                                    class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-brand">
                         </div>
-
                     </div>
                 </div>
 
-                <!-- CARD 4: FECHAS Y VIGENCIA -->
+                <!-- CARD 4: FECHAS Y CONTROL LEGAL DE VIGENCIA -->
                 <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 space-y-4">
                     <h3 class="text-sm font-bold text-brand flex items-center gap-2">
                         <span class="w-6 h-6 rounded-lg bg-purple-50 text-purple-800 flex items-center justify-center text-xs font-bold">4</span>
-                        <span>Fecha de Emisión y Control Legal de Vigencia</span>
+                        <span>Fecha de Emisión y Esquema de Vigencia</span>
                     </h3>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-4">
                         <div>
                             <label for="issue_date" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                 Fecha Formal de Emisión <span class="text-red-500">*</span>
@@ -356,14 +397,60 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Vencimiento Automático (+3 Años)
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                Validez Legal del Certificado
                             </label>
-                            <div class="py-2 px-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-sm">
-                                <span class="font-bold text-slate-800" x-text="expirationDate || '---'"></span>
-                                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                    Vigente
-                                </span>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <label class="p-3 bg-white rounded-xl border cursor-pointer flex items-start gap-2.5"
+                                       :class="validityType === 'permanent' ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'border-slate-200'">
+                                    <input type="radio" value="permanent" x-model="validityType" class="mt-0.5 text-brand">
+                                    <div>
+                                        <span class="font-bold text-xs text-slate-900 block">♾️ Permanente</span>
+                                        <span class="text-[10px] text-slate-500">Validez vitalicia</span>
+                                    </div>
+                                </label>
+
+                                <label class="p-3 bg-white rounded-xl border cursor-pointer flex items-start gap-2.5"
+                                       :class="validityType === 'temporal' ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'border-slate-200'">
+                                    <input type="radio" value="temporal" x-model="validityType" class="mt-0.5 text-brand">
+                                    <div>
+                                        <span class="font-bold text-xs text-slate-900 block">⏳ Por Años</span>
+                                        <span class="text-[10px] text-slate-500">Caducidad periódica</span>
+                                    </div>
+                                </label>
+
+                                <label class="p-3 bg-white rounded-xl border cursor-pointer flex items-start gap-2.5"
+                                       :class="validityType === 'custom' ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'border-slate-200'">
+                                    <input type="radio" value="custom" x-model="validityType" class="mt-0.5 text-brand">
+                                    <div>
+                                        <span class="font-bold text-xs text-slate-900 block">📅 Fecha Fija</span>
+                                        <span class="text-[10px] text-slate-500">Expiración manual</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Duration selector when temporal -->
+                            <div x-show="validityType === 'temporal'" class="mt-3 p-3 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center gap-3">
+                                <span class="text-xs font-bold text-slate-700">Duración:</span>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                    <input type="radio" value="1" x-model.number="validityYears" class="text-brand"> 1 año
+                                </label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                    <input type="radio" value="2" x-model.number="validityYears" class="text-brand"> 2 años
+                                </label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer font-bold text-brand">
+                                    <input type="radio" value="3" x-model.number="validityYears" class="text-brand"> 3 años (Estándar)
+                                </label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer">
+                                    <input type="radio" value="5" x-model.number="validityYears" class="text-brand"> 5 años
+                                </label>
+                            </div>
+
+                            <!-- Custom date when custom -->
+                            <div x-show="validityType === 'custom'" class="mt-3 p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                                <label class="block text-[11px] font-bold text-slate-700">Fecha Límite Exacta:</label>
+                                <input type="date" x-model="customExpirationDate" class="w-full py-1.5 px-3 text-xs border border-slate-300 rounded-lg">
                             </div>
                         </div>
                     </div>
@@ -401,23 +488,38 @@
                     </div>
 
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tipo de Certificado:</span>
+                        <p class="font-bold text-slate-900" x-text="currentType ? (currentType.icon + ' ' + currentType.name) : 'No seleccionado'"></p>
+                    </div>
+
+                    <template x-if="score || scoreLabel">
+                        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-1">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-900">Calificación Acreditada:</span>
+                            <p class="font-bold text-amber-950 text-xs">
+                                <span x-text="score ? (score + ' pts') : ''"></span>
+                                <span x-text="scoreLabel ? (' (' + scoreLabel + ')') : ''"></span>
+                            </p>
+                        </div>
+                    </template>
+
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
                         <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Plantilla y Formato:</span>
                         <p class="font-bold text-slate-900" x-text="currentTemplate ? currentTemplate.name : 'Predeterminada'"></p>
                         <p class="text-[11px] text-brand font-semibold" x-text="currentTemplate ? ('Orientación: ' + currentTemplate.orientation.toUpperCase()) : ''"></p>
                     </div>
 
-                    <div class="flex items-center justify-between p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-emerald-900">
+                    <div class="flex items-center justify-between p-3 rounded-xl border"
+                         :class="validityType === 'permanent' ? 'bg-purple-50/70 border-purple-200 text-purple-900' : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'">
                         <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Vigencia Oficial:</span>
-                            <p class="font-bold text-xs" x-text="expirationDate ? ('Hasta ' + expirationDate) : '3 años calendario'"></p>
+                            <span class="text-[10px] font-bold uppercase tracking-wider">Vigencia Oficial:</span>
+                            <p class="font-bold text-xs" x-text="validityType === 'permanent' ? '♾️ Permanente (Vitalicia)' : (calculatedExpirationDate ? ('Hasta ' + calculatedExpirationDate) : 'Temporal')"></p>
                         </div>
-                        <span class="text-xs">🛡️ Válido</span>
+                        <span class="text-xs" x-text="validityType === 'permanent' ? '♾️ Sin Expirar' : '🛡️ Válido'"></span>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
                 <div class="pt-4 border-t border-slate-100 space-y-3">
-
                     <!-- 1. Live PDF Draft Preview -->
                     <button type="submit"
                             form="issueForm"
@@ -427,7 +529,7 @@
                         <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         <span>[ 👁️ PREVISUALIZAR BORRADOR EN PDF ]</span>
                     </button>
-                    <p class="text-[10px] text-slate-400 text-center">Abre el PDF en una pestaña nueva sin guardar en la BD ni gastar correlativo</p>
+                    <p class="text-[10px] text-slate-400 text-center">Abre el PDF en una pestaña nueva con QR de prueba</p>
 
                     <!-- 2. Final Issue Certificate -->
                     <button type="submit"

@@ -19,7 +19,7 @@
     @livewireStyles
     @stack('styles')
 </head>
-<body class="ft-app font-sans antialiased text-slate-800 bg-background flex flex-col lg:flex-row min-h-dvh"
+<body class="ft-app {{ request()->routeIs('templates.designer') ? 'ft-editor-page' : '' }} font-sans antialiased text-slate-800 bg-background flex flex-col lg:flex-row min-h-dvh"
       x-data="{
           sidebarOpen: false,
           isDesktop: window.matchMedia('(min-width: 1024px)').matches,
@@ -233,15 +233,18 @@
                     <span class="font-medium">{{ now()->translatedFormat('l, d \d\e F \d\e Y') }}</span>
                 </div>
 
-                <a href="{{ route('certificates.create') }}" aria-label="Emitir certificado" class="min-h-11 inline-flex items-center gap-2 px-4 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 focus:ring-2 focus:ring-action/40 cursor-pointer">
+                <a href="{{ route('activities.create') }}" aria-label="Nueva Actividad" class="min-h-11 inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all active:scale-95 focus:ring-2 focus:ring-brand/40 cursor-pointer">
                     <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
-                    <span class="hidden sm:inline">Emitir Certificado</span><span class="sm:hidden">Emitir</span>
+                    <span class="hidden sm:inline">Nueva Actividad</span><span class="sm:hidden">Nuevo</span>
                 </a>
             </div>
         </header>
 
         <!-- Flash Messages -->
-        <div class="px-6 pt-4">
+        <div class="ft-flash-messages px-6 pt-4" @if(request()->routeIs('templates.designer')) x-data="{ visible: true }" x-show="visible" @endif>
+            @if(request()->routeIs('templates.designer') && (session('success') || session('error') || session('warning') || session('info') || $errors->any()))
+                <button type="button" @click="visible = false" class="ft-editor-flash-close" aria-label="Cerrar notificación">✕</button>
+            @endif
             @if(session('success'))
                 <div class="flex items-center p-4 mb-3 text-sm text-emerald-800 rounded-xl bg-emerald-50 border border-emerald-200 shadow-xs" role="alert">
                     <svg class="w-5 h-5 text-emerald-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -260,6 +263,13 @@
                 <div class="flex items-center p-4 mb-3 text-sm text-amber-800 rounded-xl bg-amber-50 border border-amber-200 shadow-xs" role="alert">
                     <svg class="w-5 h-5 text-amber-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     <div class="font-medium flex-1">{{ session('warning') }}</div>
+                </div>
+            @endif
+
+            @if(session('info'))
+                <div class="flex items-center p-4 mb-3 text-sm text-blue-800 rounded-xl bg-blue-50 border border-blue-200 shadow-xs" role="alert">
+                    <svg class="w-5 h-5 text-blue-600 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div class="font-medium flex-1">{{ session('info') }}</div>
                 </div>
             @endif
 

@@ -6,6 +6,30 @@
 @section('content')
 <div class="space-y-6" x-data="{ revokeModal: false }">
 
+    <!-- Top Navigation & Breadcrumb -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-1">
+        <!-- Breadcrumbs (Left) -->
+        <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-xs">
+            <a href="{{ route('certificates.index') }}" class="text-slate-400 hover:text-brand transition-colors font-medium flex items-center gap-1.5 group">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-brand transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span>Certificados</span>
+            </a>
+            <span class="text-slate-300">/</span>
+            <span class="text-slate-700 font-bold font-mono">{{ $certificate->certificate_code }}</span>
+        </nav>
+
+        <!-- Back Button (Right) -->
+        <a href="{{ route('certificates.index') }}"
+           class="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-brand bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-brand/30 rounded-xl shadow-2xs hover:shadow-xs transition-all group active:scale-95">
+            <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-brand group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            <span>Volver a Certificados</span>
+        </a>
+    </div>
+
     <!-- Top Action Bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
         <div class="flex min-w-0 items-center gap-3">
@@ -103,10 +127,28 @@
                     </div>
 
                     <div>
-                        <span class="text-slate-400 block font-semibold">Fecha de Expiración</span>
-                        <span class="text-sm font-semibold text-slate-800 block mt-0.5">{{ $certificate->expiration_date->format('d/m/Y') }}</span>
-                        <span class="text-[10px] text-emerald-600 font-medium">Vigencia estándar de 3 años</span>
+                        <span class="text-slate-400 block font-semibold">Vigencia / Expiración</span>
+                        @if($certificate->isPermanent())
+                            <span class="text-sm font-bold text-purple-700 block mt-0.5">♾️ VIGENCIA PERMANENTE</span>
+                            <span class="text-[10px] text-purple-600 font-medium">Documento vitalicio (sin caducidad)</span>
+                        @else
+                            <span class="text-sm font-semibold text-slate-800 block mt-0.5">{{ $certificate->expiration_date?->format('d/m/Y') ?? 'No definida' }}</span>
+                            <span class="text-[10px] text-emerald-600 font-medium">Vigencia temporal</span>
+                        @endif
                     </div>
+
+                    @if($certificate->hasScore())
+                        <div class="sm:col-span-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                            <span class="text-amber-900 block font-bold text-xs uppercase tracking-wider">Calificación / Nota Obtenida</span>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-lg">📊</span>
+                                <span class="text-base font-extrabold text-amber-950">{{ $certificate->formatted_score }}</span>
+                                @if($certificate->score !== null)
+                                    <span class="text-xs text-amber-700 font-semibold">({{ $certificate->score }} puntos)</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
 
                     <div>
                         <span class="text-slate-400 block font-semibold">Emitido Por</span>

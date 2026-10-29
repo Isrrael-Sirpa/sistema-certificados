@@ -7,7 +7,6 @@ use App\Models\Beneficiary;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\Setting;
-use Carbon\Carbon;
 
 class CertificateSnapshotService
 {
@@ -26,7 +25,11 @@ class CertificateSnapshotService
         CertificateTemplate $template,
         string $issueDate,
         string $code,
-        array $customFields = []
+        array $customFields = [],
+        ?string $expirationDate = null,
+        ?float $score = null,
+        ?string $scoreLabel = null,
+        string $validityType = 'years'
     ): array {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
         $activityConfig = $activity->certificateConfig;
@@ -50,13 +53,21 @@ class CertificateSnapshotService
             ? $activityConfig->custom_body_text
             : ($schema['body_text'] ?? 'Por su participación en {{actividad.nombre}}');
 
+        $isPermanent = empty($expirationDate) || $validityType === 'permanent';
+        $formattedScore = ! empty($scoreLabel) ? $scoreLabel : ($score !== null ? ($score.' pts') : null);
+
         $context = [
             'beneficiary' => $beneficiary,
             'activity' => $activity,
             'certificate' => [
                 'code' => $code,
                 'issue_date' => $issueDate,
-                'expiration_date' => Carbon::parse($issueDate)->addYears(3)->toDateString(),
+                'expiration_date' => $expirationDate,
+                'validity_type' => $validityType,
+                'is_permanent' => $isPermanent,
+                'score' => $score,
+                'score_label' => $scoreLabel,
+                'formatted_score' => $formattedScore,
                 'type' => $certificateType->name,
             ],
             'settings' => $settings,
@@ -161,6 +172,12 @@ class CertificateSnapshotService
             'logos_base64' => $logosBase64,
             'watermark_image_base64' => $watermarkImageBase64,
             'stamp_base64' => $stampBase64,
+            'validity_type' => $validityType,
+            'is_permanent' => $isPermanent,
+            'expiration_date' => $expirationDate,
+            'score' => $score,
+            'score_label' => $scoreLabel,
+            'formatted_score' => $formattedScore,
             'frozen_at' => now()->toIso8601String(),
         ];
     }

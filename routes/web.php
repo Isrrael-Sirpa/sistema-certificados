@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/actividades/{activity}/nomina/confirmar', [ActivityController::class, 'confirmRosterIssuance'])->name('activities.roster.confirm');
     Route::post('/actividades/{activity}/nomina/cargar', [ActivityController::class, 'enrollRoster'])->name('activities.roster.enroll');
     Route::post('/actividades/{activity}/participantes/agregar-manual', [ActivityController::class, 'addParticipantManual'])->name('activities.participants.add-manual');
+    Route::patch('/actividades/{activity}/participantes/{beneficiary}', [ActivityController::class, 'updateParticipant'])->name('activities.participants.update');
     Route::delete('/actividades/{activity}/participantes/{beneficiary}', [ActivityController::class, 'removeParticipant'])->name('activities.participants.remove');
     Route::post('/actividades/{activity}/participantes/emitir-certificados', [ActivityController::class, 'issueToRoster'])->name('activities.participants.issue-certificates');
     Route::get('/actividades/{activity}/descargar-zip', [ActivityController::class, 'downloadZip'])->name('activities.download-zip');
@@ -118,8 +119,11 @@ Route::middleware(['auth'])->group(function () {
         // Registro de Auditoría
         Route::get('/auditoria', [AuditLogController::class, 'index'])->name('audit.index');
 
-        // Configuración Institucional
+        // Configuración Institucional y Tipos de Certificado
         Route::get('/configuracion', [SettingController::class, 'index'])->name('settings.index');
         Route::post('/configuracion', [SettingController::class, 'update'])->name('settings.update');
+        Route::post('/configuracion/tipos-certificado', [SettingController::class, 'storeCertificateType'])->name('settings.certificate-types.store');
+        Route::put('/configuracion/tipos-certificado/{type}', [SettingController::class, 'updateCertificateType'])->name('settings.certificate-types.update');
+        Route::patch('/configuracion/tipos-certificado/{type}/toggle', [SettingController::class, 'toggleCertificateType'])->name('settings.certificate-types.toggle');
     });
 });

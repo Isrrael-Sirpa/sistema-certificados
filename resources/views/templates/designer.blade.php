@@ -36,6 +36,9 @@
 <script>
 window.__CERTIFICATE_STUDIO_CONFIG = {
     templateId: {{ $template->id }},
+    currentVersion: {{ $template->current_version }},
+    previewPdfUrl: @json(route('templates.preview', $template)),
+    backUrl: @json(route('templates.index')),
     name: @json($template->name),
     category: @json($template->category),
     orientation: @json($template->orientation),
@@ -48,127 +51,78 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
 <div x-data="certificateStudio(window.__CERTIFICATE_STUDIO_CONFIG)"
      @keydown.window="handleKeyDown($event)"
-     class="space-y-4 select-none">
-
-    <!-- ============================================================== -->
-    <!-- 1. TOP STUDIO ACTION BAR                                       -->
-    <!-- ============================================================== -->
-    <!-- ============================================================== -->
-    <!-- 1. TOP STUDIO ACTION BAR (ESTÁTICA, SIN SUPERPOSICIÓN)         -->
-    <!-- ============================================================== -->
-    <header class="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4 relative z-20">
-
-        <!-- Left: Back & Template Meta -->
-        <div class="flex min-w-0 items-center gap-3">
-            <a href="{{ route('templates.index') }}"
-               class="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-               title="Volver al catálogo de plantillas">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+     class="ft-studio">
+    <h1 class="sr-only">Diseñador Visual de Certificados</h1>
+    <header class="ft-studio-header">
+        <div class="ft-studio-heading">
+            <a href="{{ route('templates.index') }}" @click="confirmLeave($event)" class="ft-studio-icon-button" aria-label="Volver a Plantillas" title="Volver a Plantillas">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/></svg>
             </a>
             <div class="min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <div class="relative flex items-center">
-                        <input type="text" x-model="name" @input="markDirty()"
-                               class="text-sm sm:text-base font-bold text-brand border border-slate-200 hover:border-slate-300 focus:border-brand focus:ring-1 focus:ring-brand pl-2 pr-6 py-1 rounded-lg transition-all w-48 sm:w-64 bg-slate-50/70"
-                               title="Nombre de la plantilla">
-                        <span class="absolute right-2 text-slate-400 text-xs pointer-events-none">✏️</span>
-                    </div>
-                    <span class="bg-blue-50 text-brand border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        v{{ $template->current_version }}.0
-                    </span>
-                    <button type="button" @click="toggleOrientation()"
-                            class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase cursor-pointer transition-all flex items-center gap-1"
-                            title="Alternar entre orientación horizontal y vertical">
-                        <span x-text="orientation === 'landscape' ? '📄 A4 Horizontal (297×210 mm)' : '📃 A4 Vertical (210×297 mm)'"></span>
-                    </button>
-                    <button type="button" @click="autoAdaptLayout()"
-                            class="bg-blue-50 hover:bg-blue-100 text-brand border border-blue-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full cursor-pointer transition-all flex items-center gap-1"
-                            title="Reacomodar automáticamente los elementos para aprovechar de forma óptima el espacio A4 según la orientación seleccionada">
-                        <svg class="w-3 h-3 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span>Adaptar Proporciones</span>
-                    </button>
-                    <!-- Status indicator -->
-                    <span class="flex items-center gap-1.5 text-[11px] font-medium transition-all"
-                          :class="isDirty ? 'text-amber-600' : 'text-emerald-600'">
-                        <span class="w-2 h-2 rounded-full" :class="isDirty ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'"></span>
-                        <span x-text="isDirty ? 'Modificado sin guardar' : 'Guardado'"></span>
-                    </span>
-                </div>
-                <p class="break-words text-[11px] text-slate-500 mt-0.5">Estudio visual institucional • Haz clic en cualquier elemento del lienzo para seleccionarlo y editarlo</p>
+                <p class="ft-studio-eyebrow">FT UMSA <span> / Estudio de certificados</span></p>
+                <label class="sr-only" for="studio-template-name">Nombre de la plantilla</label>
+                <input id="studio-template-name" type="text" x-model="name" @input="markDirty()" maxlength="150" class="ft-studio-name" :title="name">
             </div>
+            <span class="ft-studio-version">v{{ $template->current_version }}.0</span>
         </div>
-
-        <!-- Center: Tools (Undo, Redo, Zoom, Grid, PDF Preview) -->
-        <div class="flex max-w-full flex-wrap items-center gap-1 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200">
-            <!-- Undo / Redo -->
-            <button type="button" @click="undo()" :disabled="undoStack.length <= 1"
-                    class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    title="Deshacer última acción (Ctrl+Z)">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m0 0l-4-4m4 4l4-4M3 10l4-4m-4 4l4 4"/></svg>
+        <div class="ft-studio-header-actions">
+            <span class="ft-studio-save-status" role="status" :class="isDirty ? 'text-amber-700' : 'text-emerald-700'">
+                <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+                <span x-text="isDirty ? 'Cambios pendientes' : 'Guardado'"></span>
+            </span>
+            <button type="button" @click="previewPdf()" class="ft-studio-button ft-studio-preview" title="Ver el PDF de la plantilla guardada">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linejoin="round" d="M14 3H6v18h12V7l-4-4Z"/><path d="M14 3v5h4M9 13h6m-6 4h4"/></svg><span>Ver PDF</span>
             </button>
-            <button type="button" @click="redo()" :disabled="redoStack.length === 0"
-                    class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
-                    title="Rehacer acción (Ctrl+Y)">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m0 0l4-4m-4 4l-4-4m21-2l-4-4m4 4l-4 4"/></svg>
-            </button>
-
-            <div class="h-4 w-px bg-slate-300 mx-1"></div>
-
-            <!-- Zoom Controls -->
-            <button type="button" @click="setZoom(zoom - 10)" :disabled="zoom <= 50"
-                    class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 transition-all cursor-pointer"
-                    title="Reducir zoom">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-            </button>
-            <span class="text-xs font-mono font-bold text-slate-700 w-12 text-center" x-text="zoom + '%'"></span>
-            <button type="button" @click="setZoom(zoom + 10)" :disabled="zoom >= 150"
-                    class="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white disabled:opacity-30 transition-all cursor-pointer"
-                    title="Aumentar zoom">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            </button>
-            <button type="button" @click="setZoom(100)"
-                    class="px-1.5 py-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 hover:bg-white rounded transition-all cursor-pointer"
-                    title="Restablecer zoom al 100%">
-                100%
-            </button>
-
-            <div class="h-4 w-px bg-slate-300 mx-1"></div>
-
-            <!-- Grid Toggle -->
-            <button type="button" @click="showGrid = !showGrid"
-                    :class="showGrid ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-                    class="px-2 py-1 text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                    title="Alternar cuadrícula de alineación">
-                <span>📏</span>
-                <span class="hidden sm:inline">Guías</span>
-            </button>
-
-            <!-- Real PDF Preview Button -->
-            <a href="{{ route('templates.preview', $template) }}" target="_blank"
-               class="px-2.5 py-1 text-xs font-bold text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
-               title="Ver PDF oficial generado en tiempo real con DomPDF">
-                <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>
-                <span>Previsualizar PDF</span>
-            </a>
-        </div>
-
-        <!-- Right: Save Actions -->
-        <div class="flex flex-wrap items-center gap-2">
-            <button type="button" @click="saveTemplate(false)"
-                    class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                    title="Guardar cambios en la versión actual v{{ $template->current_version }}.0">
-                <span>💾 Guardar v{{ $template->current_version }}.0</span>
-            </button>
-
-            <button type="button" @click="saveTemplate(true)"
-                    class="px-5 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5"
-                    title="Guardar como nueva versión incrementada v{{ $template->current_version + 1 }}.0">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <span>Guardar como v{{ $template->current_version + 1 }}.0</span>
-            </button>
+            <div class="ft-studio-save-group" x-data="{ saveMenuOpen: false }" @click.outside="saveMenuOpen = false" @keydown.escape.stop="saveMenuOpen = false">
+                <button type="button" @click="saveTemplate(false)" :disabled="isSaving || !isDirty" class="ft-studio-save" title="Guardar cambios en la versión actual (Ctrl+S)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6"/></svg>
+                    <span x-text="isSaving ? 'Guardando…' : 'Guardar cambios'"></span>
+                </button>
+                <button id="studio-version-trigger" type="button" @click="saveMenuOpen = !saveMenuOpen" :disabled="isSaving" :aria-expanded="saveMenuOpen" aria-label="Más opciones de guardado" class="ft-studio-save-more">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m7 10 5 5 5-5"/></svg>
+                </button>
+                <div x-cloak x-show="saveMenuOpen" class="ft-studio-save-menu">
+                    <button type="button" @click="saveMenuOpen = false; openVersionDialog()">
+                        <span class="font-semibold text-brand">Crear nueva versión</span>
+                        <span class="block text-xs text-slate-500 mt-1">Conservar la revisión actual en el historial.</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
+    <div class="ft-studio-toolbar" role="toolbar" aria-label="Herramientas del diseñador">
+        <div class="ft-studio-tool-group">
+            <button type="button" @click="toggleLeftPanel()" :aria-expanded="isDesktop ? leftPanelOpen : activePanel === 'tools'" aria-controls="studio-tools" class="ft-studio-button" :class="(isDesktop ? leftPanelOpen : activePanel === 'tools') && 'is-active'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m-3-11h0m0 4h0"/></svg><span>Recursos</span>
+            </button>
+            <span class="ft-studio-divider"></span>
+            <button type="button" @click="undo()" :disabled="!canUndo" class="ft-studio-icon-button" aria-label="Deshacer" title="Deshacer (Ctrl+Z)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5-6 6 6 6M3 11h11a6 6 0 0 1 6 6v2"/></svg>
+            </button>
+            <button type="button" @click="redo()" :disabled="!canRedo" class="ft-studio-icon-button" aria-label="Rehacer" title="Rehacer (Ctrl+Mayús+Z)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m15 5 6 6-6 6m6-6H10a6 6 0 0 0-6 6v2"/></svg>
+            </button>
+        </div>
+        <div class="ft-studio-tool-group ft-studio-zoom">
+            <button type="button" @click="setZoom(zoom - 10)" :disabled="zoom <= 20" class="ft-studio-icon-button" aria-label="Alejar" title="Alejar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14"/></svg></button>
+            <button type="button" @click="setZoom(100)" class="ft-studio-zoom-label" title="Tamaño 100%" x-text="zoom + '%'"></button>
+            <button type="button" @click="setZoom(zoom + 10)" :disabled="zoom >= 200" class="ft-studio-icon-button" aria-label="Acercar" title="Acercar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M12 5v14"/></svg></button>
+            <button type="button" @click="fitCanvas()" class="ft-studio-button" :class="autoFit && 'is-active'" title="Encajar el certificado completo en el espacio disponible">Encajar</button>
+            <span class="ft-studio-divider"></span>
+            <button type="button" @click="showGrid = !showGrid" :aria-pressed="showGrid" :class="showGrid && 'is-active'" class="ft-studio-button" title="Mostrar guías de alineación">Guías</button>
+        </div>
+        <div class="ft-studio-tool-group ft-studio-toolbar-end">
+            <button type="button" @click="autoAdaptLayout()" class="ft-studio-button ft-studio-auto-layout" title="Redistribuir los elementos desbloqueados; puedes deshacer este ajuste">Autoajustar</button>
+            <button type="button" @click="toggleRightPanel()" :aria-expanded="isDesktop ? rightPanelOpen : activePanel === 'inspector'" aria-controls="studio-inspector" class="ft-studio-button" :class="(isDesktop ? rightPanelOpen : activePanel === 'inspector') && 'is-active'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="white"/><circle cx="15" cy="17" r="2" fill="white"/></svg><span>Propiedades</span>
+            </button>
+        </div>
+    </div>
+    <div x-cloak x-show="previewNotice" class="ft-studio-notice" role="status">
+        <p x-text="previewNotice"></p>
+        <button type="button" @click="previewNotice = ''" aria-label="Cerrar aviso">✕</button>
+    </div>
     <!-- Hidden Form for submission -->
     <form id="studioForm" method="POST" action="{{ route('templates.designer.update', $template) }}" class="hidden">
         @csrf
@@ -179,48 +133,31 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <input type="hidden" name="description" :value="description">
         <input type="hidden" name="create_new_version" id="createNewVersionInput" value="0">
         <input type="hidden" name="schema_json" id="schemaJsonInput">
+        <input type="hidden" name="change_summary" id="changeSummaryInput" :value="versionChangeSummary">
     </form>
 
-    <!-- Responsive View Mode Switcher (Visible on small screens) -->
-    <div class="flex lg:hidden items-center justify-center bg-slate-100 p-1 rounded-xl gap-1 text-xs">
-        <button type="button" @click="activePanel = 'tools'" :class="activePanel === 'tools' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
-            🛠️ Herramientas
-        </button>
-        <button type="button" @click="activePanel = 'canvas'" :class="activePanel === 'canvas' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
-            🎨 Lienzo A4
-        </button>
-        <button type="button" @click="activePanel = 'inspector'" :class="activePanel === 'inspector' ? 'bg-white font-bold text-brand shadow-xs' : 'text-slate-600'" class="min-w-0 min-h-11 px-1 sm:px-3 py-1.5 rounded-lg flex-1 text-center">
-            🎛️ Propiedades
-        </button>
-    </div>
+    <div class="ft-studio-body">
+        <button x-cloak x-show="!isDesktop && activePanel !== 'canvas'" @click="activePanel = 'canvas'" type="button" class="ft-studio-panel-overlay" aria-label="Cerrar panel y volver al lienzo"></button>
+        <aside id="studio-tools" aria-label="Recursos de diseño" class="ft-studio-panel ft-studio-tools"
+               :class="{ 'is-open': leftPanelOpen, 'is-mobile-open': activePanel === 'tools' }">
+            <div class="ft-studio-panel-heading"><span>Recursos de diseño</span><button type="button" @click="toggleLeftPanel()" aria-label="Cerrar recursos">✕</button></div>
 
-    <!-- ============================================================== -->
-    <!-- 2. STUDIO THREE-COLUMN LAYOUT                                  -->
-    <!-- ============================================================== -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-
-        <!-- ========================================================== -->
-        <!-- LEFT COLUMN: TOOLBOX, ASSET LIBRARY & LAYERS (3 COLS)      -->
-        <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 ft-panel bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
-               :class="activePanel !== 'tools' ? 'hidden lg:flex' : 'flex'">
-
-            <!-- Left Tabs Bar -->
+        <!-- Left Tabs Bar -->
             <div class="flex items-center border-b border-slate-200 bg-slate-50/80 p-1.5 gap-1">
                 <button type="button" @click="leftTab = 'tools'"
                         :class="leftTab === 'tools' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
-                    🛠️ Elementos
+                    Elementos
                 </button>
                 <button type="button" @click="leftTab = 'library'"
                         :class="leftTab === 'library' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
-                    🖼️ Biblioteca
+                    Biblioteca
                 </button>
                 <button type="button" @click="leftTab = 'layers'"
                         :class="leftTab === 'layers' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
-                    📚 Capas (<span x-text="elements.length"></span>)
+                    Capas (<span x-text="elements.length"></span>)
                 </button>
             </div>
 
@@ -334,8 +271,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                     <!-- Quick Sample Toggle -->
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                        <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perfil de Ejemplo en Lienzo</label>
-                        <select x-model="sampleProfile" @change="updateSampleProfile()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white">
+                        <label for="studio-control-1" class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perfil de Ejemplo en Lienzo</label>
+                        <select id="studio-control-1" x-model="sampleProfile" @change="updateSampleProfile()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white">
                             <option value="participant">Participante (Univ. Rodrigo Quispe Mamani)</option>
                             <option value="speaker">Disertante (Dr. Alejandro Morales Ramos)</option>
                             <option value="organizer">Comité Organizador (Lic. Carmen Vargas Luna)</option>
@@ -423,23 +360,23 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <template x-for="(el, index) in sortedLayers" :key="el.id">
                             <div class="p-2 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer"
                                  :class="selectedId === el.id ? 'border-brand bg-blue-50/70 shadow-xs ring-1 ring-brand' : 'border-slate-200 bg-white hover:bg-slate-50'"
-                                 @click="selectElement(el.id)">
+                                 >
 
-                                <div class="flex items-center gap-2 overflow-hidden">
+                                <button type="button" @click="selectElement(el.id)" class="flex flex-1 min-w-0 items-center gap-2 overflow-hidden text-left" :aria-label="'Seleccionar ' + (el.name || el.type)" :aria-pressed="selectedId === el.id">
                                     <span class="text-xs" x-text="getElementIcon(el.type)"></span>
                                     <span class="font-medium text-[11px] text-slate-700 truncate" x-text="el.name || el.type"></span>
-                                </div>
+                                </button>
 
                                 <div class="flex items-center gap-1 shrink-0">
                                     <!-- Visibility Toggle -->
-                                    <button type="button" @click.stop="toggleVisibility(el.id)"
+                                    <button type="button" @click.stop="toggleVisibility(el.id)" :aria-label="(el.is_visible !== false ? 'Ocultar ' : 'Mostrar ') + (el.name || el.type)"
                                             class="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
                                             :title="el.is_visible !== false ? 'Ocultar elemento' : 'Mostrar elemento'">
                                         <span x-text="el.is_visible !== false ? '👁️' : '🕶️'"></span>
                                     </button>
 
                                     <!-- Lock Toggle -->
-                                    <button type="button" @click.stop="toggleLock(el.id)"
+                                    <button type="button" @click.stop="toggleLock(el.id)" :aria-label="(el.is_locked ? 'Desbloquear ' : 'Bloquear ') + (el.name || el.type)"
                                             class="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
                                             :title="el.is_locked ? 'Desbloquear elemento' : 'Bloquear elemento'">
                                         <span x-text="el.is_locked ? '🔒' : '🔓'"></span>
@@ -464,37 +401,17 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
         <!-- ========================================================== -->
         <!-- CENTER COLUMN: INTERACTIVE A4 CERTIFICATE CANVAS (6 COLS)  -->
         <!-- ========================================================== -->
-        <main class="lg:col-span-6 space-y-3"
-              :class="activePanel !== 'canvas' ? 'hidden lg:block' : 'block'">
+        <section class="ft-studio-canvas" aria-label="Lienzo del certificado">
 
-            <!-- Canvas Header Bar with Coordinates Info -->
-            <div class="flex items-center justify-between text-xs text-slate-500 px-1">
-                <span class="font-bold text-brand flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Lienzo A4</span>
-                    <span class="text-[11px] font-normal text-slate-400" x-text="orientation === 'landscape' ? '(297×210 mm Horizontal)' : '(210×297 mm Vertical)'"></span>
-                </span>
-                <div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                    <span x-show="selectedElement" x-text="'X: ' + Math.round(selectedElement?.x) + '%  Y: ' + Math.round(selectedElement?.y) + '%  W: ' + Math.round(selectedElement?.width) + '%'"></span>
-                    <span class="bg-blue-50 text-brand px-2 py-0.5 rounded font-sans font-bold" x-text="elements.length + ' elementos activos'"></span>
-                </div>
+            <div class="ft-studio-canvas-heading">
+                <span class="font-semibold text-brand">Lienzo A4 <span class="ml-1 font-normal text-slate-500" x-text="orientation === 'landscape' ? '297 × 210 mm · Horizontal' : '210 × 297 mm · Vertical'"></span></span>
+                <span class="ft-studio-canvas-hint">Arrastra para mover · Doble clic en el texto para editar</span>
             </div>
-
-            <!-- Canvas Scroll Wrapper & Zoom Transformer -->
-            <div class="bg-slate-200/80 p-4 sm:p-6 rounded-2xl border border-slate-300 flex items-center justify-center overflow-auto min-h-[620px] max-h-[780px] shadow-inner"
-                 @click.self="selectElement(null)">
-
-                <!-- The Scalable A4 Document Sheet -->
-                <div id="certificateCanvasSheet"
-                     @click.self="selectElement(null)"
-                     class="bg-white shadow-2xl relative transition-transform origin-top select-none border border-slate-200/60"
-                     :style="{
-                         width: canvasWidthStyle,
-                         height: canvasHeightStyle,
-                         transform: 'scale(' + (zoom / 100) + ')',
-                         fontFamily: schema.font_family || 'Helvetica',
-                         color: schema.text_color || '#1e293b'
-                     }">
+            <div x-ref="canvasViewport" class="ft-studio-viewport" @click.self="selectElement(null)">
+                <div class="ft-studio-canvas-center" @click.self="selectElement(null)">
+                    <div x-ref="canvasStage" class="ft-studio-stage" :style="{ width: stageWidthStyle, height: stageHeightStyle }">
+                        <div id="certificateCanvasSheet" @click.self="selectElement(null)" class="ft-studio-sheet select-none"
+                             :style="{ width: canvasWidthStyle, height: canvasHeightStyle, transform: 'scale(' + (zoom / 100) + ')', fontFamily: schema.font_family || 'Helvetica', color: schema.text_color || '#1e293b' }">
 
                     <!-- Outer Decorative Border -->
                     <div class="absolute inset-4 rounded pointer-events-none transition-all duration-300"
@@ -540,9 +457,12 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                     <template x-for="el in elements" :key="el.id">
                         <div x-show="el.is_visible !== false"
                              :id="'canvas-element-' + el.id"
-                             @mousedown="startDrag($event, el.id)"
+                             @pointerdown="startDrag($event, el.id)"
+                             tabindex="0" role="button" :aria-label="el.name || el.type"
+                             @keydown.enter.stop="selectElement(el.id)"
+                             @dblclick.stop="selectElement(el.id); openInspector()"
                              @click.stop="selectElement(el.id)"
-                             class="absolute transition-shadow group select-none cursor-move"
+                             class="absolute transition-shadow group select-none cursor-move touch-none"
                              :class="{
                                  'ring-2 ring-brand ring-offset-1 shadow-lg bg-blue-50/25': selectedId === el.id,
                                  'hover:outline hover:outline-1 hover:outline-blue-400': selectedId !== el.id,
@@ -567,8 +487,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                         <span x-text="el.name || el.type"></span>
                                     </div>
                                     <!-- Resize Handle (SE Corner) -->
-                                    <div @mousedown.stop="startResize($event, el.id)"
-                                         class="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-blue-600 border-2 border-white rounded-full shadow-md cursor-se-resize z-50 hover:scale-125 transition-transform"
+                                    <div @pointerdown.stop="startResize($event, el.id)"
+                                         class="absolute -bottom-2 -right-2 w-5 h-5 touch-none bg-brand border-2 border-white rounded-full shadow-md cursor-se-resize z-50 hover:scale-125 transition-transform"
                                          title="Arrastrar para redimensionar"></div>
                                     <div class="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
                                     <div class="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full border border-white"></div>
@@ -678,32 +598,23 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
             </div>
 
-            <!-- Canvas Footer Keyboard Shortcuts Guide -->
-            <div class="flex items-center justify-between text-[11px] text-slate-400 px-2">
-                <span>💡 Haga clic en cualquier elemento para seleccionarlo • Flechas del teclado para ajustar posición</span>
-                <span>Supr: Eliminar • Ctrl+Z: Deshacer</span>
+                </div>
             </div>
+        </section>
 
-        </main>
-
-        <!-- ========================================================== -->
-        <!-- RIGHT COLUMN: CONTEXTUAL PROPERTIES INSPECTOR (3 COLS)     -->
-        <!-- ========================================================== -->
-        <aside class="lg:col-span-3 space-y-3 ft-panel bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[780px]"
-               :class="activePanel !== 'inspector' ? 'hidden lg:flex' : 'flex'">
+        <aside id="studio-inspector" aria-label="Propiedades del diseño" class="ft-studio-panel ft-studio-inspector"
+               :class="{ 'is-open': rightPanelOpen, 'is-mobile-open': activePanel === 'inspector' }">
 
             <!-- Right Inspector Header -->
             <div class="border-b border-slate-200 bg-slate-50/80 px-4 py-3 flex items-center justify-between">
                 <div>
                     <h2 class="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-1.5">
-                        <span>🎛️</span>
-                        <span x-text="selectedElement ? 'Propiedades del Elemento' : 'Ajustes Globales del Lienzo'"></span>
+
+                        <span x-text="selectedElement ? 'Propiedades' : 'Ajustes del documento'"></span>
                     </h2>
-                    <p class="text-[10px] text-slate-400 mt-0.5" x-text="selectedElement ? (selectedElement.name || selectedElement.type) : 'Seleccione un elemento del lienzo para editarlo'"></p>
+                    <p class="text-[10px] text-slate-400 mt-0.5" x-text="selectedElement ? (selectedElement.name || selectedElement.type) : 'Formato, tipografía y colores'"></p>
                 </div>
-                <template x-if="selectedElement">
-                    <button type="button" @click="selectElement(null)" class="text-slate-400 hover:text-slate-700 text-xs p-1 rounded cursor-pointer" title="Deseleccionar">✕</button>
-                </template>
+                <button type="button" @click="toggleRightPanel()" class="ft-studio-icon-button" aria-label="Cerrar propiedades">✕</button>
             </div>
 
             <!-- Inspector Scrollable Body -->
@@ -713,7 +624,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <!-- SCENARIO A: AN ELEMENT IS SELECTED                 -->
                 <!-- ================================================== -->
                 <template x-if="selectedElement">
-                    <div class="space-y-4">
+                    <fieldset :disabled="selectedElement.is_locked" class="space-y-4 min-w-0">
+                        <p x-show="selectedElement.is_locked" class="rounded-lg bg-accent-soft px-3 py-2 text-amber-800">Elemento bloqueado. Desbloquéalo desde Capas para editarlo.</p>
 
                         <!-- Element Quick Actions: Align, Layer, Clone -->
                         <div class="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
@@ -749,23 +661,23 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Geometría y Posición (%)</span>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">Posición X</label>
-                                    <input type="number" step="0.5" x-model.number="selectedElement.x" @input="markDirty()"
+                                    <label for="studio-control-2" class="block text-[10px] text-slate-500 mb-0.5">Posición X</label>
+                                    <input id="studio-control-2" type="number" step="0.5" x-model.number="selectedElement.x" @input="markDirty()"
                                            class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white font-mono">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">Posición Y</label>
-                                    <input type="number" step="0.5" x-model.number="selectedElement.y" @input="markDirty()"
+                                    <label for="studio-control-3" class="block text-[10px] text-slate-500 mb-0.5">Posición Y</label>
+                                    <input id="studio-control-3" type="number" step="0.5" x-model.number="selectedElement.y" @input="markDirty()"
                                            class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white font-mono">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">Ancho (W)</label>
-                                    <input type="number" step="0.5" x-model.number="selectedElement.width" @input="markDirty()"
+                                    <label for="studio-control-4" class="block text-[10px] text-slate-500 mb-0.5">Ancho (W)</label>
+                                    <input id="studio-control-4" type="number" step="0.5" x-model.number="selectedElement.width" @input="markDirty()"
                                            class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white font-mono">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">Alto (H)</label>
-                                    <input type="number" step="0.5" x-model.number="selectedElement.height" @input="markDirty()"
+                                    <label for="studio-control-5" class="block text-[10px] text-slate-500 mb-0.5">Alto (H)</label>
+                                    <input id="studio-control-5" type="number" step="0.5" x-model.number="selectedElement.height" @input="markDirty()"
                                            class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white font-mono">
                                 </div>
                             </div>
@@ -784,8 +696,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <!-- 2. Text Content & Variables (For Text Elements) -->
                         <template x-if="isTextType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contenido de Texto</label>
-                                <textarea rows="3" x-model="selectedElement.content" @input="markDirty()"
+                                <label for="studio-control-6" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contenido de Texto</label>
+                                <textarea id="studio-control-6" rows="3" x-model="selectedElement.content" @input="markDirty()"
                                           class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white"></textarea>
 
                                 <!-- Categorized Dynamic Variable Chips -->
@@ -857,6 +769,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                                     title="Fecha larga de emisión">
                                                 + @{{certificado.fecha_emision_larga}}
                                             </button>
+                                            <button type="button" @click="insertVariable('@{{certificado.puntaje}}')" class="px-2 py-1 bg-brand-soft border border-brand/10 text-brand rounded-md text-[10px] cursor-pointer" title="Puntaje numérico de ejemplo en el lienzo">+ Puntaje numérico</button>
+                                            <button type="button" @click="insertVariable('@{{certificado.calificacion}}')" class="px-2 py-1 bg-brand-soft border border-brand/10 text-brand rounded-md text-[10px] cursor-pointer" title="Calificación de ejemplo en el lienzo">+ Calificación</button>
+                                            <button type="button" @click="insertVariable('@{{certificado.vigencia}}')" class="px-2 py-1 bg-brand-soft border border-brand/10 text-brand rounded-md text-[10px] cursor-pointer" title="Vigencia de ejemplo en el lienzo">+ Vigencia</button>
+                                            <button type="button" @click="insertVariable('@{{certificado.fecha_vencimiento}}')" class="px-2 py-1 bg-brand-soft border border-brand/10 text-brand rounded-md text-[10px] cursor-pointer" title="Fecha de vencimiento de ejemplo en el lienzo">+ Fecha de vencimiento</button>
                                         </div>
                                     </div>
                                 </div>
@@ -867,6 +783,17 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <template x-if="isTextType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                                 <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipografía & Estilos</span>
+                                <div>
+                                    <label for="element-font-family" class="block text-[10px] text-slate-500 mb-1">Fuente del elemento</label>
+                                    <select id="element-font-family" x-model="selectedElement.styles.font_family" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
+                                        <option value="">Heredar del documento</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="DejaVu Serif">DejaVu Serif</option>
+                                        <option value="DejaVu Sans">DejaVu Sans</option>
+                                        <option value="Times-Roman">Times</option>
+                                        <option value="Courier">Courier</option>
+                                    </select>
+                                </div>
 
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
@@ -891,9 +818,13 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
+                                    <div><label for="element-line-height" class="block text-[10px] text-slate-500 mb-1">Interlineado</label><input id="element-line-height" type="number" min="0.5" max="3" step="0.1" placeholder="1.3" x-model.number="selectedElement.styles.line_height" @input="markDirty()" class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white"></div>
+                                    <div><label for="element-tracking" class="block text-[10px] text-slate-500 mb-1">Espaciado (px)</label><input id="element-tracking" type="number" min="-2" max="20" step="0.5" placeholder="0" x-model.number="selectedElement.styles.letter_spacing" @input="markDirty()" class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="block text-[10px] text-slate-500 mb-0.5">Peso</label>
-                                        <select x-model="selectedElement.styles.font_weight"
+                                        <label for="studio-control-7" class="block text-[10px] text-slate-500 mb-0.5">Peso</label>
+                                        <select id="studio-control-7" x-model="selectedElement.styles.font_weight"
                                                 @change="selectedElement.font_weight = selectedElement.styles.font_weight; markDirty();"
                                                 class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
                                             <option value="normal">Normal</option>
@@ -902,8 +833,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] text-slate-500 mb-0.5">Estilo</label>
-                                        <select x-model="selectedElement.styles.font_style"
+                                        <label for="studio-control-8" class="block text-[10px] text-slate-500 mb-0.5">Estilo</label>
+                                        <select id="studio-control-8" x-model="selectedElement.styles.font_style"
                                                 @change="selectedElement.font_style = selectedElement.styles.font_style; markDirty();"
                                                 class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
                                             <option value="normal">Normal</option>
@@ -929,10 +860,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <!-- 4. Asset Selection (For Image / Logo / Stamp / Signature) -->
                         <template x-if="isImageType(selectedElement.type) || isSignatureType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recurso Institucional</label>
-                                <select x-model="selectedElement.asset_id"
+                                <label for="studio-control-9" class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recurso Institucional</label>
+                                <select id="studio-control-9" x-model="selectedElement.asset_id"
                                         @change="
-                                            const found = filteredAssets.find(a => a.id == selectedElement.asset_id);
+                                            const found = allAssets.find(a => a.id == selectedElement.asset_id);
                                             if (found) {
                                                 selectedElement.asset_url = found.url;
                                                 selectedElement.name = found.name;
@@ -947,8 +878,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                 </select>
 
                                 <div>
-                                    <label class="block text-[10px] text-slate-500 mb-0.5">Ajuste de Imagen (Object Fit)</label>
-                                    <select x-model="selectedElement.styles.object_fit" @change="markDirty()"
+                                    <label for="studio-control-10" class="block text-[10px] text-slate-500 mb-0.5">Ajuste de imagen</label>
+                                    <select id="studio-control-10" x-model="selectedElement.styles.object_fit" @change="markDirty()"
                                             class="w-full py-1 px-2 text-xs border border-slate-300 rounded bg-white">
                                         <option value="contain">Contener proporcional (Contain)</option>
                                         <option value="cover">Cubrir espacio (Cover)</option>
@@ -967,7 +898,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </button>
                         </div>
 
-                    </div>
+                    </fieldset>
                 </template>
 
                 <!-- ================================================== -->
@@ -981,8 +912,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lienzo y Formato General</span>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Categoría</label>
-                                <select x-model="category" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
+                                <label for="studio-control-11" class="block text-[10px] text-slate-500 mb-0.5">Categoría</label>
+                                <select id="studio-control-11" x-model="category" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
                                     <option value="institucional">Institucional</option>
                                     <option value="seminario">Seminario</option>
                                     <option value="capacitacion">Capacitación</option>
@@ -994,16 +925,16 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </div>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Orientación A4</label>
-                                <select x-model="orientation" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
+                                <label for="studio-control-12" class="block text-[10px] text-slate-500 mb-0.5">Orientación A4</label>
+                                <select id="studio-control-12" x-model="orientation" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
                                     <option value="landscape">Horizontal (Landscape - 297×210 mm)</option>
                                     <option value="portrait">Vertical (Portrait - 210×297 mm)</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Marco Ornamental</label>
-                                <select x-model="schema.border_style" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
+                                <label for="studio-control-13" class="block text-[10px] text-slate-500 mb-0.5">Marco Ornamental</label>
+                                <select id="studio-control-13" x-model="schema.border_style" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
                                     <option value="ornamental-double">Doble Marco Clásico Institucional</option>
                                     <option value="gold-filigree">Filigrana Dorada de Honor</option>
                                     <option value="modern-line">Línea Sólida Moderna</option>
@@ -1012,8 +943,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </div>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Tipografía Global (DomPDF)</label>
-                                <select x-model="schema.font_family" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
+                                <label for="studio-control-14" class="block text-[10px] text-slate-500 mb-0.5">Tipografía del documento</label>
+                                <select id="studio-control-14" x-model="schema.font_family" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
                                     <option value="Helvetica">Helvetica (Sans Serif Institucional)</option>
                                     <option value="DejaVu Serif">DejaVu Serif (Formal Solemne)</option>
                                     <option value="DejaVu Sans">DejaVu Sans (Limpio Moderno)</option>
@@ -1025,10 +956,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                         <!-- Global Palettes -->
                         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                            <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paleta Oficial de Colores</span>
+                            <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Colores del documento</span>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Color Primario (Azul UMSA)</label>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Color principal</label>
                                 <div class="flex items-center gap-2">
                                     <input type="color" x-model="schema.primary_color" @input="markDirty()" class="w-8 h-8 rounded border border-slate-300 cursor-pointer">
                                     <input type="text" x-model="schema.primary_color" @input="markDirty()" class="flex-1 py-1 px-2 text-xs border border-slate-300 rounded font-mono uppercase bg-white">
@@ -1036,7 +967,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </div>
 
                             <div>
-                                <label class="block text-[10px] text-slate-500 mb-0.5">Color Secundario (Dorado Institucional)</label>
+                                <label class="block text-[10px] text-slate-500 mb-0.5">Color de acento</label>
                                 <div class="flex items-center gap-2">
                                     <input type="color" x-model="schema.secondary_color" @input="markDirty()" class="w-8 h-8 rounded border border-slate-300 cursor-pointer">
                                     <input type="text" x-model="schema.secondary_color" @input="markDirty()" class="flex-1 py-1 px-2 text-xs border border-slate-300 rounded font-mono uppercase bg-white">
@@ -1060,809 +991,21 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
     </div>
 
+    <footer class="ft-studio-statusbar">
+        <span><span class="ft-studio-status-dot"></span><span x-text="elements.length + ' elementos'"></span><span class="ft-studio-status-selection" x-show="selectedElement" x-text="' · ' + (selectedElement?.name || selectedElement?.type || '')"></span></span>
+        <span class="ft-studio-shortcuts">Flechas: mover · Mayús: mover 4× · Supr: eliminar · Ctrl+S: guardar</span>
+        <span>Vista de diseño · Datos de ejemplo</span>
+    </footer>
+    <div x-cloak x-show="showVersionDialog" class="ft-studio-modal-backdrop" @click.self="closeVersionDialog()" @keydown.escape.stop="closeVersionDialog()">
+        <section x-ref="versionDialog" role="dialog" aria-modal="true" aria-labelledby="studio-version-title" tabindex="-1" class="ft-studio-modal" @keydown.tab="trapVersionFocus($event)">
+            <div class="flex justify-between items-start gap-4"><div><p class="ft-eyebrow">Historial de diseño</p><h2 id="studio-version-title" class="text-xl text-brand font-bold mt-2">Crear versión {{ $template->current_version + 1 }}.0</h2></div><button type="button" @click="closeVersionDialog()" class="ft-studio-icon-button" aria-label="Cerrar ventana">✕</button></div>
+            <p class="text-sm text-slate-600 mt-4 leading-relaxed">Se guardará este diseño como una nueva revisión y la versión {{ $template->current_version }}.0 quedará en el historial. Para los ajustes habituales, utiliza <strong>Guardar cambios</strong>.</p>
+            <label for="studio-version-summary" class="block text-sm font-semibold text-brand mt-5 mb-2">¿Qué cambió? <span class="font-normal text-slate-500">(opcional)</span></label>
+            <textarea id="studio-version-summary" x-ref="versionSummary" x-model="versionChangeSummary" maxlength="255" rows="3" class="w-full rounded-xl border border-slate-300 p-3 text-sm" placeholder="Ej.: Nueva distribución de firmas y encabezado."></textarea>
+            <div class="flex justify-end gap-3 mt-6"><button type="button" @click="closeVersionDialog()" class="ft-studio-button">Cancelar</button><button type="button" @click="saveTemplate(true)" :disabled="isSaving" class="ft-studio-save rounded-xl"><span x-text="isSaving ? 'Guardando…' : 'Crear nueva versión'"></span></button></div>
+        </section>
+    </div>
 </div>
 
-<!-- Studio Alpine.js Controller Definition -->
-<script>
-function certificateStudio(config) {
-    return {
-        templateId: config.templateId,
-        name: config.name || '',
-        category: config.category || 'institucional',
-        orientation: config.orientation || 'landscape',
-        description: config.description || '',
-        schema: config.initialSchema || {},
-        elements: config.initialElements || [],
-        assets: config.assets || {},
-
-        // Studio Interface State
-        leftTab: 'tools',
-        libFilter: 'all',
-        selectedId: null,
-        zoom: 100,
-        showGrid: false,
-        showSnapX: false,
-        showSnapY: false,
-        isDirty: false,
-        activePanel: 'canvas', // For responsive smaller screens
-
-        // Drag and Resize Tracking
-        isDragging: false,
-        isResizing: false,
-        activeElementId: null,
-        dragStartX: 0,
-        dragStartY: 0,
-        initialElementX: 0,
-        initialElementY: 0,
-        initialElementW: 0,
-        initialElementH: 0,
-
-        // History Undo / Redo
-        undoStack: [],
-        redoStack: [],
-
-        // Sample Profile Data for Simulation
-        sampleProfile: 'participant',
-        sampleData: {
-            beneficiaryName: 'Univ. Rodrigo Quispe Mamani',
-            beneficiaryDoc: '8493021 LP',
-            activityName: 'Seminario Internacional de Inteligencia Artificial y Ciencia de Datos',
-            activityHours: '40',
-            activityDates: 'del 15 al 20 de Septiembre de 2026',
-            certificateType: 'ASISTENCIA Y APROBACIÓN',
-            certificateCode: 'CERT-2026-000042',
-            issuePlaceDate: 'La Paz, 20 de Septiembre de 2026',
-            issueDateLong: '20 de Septiembre de 2026',
-            resolution: '045/2026'
-        },
-
-        init() {
-            // Ensure schema structure defaults
-            if (!this.schema.primary_color) this.schema.primary_color = '#024966';
-            if (!this.schema.secondary_color) this.schema.secondary_color = '#d4af37';
-            if (!this.schema.border_style) this.schema.border_style = 'ornamental-double';
-            if (!this.schema.font_family) this.schema.font_family = 'Helvetica';
-            if (!this.schema.text_color) this.schema.text_color = '#1e293b';
-
-            // Normalize each element in elements array
-            this.elements.forEach(el => {
-                if (!el.styles) el.styles = {};
-                if (!el.type) el.type = 'text';
-                if (typeof el.x === 'undefined') el.x = 10;
-                if (typeof el.y === 'undefined') el.y = 10;
-                if (typeof el.width === 'undefined') el.width = 80;
-                if (typeof el.height === 'undefined') el.height = 8;
-                if (el.font_size && !el.styles.font_size) el.styles.font_size = el.font_size;
-                if (el.font_weight && !el.styles.font_weight) el.styles.font_weight = el.font_weight;
-                if (el.text_color && !el.styles.text_color) el.styles.text_color = el.text_color;
-                if (el.text_align && !el.styles.text_align) el.styles.text_align = el.text_align;
-            });
-
-            // Global mousemove and mouseup listeners
-            window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-            window.addEventListener('mouseup', () => this.handleMouseUp());
-
-            // Save initial state snapshot
-            this.pushHistoryState();
-        },
-
-        // Computed getters
-        get selectedElement() {
-            return this.elements.find(e => e.id === this.selectedId) || null;
-        },
-
-        get sortedLayers() {
-            return [...this.elements].sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
-        },
-
-        get canvasWidthStyle() {
-            return this.orientation === 'landscape' ? '820px' : '580px';
-        },
-
-        get canvasHeightStyle() {
-            return this.orientation === 'landscape' ? '580px' : '820px';
-        },
-
-        get filteredAssets() {
-            const all = [
-                ...(this.assets.logos || []),
-                ...(this.assets.signatures || []),
-                ...(this.assets.stamps || []),
-                ...(this.assets.watermarks || []),
-                ...(this.assets.backgrounds || []),
-                ...(this.assets.decoratives || [])
-            ];
-            if (this.libFilter === 'all') return all;
-            return all.filter(a => a.category === this.libFilter || (a.category && a.category.includes(this.libFilter)));
-        },
-
-        // Helper type checkers
-        isTextType(type) {
-            return ['header_title', 'header_subtitle', 'certificate_type', 'beneficiary_name', 'beneficiary_document', 'body_text', 'activity_dates', 'metadata_code', 'text'].includes(type);
-        },
-
-        isImageType(type) {
-            return ['logo', 'watermark', 'stamp', 'image', 'background'].includes(type);
-        },
-
-        isQrType(type) {
-            return ['qr', 'qr_code'].includes(type);
-        },
-
-        isSignatureType(type) {
-            return ['signature', 'signature_block'].includes(type);
-        },
-
-        isLineType(type) {
-            return ['divider', 'decorative_line', 'line'].includes(type);
-        },
-
-        getElementIcon(type) {
-            const icons = {
-                header_title: '🏛️',
-                header_subtitle: '🏢',
-                certificate_type: '📜',
-                beneficiary_name: '👤',
-                beneficiary_document: '🪪',
-                body_text: '📝',
-                activity_dates: '📅',
-                metadata_code: '🔢',
-                text: '🔤',
-                logo: '🛡️',
-                signature: '✍️',
-                signature_block: '✍️',
-                stamp: '⭕',
-                watermark: '💧',
-                qr: '🏁',
-                qr_code: '🏁',
-                divider: '➖',
-                decorative_line: '➖'
-            };
-            return icons[type] || '📦';
-        },
-
-        resolveAssetUrl(el) {
-            if (el.asset_url) return el.asset_url;
-            if (el.asset_path) {
-                if (el.asset_path.startsWith('http://') || el.asset_path.startsWith('https://')) return el.asset_path;
-                return '/' + el.asset_path.replace(/^\/+/, '');
-            }
-            if (el.asset_id) {
-                const all = this.filteredAssets;
-                const found = all.find(a => a.id == el.asset_id);
-                if (found) return found.url;
-            }
-            return '';
-        },
-
-        // Text Interpolation for Preview
-        interpolateText(text) {
-            if (!text) return '';
-            return text
-                .replace(/@?\{\{beneficiario\.nombre\}\}/g, this.sampleData.beneficiaryName)
-                .replace(/@?\{\{beneficiario\.documento\}\}/g, this.sampleData.beneficiaryDoc)
-                .replace(/@?\{\{actividad\.nombre\}\}/g, this.sampleData.activityName)
-                .replace(/@?\{\{actividad\.horas\}\}/g, this.sampleData.activityHours)
-                .replace(/@?\{\{actividad\.fechas\}\}/g, this.sampleData.activityDates)
-                .replace(/@?\{\{certificado\.tipo\}\}/g, this.sampleData.certificateType)
-                .replace(/@?\{\{certificado\.codigo\}\}/g, this.sampleData.certificateCode)
-                .replace(/@?\{\{certificado\.lugar_fecha_emision\}\}/g, this.sampleData.issuePlaceDate)
-                .replace(/@?\{\{certificado\.fecha_emision_larga\}\}/g, this.sampleData.issueDateLong)
-                .replace(/@?\{\{acreditacion\.resolucion\}\}/g, this.sampleData.resolution)
-                .replace(/@?\{\{actividad\.resolucion\}\}/g, this.sampleData.resolution);
-        },
-
-        updateSampleProfile() {
-            if (this.sampleProfile === 'participant') {
-                this.sampleData.beneficiaryName = 'Univ. Rodrigo Quispe Mamani';
-                this.sampleData.beneficiaryDoc = '8493021 LP';
-                this.sampleData.certificateType = 'ASISTENCIA Y APROBACIÓN';
-            } else if (this.sampleProfile === 'speaker') {
-                this.sampleData.beneficiaryName = 'Dr. Alejandro Morales Ramos';
-                this.sampleData.beneficiaryDoc = '4729103 SC';
-                this.sampleData.certificateType = 'EXPOSITOR Y DISERTANTE MAGISTRAL';
-            } else if (this.sampleProfile === 'organizer') {
-                this.sampleData.beneficiaryName = 'Lic. Carmen Vargas Luna';
-                this.sampleData.beneficiaryDoc = '3892019 LP';
-                this.sampleData.certificateType = 'COMITÉ ORGANIZADOR';
-            } else if (this.sampleProfile === 'honor') {
-                this.sampleData.beneficiaryName = 'Univ. Valeria Torrico Siles';
-                this.sampleData.beneficiaryDoc = '9201834 CB';
-                this.sampleData.certificateType = 'EXCELENCIA ACADÉMICA DE GRADO';
-            }
-        },
-
-        // Element Selection
-        selectElement(id) {
-            this.selectedId = id;
-            if (id && window.innerWidth < 1024) {
-                this.activePanel = 'inspector';
-            }
-        },
-
-        // Drag and Drop Logic
-        startDrag(e, id) {
-            const el = this.elements.find(item => item.id === id);
-            if (!el || el.is_locked) return;
-
-            this.selectedId = id;
-            this.isDragging = true;
-            this.activeElementId = id;
-            this.dragStartX = e.clientX;
-            this.dragStartY = e.clientY;
-            this.initialElementX = el.x;
-            this.initialElementY = el.y;
-
-            e.preventDefault();
-        },
-
-        startResize(e, id) {
-            const el = this.elements.find(item => item.id === id);
-            if (!el || el.is_locked) return;
-
-            this.selectedId = id;
-            this.isResizing = true;
-            this.activeElementId = id;
-            this.dragStartX = e.clientX;
-            this.dragStartY = e.clientY;
-            this.initialElementW = el.width;
-            this.initialElementH = el.height || 10;
-
-            e.stopPropagation();
-            e.preventDefault();
-        },
-
-        handleMouseMove(e) {
-            if (!this.isDragging && !this.isResizing) return;
-            const sheet = document.getElementById('certificateCanvasSheet');
-            if (!sheet) return;
-
-            const rect = sheet.getBoundingClientRect();
-            const el = this.elements.find(item => item.id === this.activeElementId);
-            if (!el) return;
-
-            const deltaX = (e.clientX - this.dragStartX) / rect.width * 100;
-            const deltaY = (e.clientY - this.dragStartY) / rect.height * 100;
-
-            if (this.isDragging) {
-                let newX = Math.round((this.initialElementX + deltaX) * 10) / 10;
-                let newY = Math.round((this.initialElementY + deltaY) * 10) / 10;
-
-                // Bounds clamp
-                newX = Math.max(0, Math.min(100 - el.width, newX));
-                newY = Math.max(0, Math.min(95, newY));
-
-                // Snap to Center X (50%)
-                const centerX = newX + (el.width / 2);
-                if (Math.abs(centerX - 50) < 1.2) {
-                    newX = Math.round((50 - (el.width / 2)) * 10) / 10;
-                    this.showSnapX = true;
-                } else {
-                    this.showSnapX = false;
-                }
-
-                el.x = newX;
-                el.y = newY;
-                this.markDirty();
-            } else if (this.isResizing) {
-                let newW = Math.round((this.initialElementW + deltaX) * 10) / 10;
-                let newH = Math.round((this.initialElementH + deltaY) * 10) / 10;
-
-                newW = Math.max(5, Math.min(100 - el.x, newW));
-                newH = Math.max(2, Math.min(100 - el.y, newH));
-
-                el.width = newW;
-                el.height = newH;
-                this.markDirty();
-            }
-        },
-
-        handleMouseUp() {
-            if (this.isDragging || this.isResizing) {
-                this.isDragging = false;
-                this.isResizing = false;
-                this.activeElementId = null;
-                this.showSnapX = false;
-                this.showSnapY = false;
-                this.pushHistoryState();
-            }
-        },
-
-        // Keyboard navigation & Shortcuts
-        handleKeyDown(e) {
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
-
-            // Undo: Ctrl+Z
-            if (e.ctrlKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                this.undo();
-                return;
-            }
-
-            // Redo: Ctrl+Y
-            if (e.ctrlKey && e.key.toLowerCase() === 'y') {
-                e.preventDefault();
-                this.redo();
-                return;
-            }
-
-            if (!this.selectedElement || this.selectedElement.is_locked) return;
-
-            const step = e.shiftKey ? 2 : 0.5;
-
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                this.selectedElement.x = Math.max(0, Math.round((this.selectedElement.x - step) * 10) / 10);
-                this.markDirty();
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                this.selectedElement.x = Math.min(100 - this.selectedElement.width, Math.round((this.selectedElement.x + step) * 10) / 10);
-                this.markDirty();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                this.selectedElement.y = Math.max(0, Math.round((this.selectedElement.y - step) * 10) / 10);
-                this.markDirty();
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                this.selectedElement.y = Math.min(95, Math.round((this.selectedElement.y + step) * 10) / 10);
-                this.markDirty();
-            } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (!this.selectedElement.is_mandatory) {
-                    e.preventDefault();
-                    this.deleteElement(this.selectedElement.id);
-                }
-            }
-        },
-
-        // Element Insertion Handlers
-        addTextElement(type, defaultContent, fontSize = 12, isBold = false, fontStyle = 'normal') {
-            const id = 'el_' + Date.now();
-            const newEl = {
-                id: id,
-                type: type,
-                name: defaultContent.slice(0, 20).toUpperCase(),
-                x: 10,
-                y: 40,
-                width: 80,
-                height: 8,
-                z_index: 20,
-                opacity: 1,
-                rotation: 0,
-                is_visible: true,
-                is_locked: false,
-                is_mandatory: false,
-                content: defaultContent,
-                styles: {
-                    font_size: fontSize,
-                    font_weight: isBold ? 'bold' : 'normal',
-                    font_style: fontStyle,
-                    text_align: 'center',
-                    text_color: this.schema.text_color || '#1e293b'
-                }
-            };
-
-            this.elements.push(newEl);
-            this.selectedId = id;
-            this.pushHistoryState();
-            this.markDirty();
-            if (window.innerWidth < 1024) this.activePanel = 'canvas';
-        },
-
-        addQrElement() {
-            const id = 'el_qr_' + Date.now();
-            const newEl = {
-                id: id,
-                type: 'qr',
-                name: 'CÓDIGO QR OFICIAL',
-                x: 82,
-                y: 72,
-                width: 12,
-                height: 18,
-                z_index: 25,
-                opacity: 1,
-                rotation: 0,
-                is_visible: true,
-                is_locked: false,
-                is_mandatory: false,
-                styles: {}
-            };
-            this.elements.push(newEl);
-            this.selectedId = id;
-            this.pushHistoryState();
-            this.markDirty();
-            if (window.innerWidth < 1024) this.activePanel = 'canvas';
-        },
-
-        addSignatureBlock() {
-            const id = 'el_sig_' + Date.now();
-            const firstSig = (this.assets.signatures && this.assets.signatures[0]) || null;
-            const newEl = {
-                id: id,
-                type: 'signature',
-                name: 'BLOQUE DE FIRMA OFICIAL',
-                x: 35,
-                y: 74,
-                width: 30,
-                height: 16,
-                z_index: 22,
-                opacity: 1,
-                rotation: 0,
-                is_visible: true,
-                is_locked: false,
-                is_mandatory: false,
-                asset_id: firstSig ? firstSig.id : null,
-                asset_url: firstSig ? firstSig.url : '',
-                content: 'Ing. Aniceto Velarde Forest',
-                subtitle: 'Vicedecano de Facultad',
-                styles: {}
-            };
-            this.elements.push(newEl);
-            this.selectedId = id;
-            this.pushHistoryState();
-            this.markDirty();
-            if (window.innerWidth < 1024) this.activePanel = 'canvas';
-        },
-
-        addDecorativeLine() {
-            const id = 'el_line_' + Date.now();
-            const newEl = {
-                id: id,
-                type: 'divider',
-                name: 'LÍNEA ORNAMENTAL',
-                x: 25,
-                y: 35,
-                width: 50,
-                height: 2,
-                z_index: 15,
-                opacity: 0.8,
-                rotation: 0,
-                is_visible: true,
-                is_locked: false,
-                is_mandatory: false,
-                styles: { height: 2 }
-            };
-            this.elements.push(newEl);
-            this.selectedId = id;
-            this.pushHistoryState();
-            this.markDirty();
-            if (window.innerWidth < 1024) this.activePanel = 'canvas';
-        },
-
-        insertAssetToCanvas(asset) {
-            const id = 'el_asset_' + Date.now();
-            const isLogo = asset.category === 'logo';
-            const isWatermark = asset.category === 'watermark';
-            const isStamp = asset.category === 'stamp';
-
-            const newEl = {
-                id: id,
-                type: isLogo ? 'logo' : (isWatermark ? 'watermark' : (isStamp ? 'stamp' : 'image')),
-                name: asset.name,
-                x: isWatermark ? 25 : (isLogo ? 8 : 75),
-                y: isWatermark ? 25 : 8,
-                width: isWatermark ? 50 : 12,
-                height: isWatermark ? 50 : 12,
-                z_index: isWatermark ? 2 : 25,
-                opacity: isWatermark ? 0.08 : 1,
-                rotation: 0,
-                is_visible: true,
-                is_locked: false,
-                is_mandatory: false,
-                asset_id: asset.id,
-                asset_url: asset.url,
-                styles: {
-                    object_fit: 'contain'
-                }
-            };
-
-            this.elements.push(newEl);
-            this.selectedId = id;
-            this.pushHistoryState();
-            this.markDirty();
-            if (window.innerWidth < 1024) this.activePanel = 'canvas';
-        },
-
-        // Element Actions
-        deleteElement(id) {
-            const index = this.elements.findIndex(e => e.id === id);
-            if (index !== -1 && !this.elements[index].is_mandatory) {
-                this.elements.splice(index, 1);
-                if (this.selectedId === id) this.selectedId = null;
-                this.pushHistoryState();
-                this.markDirty();
-            }
-        },
-
-        duplicateElement(id) {
-            const original = this.elements.find(e => e.id === id);
-            if (!original) return;
-
-            const copy = JSON.parse(JSON.stringify(original));
-            copy.id = 'el_' + Date.now();
-            copy.name = (copy.name || copy.type) + ' (Copia)';
-            copy.x = Math.min(90, copy.x + 2);
-            copy.y = Math.min(90, copy.y + 2);
-            copy.is_mandatory = false;
-
-            this.elements.push(copy);
-            this.selectedId = copy.id;
-            this.pushHistoryState();
-            this.markDirty();
-        },
-
-        toggleVisibility(id) {
-            const el = this.elements.find(e => e.id === id);
-            if (el) {
-                el.is_visible = el.is_visible === false ? true : false;
-                this.markDirty();
-            }
-        },
-
-        toggleLock(id) {
-            const el = this.elements.find(e => e.id === id);
-            if (el) {
-                el.is_locked = !el.is_locked;
-                this.markDirty();
-            }
-        },
-
-        alignElementCenter(axis) {
-            if (!this.selectedElement) return;
-            if (axis === 'x') {
-                this.selectedElement.x = Math.round(((100 - this.selectedElement.width) / 2) * 10) / 10;
-            } else if (axis === 'y') {
-                this.selectedElement.y = Math.round(((100 - (this.selectedElement.height || 10)) / 2) * 10) / 10;
-            }
-            this.pushHistoryState();
-            this.markDirty();
-        },
-
-        bringToFront(id) {
-            const el = this.elements.find(e => e.id === id);
-            if (!el) return;
-            const maxZ = Math.max(...this.elements.map(e => e.z_index || 10), 10);
-            el.z_index = maxZ + 1;
-            this.pushHistoryState();
-            this.markDirty();
-        },
-
-        sendToBack(id) {
-            const el = this.elements.find(e => e.id === id);
-            if (!el) return;
-            const minZ = Math.min(...this.elements.map(e => e.z_index || 10), 10);
-            el.z_index = Math.max(1, minZ - 1);
-            this.pushHistoryState();
-            this.markDirty();
-        },
-
-        changeFontSize(delta) {
-            if (!this.selectedElement) return;
-            if (!this.selectedElement.styles) this.selectedElement.styles = {};
-            const cur = Number(this.selectedElement.styles.font_size || this.selectedElement.font_size || 12);
-            const updated = Math.max(6, Math.min(72, cur + delta));
-            this.selectedElement.styles.font_size = updated;
-            this.selectedElement.font_size = updated;
-            this.markDirty();
-        },
-
-        setTextAlign(align) {
-            if (!this.selectedElement) return;
-            if (!this.selectedElement.styles) this.selectedElement.styles = {};
-            this.selectedElement.styles.text_align = align;
-            this.selectedElement.text_align = align;
-            this.markDirty();
-        },
-
-        insertVariable(variable) {
-            if (!this.selectedElement) return;
-            const current = (this.selectedElement.content || '').trim();
-            this.selectedElement.content = current ? (current + ' ' + variable) : variable;
-            this.markDirty();
-        },
-
-        toggleOrientation() {
-            this.orientation = this.orientation === 'landscape' ? 'portrait' : 'landscape';
-            this.markDirty();
-        },
-
-        autoAdaptLayout(forceOrientation = null) {
-            const targetOrientation = forceOrientation || this.orientation;
-            this.orientation = targetOrientation;
-
-            let sigCount = 0;
-            let logoCount = 0;
-
-            this.elements.forEach(el => {
-                if (this.isSignatureType(el.type)) sigCount++;
-                if (el.type === 'logo') logoCount++;
-            });
-
-            let currentSigIndex = 0;
-            let currentLogoIndex = 0;
-
-            this.elements.forEach(el => {
-                const type = el.type;
-
-                if (targetOrientation === 'portrait') {
-                    // Portrait layout adaptations
-                    if (type === 'logo') {
-                        if (currentLogoIndex === 0 && logoCount === 1) {
-                            el.x = 42; el.y = 5.5; el.width = 16; el.height = 11;
-                        } else if (currentLogoIndex === 0) {
-                            el.x = 10; el.y = 6; el.width = 13; el.height = 12;
-                        } else {
-                            el.x = 77; el.y = 6; el.width = 13; el.height = 12;
-                        }
-                        currentLogoIndex++;
-                    } else if (type === 'header_title') {
-                        el.x = 16; el.y = 6.5; el.width = 68; el.height = 4;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 13;
-                    } else if (type === 'header_subtitle') {
-                        el.x = 16; el.y = 11; el.width = 68; el.height = 3.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11;
-                    } else if (type === 'certificate_type') {
-                        el.x = 10; el.y = 24.5; el.width = 80; el.height = 6.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 23;
-                    } else if (type === 'beneficiary_name') {
-                        el.x = 10; el.y = 32.5; el.width = 80; el.height = 7;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 22;
-                    } else if (type === 'beneficiary_document') {
-                        el.x = 25; el.y = 40; el.width = 50; el.height = 3;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11;
-                    } else if (type === 'body_text') {
-                        el.x = 12; el.y = 44.5; el.width = 76; el.height = 14;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11.5;
-                    } else if (type === 'activity_dates' || (el.content && el.content.includes('fecha_emision'))) {
-                        el.x = 15; el.y = 63.5; el.width = 70; el.height = 4;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 10;
-                    } else if (this.isSignatureType(type)) {
-                        if (sigCount >= 2) {
-                            if (currentSigIndex === 0) {
-                                el.x = 14; el.y = 71; el.width = 33; el.height = 13;
-                            } else {
-                                el.x = 53; el.y = 71; el.width = 33; el.height = 13;
-                            }
-                        } else {
-                            el.x = 34; el.y = 71; el.width = 32; el.height = 13;
-                        }
-                        currentSigIndex++;
-                    } else if (type === 'stamp') {
-                        el.x = 14; el.y = 85.5; el.width = 13; el.height = 10.5;
-                    } else if (this.isQrType(type)) {
-                        el.x = 30; el.y = 85.5; el.width = 56; el.height = 10.5;
-                    } else if (type === 'watermark') {
-                        el.x = 24; el.y = 27; el.width = 52; el.height = 44;
-                        el.opacity = 0.07;
-                    } else if (this.isLineType(type)) {
-                        el.x = 20; el.width = 60;
-                    } else if (el.content && el.content.includes('otorgan el presente')) {
-                        el.x = 12; el.y = 18; el.width = 76; el.height = 5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 10.5;
-                    } else if (el.content && el.content.includes('resolucion')) {
-                        el.x = 15; el.y = 59.5; el.width = 70; el.height = 3.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 9.5;
-                    }
-                } else {
-                    // Landscape layout adaptations
-                    if (type === 'logo') {
-                        if (currentLogoIndex === 0 && logoCount === 1) {
-                            el.x = 8; el.y = 6.5; el.width = 10; el.height = 14;
-                        } else if (currentLogoIndex === 0) {
-                            el.x = 8; el.y = 6.5; el.width = 10; el.height = 14;
-                        } else {
-                            el.x = 82; el.y = 6.5; el.width = 10; el.height = 14;
-                        }
-                        currentLogoIndex++;
-                    } else if (type === 'header_title') {
-                        el.x = 20; el.y = 6.5; el.width = 60; el.height = 5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 13;
-                    } else if (type === 'header_subtitle') {
-                        el.x = 20; el.y = 12; el.width = 60; el.height = 4.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11;
-                    } else if (type === 'certificate_type') {
-                        el.x = 15; el.y = 19; el.width = 70; el.height = 8.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 23;
-                    } else if (type === 'beneficiary_name') {
-                        el.x = 10; el.y = 29; el.width = 80; el.height = 8.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 22;
-                    } else if (type === 'beneficiary_document') {
-                        el.x = 25; el.y = 38; el.width = 50; el.height = 3.5;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11;
-                    } else if (type === 'body_text') {
-                        el.x = 12; el.y = 43; el.width = 76; el.height = 16;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 11.5;
-                    } else if (type === 'activity_dates' || (el.content && el.content.includes('fecha_emision'))) {
-                        el.x = 15; el.y = 60.5; el.width = 70; el.height = 4;
-                        if (!el.styles) el.styles = {};
-                        el.styles.font_size = 10;
-                    } else if (this.isSignatureType(type)) {
-                        if (sigCount >= 2) {
-                            if (currentSigIndex === 0) {
-                                el.x = 16; el.y = 68; el.width = 28; el.height = 18;
-                            } else {
-                                el.x = 56; el.y = 68; el.width = 28; el.height = 18;
-                            }
-                        } else {
-                            el.x = 36; el.y = 68; el.width = 28; el.height = 18;
-                        }
-                        currentSigIndex++;
-                    } else if (type === 'stamp') {
-                        el.x = 44; el.y = 69; el.width = 12; el.height = 17;
-                    } else if (this.isQrType(type)) {
-                        el.x = 84; el.y = 69; el.width = 10; el.height = 18;
-                    } else if (type === 'watermark') {
-                        el.x = 30; el.y = 20; el.width = 40; el.height = 55;
-                        el.opacity = 0.07;
-                    } else if (this.isLineType(type)) {
-                        el.x = 25; el.width = 50;
-                    }
-                }
-            });
-
-            this.pushHistoryState();
-            this.markDirty();
-        },
-
-        setZoom(val) {
-            this.zoom = Math.max(50, Math.min(150, val));
-        },
-
-        markDirty() {
-            this.isDirty = true;
-        },
-
-        // Undo / Redo
-        pushHistoryState() {
-            const snapshot = JSON.stringify(this.elements);
-            this.undoStack.push(snapshot);
-            if (this.undoStack.length > 30) this.undoStack.shift();
-            this.redoStack = [];
-        },
-
-        undo() {
-            if (this.undoStack.length <= 1) return;
-            const current = this.undoStack.pop();
-            this.redoStack.push(current);
-            const prev = this.undoStack[this.undoStack.length - 1];
-            this.elements = JSON.parse(prev);
-            this.markDirty();
-        },
-
-        redo() {
-            if (this.redoStack.length === 0) return;
-            const next = this.redoStack.pop();
-            this.undoStack.push(next);
-            this.elements = JSON.parse(next);
-            this.markDirty();
-        },
-
-        // Submission
-        saveTemplate(createNewVersion = false) {
-            const fullSchema = {
-                ...this.schema,
-                elements: this.elements
-            };
-
-            document.getElementById('createNewVersionInput').value = createNewVersion ? '1' : '0';
-            document.getElementById('schemaJsonInput').value = JSON.stringify(fullSchema);
-            document.getElementById('studioForm').submit();
-        }
-    };
-}
-</script>
+@include('templates.studio-controller')
 @endsection

@@ -24,7 +24,7 @@
                 <div class="text-[10px] font-extrabold uppercase tracking-widest text-amber-200">Facultad de Tecnología • UMSA</div>
                 <h1 class="text-2xl sm:text-3xl font-black tracking-tight uppercase">Certificado Expirado</h1>
                 <p class="text-xs sm:text-sm text-amber-100 mt-1 max-w-md mx-auto">
-                    El documento fue auténtico pero ha superado el periodo reglamentario de vigencia de 3 años a partir de su emisión institucional.
+                    El documento fue auténtico pero ha superado el periodo reglamentario de vigencia a partir de su emisión institucional.
                 </p>
             </div>
         @else
@@ -35,7 +35,11 @@
                 <div class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-200">Facultad de Tecnología • UMSA</div>
                 <h1 class="text-2xl sm:text-3xl font-black tracking-tight uppercase">Certificado Oficial Válido</h1>
                 <p class="text-xs sm:text-sm text-emerald-100 mt-1 max-w-md mx-auto">
-                    Documento debidamente registrado y validado en la base de datos oficial del Vicedecanato de la Facultad de Tecnología.
+                    @if($certificate->isPermanent())
+                        Documento debidamente registrado y validado en la base de datos oficial del Vicedecanato de la Facultad de Tecnología. Posee vigencia permanente e indefinida.
+                    @else
+                        Documento debidamente registrado y validado en la base de datos oficial del Vicedecanato de la Facultad de Tecnología.
+                    @endif
                 </p>
             </div>
         @endif
@@ -65,6 +69,11 @@
                             <span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5 inline-block"></span>
                             EXPIRADO
                         </span>
+                    @elseif($certificate->isPermanent())
+                        <span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 inline-block"></span>
+                            VIGENTE • PERMANENTE
+                        </span>
                     @else
                         <span class="inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 inline-block"></span>
@@ -74,6 +83,43 @@
                 </div>
             </div>
 
+            <!-- Placa Oficial de Calificación Académica (Si Aplica y está activado en Configuración) -->
+            @if($certificate->hasScore() && ($settings['portal_verify_show_score_badge'] ?? '1') == '1')
+                @php
+                    $minPassing = (float) ($certificate->certificateType?->min_passing_score ?? 51.0);
+                    $isPassed = $certificate->score === null || (float) $certificate->score >= $minPassing;
+                @endphp
+                <div class="p-5 sm:p-6 {{ $isPassed ? 'bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border-blue-200/80' : 'bg-gradient-to-r from-amber-50/90 via-red-50/70 to-slate-50 border-red-200/80' }} rounded-2xl border-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl {{ $isPassed ? 'bg-brand' : 'bg-amber-600' }} text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+                            {{ $isPassed ? '🏆' : '⚠️' }}
+                        </div>
+                        <div>
+                            <span class="text-[11px] font-extrabold uppercase tracking-wider {{ $isPassed ? 'text-blue-900' : 'text-amber-900' }} block">
+                                {{ $isPassed ? 'Calificación Académica Acreditada' : 'Calificación Registrada (Insuficiente)' }}
+                            </span>
+                            <div class="flex items-baseline gap-2 mt-0.5">
+                                <span class="text-2xl font-black {{ $isPassed ? 'text-brand' : 'text-amber-800' }} tracking-tight">{{ $certificate->formatted_score }}</span>
+                                @if($certificate->score !== null && !empty($certificate->certificateType?->score_scale))
+                                    <span class="text-xs text-slate-500 font-medium">({{ $certificate->certificateType->score_scale }})</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        @if($isPassed)
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✓ Evaluación Oficial Aprobada
+                            </span>
+                        @else
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                ⚠️ Nota Menor a la Mínima ({{ $minPassing }} pts)
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <!-- Datos del Beneficiario y Actividad -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-200/60">
                 <div>
@@ -82,10 +128,15 @@
                     <p class="text-xs text-slate-500 mt-0.5">{{ $certificate->beneficiary->formatted_document }}</p>
                 </div>
 
-                <div>
-                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Modalidad de Certificación</span>
-                    <p class="text-base font-bold text-brand">{{ $certificate->certificateType->name }}</p>
-                </div>
+                @if(($settings['portal_verify_show_type_badge'] ?? '1') == '1')
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Modalidad de Certificación</span>
+                        <p class="text-base font-bold text-brand flex items-center gap-1.5">
+                            <span>{{ $certificate->certificateType->icon ?? '📜' }}</span>
+                            <span>{{ $certificate->certificateType->name }}</span>
+                        </p>
+                    </div>
+                @endif
 
                 <div class="md:col-span-2">
                     <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Actividad Académica Registrada</span>
@@ -106,11 +157,27 @@
                     <span class="text-sm font-bold text-slate-800">{{ \Carbon\Carbon::parse($certificate->issue_date)->translatedFormat('d/m/Y') }}</span>
                 </div>
 
-                <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
-                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Fecha de Vencimiento</span>
-                    <span class="text-sm font-bold text-slate-800">{{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d/m/Y') }}</span>
-                    <span class="text-[10px] text-slate-400 block">(3 años calendario)</span>
-                </div>
+                @if(($settings['portal_verify_show_validity_badge'] ?? '1') == '1')
+                    @if($certificate->isPermanent())
+                        <div class="p-4 ft-panel bg-emerald-50/70 rounded-2xl border border-emerald-200">
+                            <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Vigencia Institucional</span>
+                            <span class="text-sm font-black text-emerald-900 flex items-center gap-1 mt-0.5">
+                                <span>♾️ Permanente</span>
+                            </span>
+                            <span class="text-[10px] text-emerald-700 block font-medium">No expira (Validez vitalicia)</span>
+                        </div>
+                    @else
+                        <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Fecha de Vencimiento</span>
+                            <span class="text-sm font-bold text-slate-800">{{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d/m/Y') }}</span>
+                            @if($certificate->isExpired())
+                                <span class="text-[10px] text-red-600 block font-bold">Documento Expirado</span>
+                            @else
+                                <span class="text-[10px] text-slate-400 block">Vigencia reglamentaria</span>
+                            @endif
+                        </div>
+                    @endif
+                @endif
 
                 <div class="p-4 ft-panel bg-white rounded-2xl border border-slate-200">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Autoridad Emisora</span>
@@ -122,6 +189,13 @@
                 <div class="p-4 bg-red-50 rounded-2xl border border-red-200 text-xs text-red-900">
                     <strong class="block font-bold mb-1">Motivo institucional de revocación:</strong>
                     {{ $certificate->revocation_reason }}
+                </div>
+            @endif
+
+            @if(!empty($settings['portal_verify_footer_note']))
+                <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center gap-2.5">
+                    <span class="text-base text-brand">🏛️</span>
+                    <span>{{ $settings['portal_verify_footer_note'] }}</span>
                 </div>
             @endif
 

@@ -8,8 +8,6 @@ use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
-use App\Models\InstitutionalAsset;
-use App\Models\Setting;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
 use Carbon\Carbon;
@@ -29,14 +27,14 @@ class CertificateController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('certificate_code', 'like', "%{$search}%")
-                  ->orWhereHas('beneficiary', function ($b) use ($search) {
-                      $b->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('document_number', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('activity', function ($a) use ($search) {
-                      $a->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('beneficiary', function ($b) use ($search) {
+                        $b->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('document_number', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('activity', function ($a) use ($search) {
+                        $a->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -44,16 +42,20 @@ class CertificateController extends Controller
             $now = Carbon::now()->startOfDay();
             if ($status === 'VIGENTE') {
                 $query->whereNull('revoked_at')
-                      ->where('status', '!=', Certificate::STATUS_REVOCADO)
-                      ->where('expiration_date', '>=', $now);
+                    ->where('status', '!=', Certificate::STATUS_REVOCADO)
+                    ->where(function ($q) use ($now) {
+                        $q->whereNull('expiration_date')
+                            ->orWhere('expiration_date', '>=', $now);
+                    });
             } elseif ($status === 'EXPIRADO') {
                 $query->whereNull('revoked_at')
-                      ->where('status', '!=', Certificate::STATUS_REVOCADO)
-                      ->where('expiration_date', '<', $now);
+                    ->where('status', '!=', Certificate::STATUS_REVOCADO)
+                    ->whereNotNull('expiration_date')
+                    ->where('expiration_date', '<', $now);
             } elseif ($status === 'REVOCADO') {
                 $query->where(function ($q) {
                     $q->whereNotNull('revoked_at')
-                      ->orWhere('status', Certificate::STATUS_REVOCADO);
+                        ->orWhere('status', Certificate::STATUS_REVOCADO);
                 });
             }
         }
@@ -75,19 +77,10 @@ class CertificateController extends Controller
 
     public function create(Request $request)
     {
-        $beneficiaries = Beneficiary::orderBy('last_name')->orderBy('first_name')->get();
-        $activities = Activity::with('certificateConfig')->orderBy('start_date', 'desc')->get();
-        $types = CertificateType::where('is_active', true)->get();
-        $templates = CertificateTemplate::where('is_active', true)->orderBy('is_default', 'desc')->get();
-        $authorities = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_SIGNATURE)->get();
-        $logos = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_LOGO)->orderBy('display_order')->get();
-        $watermarks = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_WATERMARK)->get();
-        $stamps = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_STAMP)->get();
-
-        $selectedActivityId = $request->input('activity_id');
-        $selectedBeneficiaryId = $request->input('beneficiary_id');
-
-        return view('certificates.create', compact('beneficiaries', 'activities', 'types', 'templates', 'authorities', 'logos', 'watermarks', 'stamps', 'selectedActivityId', 'selectedBeneficiaryId'));
+        return redirect()->route('activities.index')->with(
+            'info',
+            'La emisión de certificados oficiales se gestiona directamente desde cada Actividad Académica a través de su nómina de participantes.'
+        );
     }
 
     public function store(Request $request)
@@ -98,6 +91,11 @@ class CertificateController extends Controller
             'certificate_type_id' => ['required', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'issue_date' => ['required', 'date'],
+            'validity_type' => ['nullable', 'string', 'in:permanent,temporal,custom'],
+            'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'expiration_date' => ['nullable', 'date'],
+            'score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'score_label' => ['nullable', 'string', 'max:100'],
             'special_note' => ['nullable', 'string', 'max:500'],
             'logo_left_id' => ['nullable', 'exists:institutional_assets,id'],
             'logo_right_id' => ['nullable', 'exists:institutional_assets,id'],
@@ -115,21 +113,29 @@ class CertificateController extends Controller
             return back()->withInput()->with('error', 'Ya existe un certificado activo emitido para este beneficiario en esta actividad con el mismo tipo.');
         }
 
+        $certType = CertificateType::find($validated['certificate_type_id']);
+        if ($certType && $certType->supportsScore()) {
+            $minScore = (float) ($certType->min_passing_score ?? 51.0);
+            if (isset($validated['score']) && (float) $validated['score'] < $minScore) {
+                return back()->withInput()->with('error', "No se puede emitir un {$certType->name} con una calificación de {$validated['score']} puntos (reprobado). La nota mínima es de {$minScore} pts.");
+            }
+        }
+
         $customFields = [];
-        if (!empty($validated['special_note'])) {
+        if (! empty($validated['special_note'])) {
             $customFields['nota_especial'] = $validated['special_note'];
         }
-        if (!empty($validated['logo_left_id'])) {
+        if (! empty($validated['logo_left_id'])) {
             $customFields['logo_left_id'] = $validated['logo_left_id'];
         }
-        if (!empty($validated['logo_right_id'])) {
+        if (! empty($validated['logo_right_id'])) {
             $customFields['logo_right_id'] = $validated['logo_right_id'];
         }
-        if (!empty($validated['watermark_asset_id'])) {
+        if (! empty($validated['watermark_asset_id'])) {
             $customFields['watermark_asset_id'] = $validated['watermark_asset_id'];
         }
 
-        if (!empty($customFields)) {
+        if (! empty($customFields)) {
             $validated['custom_fields_data'] = $customFields;
         }
 
@@ -141,12 +147,14 @@ class CertificateController extends Controller
     public function show(Certificate $certificate)
     {
         $certificate->load(['beneficiary', 'activity', 'certificateType', 'certificateTemplate', 'templateVersion', 'generatedBy', 'revokedBy', 'verifications']);
+
         return view('certificates.show', compact('certificate'));
     }
 
     public function previewPdf(Certificate $certificate)
     {
         $pdf = $this->pdfService->render($certificate);
+
         return $pdf->stream("{$certificate->certificate_code}.pdf");
     }
 
@@ -154,6 +162,7 @@ class CertificateController extends Controller
     {
         AuditLog::log('certificate_download', "Descarga de PDF para {$certificate->certificate_code}", $certificate);
         $pdf = $this->pdfService->render($certificate);
+
         return $pdf->download("{$certificate->certificate_code}.pdf");
     }
 
@@ -165,6 +174,11 @@ class CertificateController extends Controller
             'certificate_type_id' => ['required', 'exists:certificate_types,id'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'issue_date' => ['required', 'date'],
+            'validity_type' => ['nullable', 'string', 'in:permanent,temporal,custom'],
+            'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'expiration_date' => ['nullable', 'date'],
+            'score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'score_label' => ['nullable', 'string', 'max:100'],
             'special_note' => ['nullable', 'string', 'max:500'],
             'logo_left_id' => ['nullable', 'exists:institutional_assets,id'],
             'logo_right_id' => ['nullable', 'exists:institutional_assets,id'],
@@ -174,7 +188,7 @@ class CertificateController extends Controller
         $beneficiary = Beneficiary::findOrFail($validated['beneficiary_id']);
         $activity = Activity::findOrFail($validated['activity_id']);
         $type = CertificateType::findOrFail($validated['certificate_type_id']);
-        
+
         $templateId = $validated['certificate_template_id']
             ?? $activity->certificateConfig?->certificate_template_id
             ?? CertificateTemplate::where('is_default', true)->first()?->id
@@ -184,24 +198,40 @@ class CertificateController extends Controller
         $template = CertificateTemplate::findOrFail($templateId);
 
         $customFields = [];
-        if (!empty($validated['special_note'])) {
+        if (! empty($validated['special_note'])) {
             $customFields['nota_especial'] = $validated['special_note'];
         }
-        if (!empty($validated['logo_left_id'])) {
+        if (! empty($validated['logo_left_id'])) {
             $customFields['logo_left_id'] = $validated['logo_left_id'];
         }
-        if (!empty($validated['logo_right_id'])) {
+        if (! empty($validated['logo_right_id'])) {
             $customFields['logo_right_id'] = $validated['logo_right_id'];
         }
-        if (!empty($validated['watermark_asset_id'])) {
+        if (! empty($validated['watermark_asset_id'])) {
             $customFields['watermark_asset_id'] = $validated['watermark_asset_id'];
         }
 
+        $validityType = $validated['validity_type']
+            ?? ($activity->certificateConfig?->validity_mode ?? ($type->validity_mode ?? 'temporal'));
+
+        $expirationDate = null;
+        if ($validityType !== 'permanent') {
+            if (! empty($validated['expiration_date'])) {
+                $expirationDate = $validated['expiration_date'];
+            } else {
+                $years = (int) ($validated['validity_years'] ?? ($activity->certificateConfig?->validity_years ?? ($type->default_validity_years ?? 3)));
+                $expirationDate = Carbon::parse($validated['issue_date'])->addYears($years)->toDateString();
+            }
+        }
+
         $dummyCert = new Certificate([
-            'certificate_code' => 'VISTA-PREVIA-' . date('Y'),
+            'certificate_code' => 'VISTA-PREVIA-'.date('Y'),
             'verification_token' => '00000000-0000-0000-0000-000000000000',
             'issue_date' => $validated['issue_date'],
-            'expiration_date' => Carbon::parse($validated['issue_date'])->addYears(3)->toDateString(),
+            'expiration_date' => $expirationDate,
+            'validity_type' => $validityType,
+            'score' => isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null,
+            'score_label' => $validated['score_label'] ?? null,
             'status' => Certificate::STATUS_VIGENTE,
             'custom_fields_data' => $customFields,
         ]);
@@ -211,13 +241,14 @@ class CertificateController extends Controller
         $dummyCert->setRelation('certificateTemplate', $template);
 
         $pdf = $this->pdfService->render($dummyCert);
+
         return $pdf->stream('vista-previa-borrador.pdf');
     }
 
     public function revoke(Request $request, Certificate $certificate)
     {
         // Solo administradores pueden revocar
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             abort(403, 'No tiene permisos para anular o revocar certificados.');
         }
 

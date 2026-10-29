@@ -276,8 +276,16 @@
                 <td class="info-box">
                     <div>Código: <span class="certificate-code">{{ $certificate->certificate_code }}</span></div>
                     <div>Emisión: {{ \Carbon\Carbon::parse($certificate->issue_date)->translatedFormat('d \d\e F \d\e Y') }}</div>
-                    <div>Vigencia: Hasta {{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d \d\e F \d\e Y') }}</div>
-                    <div style="margin-top: 3px;"><span class="validity-tag">✓ Vigencia Institucional (3 Años)</span></div>
+                    @if($certificate->isPermanent())
+                        <div>Vigencia: Documento Permanente</div>
+                        <div style="margin-top: 3px;"><span class="validity-tag">✓ Vigencia Vitalicia</span></div>
+                    @else
+                        <div>Vigencia: Hasta {{ \Carbon\Carbon::parse($certificate->expiration_date)->translatedFormat('d \d\e F \d\e Y') }}</div>
+                        <div style="margin-top: 3px;"><span class="validity-tag">✓ Vigencia Temporal</span></div>
+                    @endif
+                    @if($certificate->hasScore())
+                        <div style="margin-top: 3px; font-weight: bold; color: #b45309; font-size: 8.5px;">Calificación: {{ $certificate->formatted_score }}</div>
+                    @endif
                     <div style="font-size: 8px; color: #94a3b8; margin-top: 2px;">{{ $settings['institution_city'] ?? 'La Paz - Bolivia' }}</div>
                 </td>
             </tr>
