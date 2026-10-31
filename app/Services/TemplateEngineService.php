@@ -6,6 +6,8 @@ use Carbon\Carbon;
 
 class TemplateEngineService
 {
+    public const TEXT_ELEMENT_TYPES = ['text', 'header_title', 'header_subtitle', 'certificate_type', 'beneficiary_name', 'beneficiary_document', 'body_text', 'activity_dates', 'metadata_code'];
+
     /**
      * Reemplaza variables dinámicas en el texto del certificado.
      * Ejemplo: {{beneficiario.nombre}}, {{actividad.horas}}, etc.
@@ -799,25 +801,25 @@ class TemplateEngineService
                     $el['styles'] = [];
                 }
                 if (isset($el['font_size'])) {
-                    $el['styles']['font_size'] = (int) $el['font_size'];
+                    $el['styles']['font_size'] ??= (float) $el['font_size'];
                 }
                 if (isset($el['font_weight'])) {
-                    $el['styles']['font_weight'] = $el['font_weight'];
+                    $el['styles']['font_weight'] ??= $el['font_weight'];
                 }
                 if (isset($el['font_style'])) {
-                    $el['styles']['font_style'] = $el['font_style'];
+                    $el['styles']['font_style'] ??= $el['font_style'];
                 }
                 if (isset($el['text_align'])) {
-                    $el['styles']['text_align'] = $el['text_align'];
+                    $el['styles']['text_align'] ??= $el['text_align'];
                 }
                 if (isset($el['text_color'])) {
-                    $el['styles']['text_color'] = $el['text_color'];
+                    $el['styles']['text_color'] ??= $el['text_color'];
                 }
                 if (isset($el['font_family'])) {
-                    $el['styles']['font_family'] = $el['font_family'];
+                    $el['styles']['font_family'] ??= $el['font_family'];
                 }
                 if (isset($el['object_fit'])) {
-                    $el['styles']['object_fit'] = $el['object_fit'];
+                    $el['styles']['object_fit'] ??= $el['object_fit'];
                 }
 
                 if (empty($el['asset_url']) && ! empty($el['asset_path'])) {

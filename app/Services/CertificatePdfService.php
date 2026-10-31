@@ -146,7 +146,7 @@ class CertificatePdfService
             ];
 
             foreach ($schema['elements'] as &$el) {
-                if (in_array($el['type'] ?? '', ['logo', 'signature', 'stamp', 'watermark', 'image'])) {
+                if (in_array($el['type'] ?? '', ['logo', 'signature', 'signature_block', 'stamp', 'watermark', 'image', 'background'])) {
                     if (empty($el['asset_base64'])) {
                         $ref = $el['asset_id'] ?? $el['asset_path'] ?? null;
                         if (! $ref && ($el['type'] ?? '') === 'watermark') {
@@ -156,7 +156,7 @@ class CertificatePdfService
                             $el['asset_base64'] = $this->assetManager->getAssetBase64($ref);
                         }
                     }
-                } elseif (($el['type'] ?? '') === 'text' && empty($el['resolved_content']) && ! empty($el['content'])) {
+                } elseif (in_array($el['type'] ?? '', TemplateEngineService::TEXT_ELEMENT_TYPES, true) && empty($el['resolved_content']) && ! empty($el['content'])) {
                     $el['resolved_content'] = $this->templateEngine->interpolate($el['content'], $context);
                 }
             }
@@ -168,8 +168,10 @@ class CertificatePdfService
             $view = 'certificates.templates.default';
         }
 
-        $pdf = Pdf::loadView($view, [
+        $pdf = Pdf::setPaper('a4', $orientation);
+        $pdf->loadView($view, [
             'certificate' => $certificate,
+            'font_metrics' => ($schema['layout_version'] ?? 1) >= 2 ? $pdf->getDomPDF()->getFontMetrics() : null,
             'schema' => $schema,
             'orientation' => $orientation,
             'qr_base64' => $qrBase64,
@@ -184,7 +186,6 @@ class CertificatePdfService
             'stamp_base64' => $stampBase64,
         ]);
 
-        $pdf->setPaper('a4', $orientation);
         $pdf->setOption('isRemoteEnabled', true);
         $pdf->setOption('isHtml5ParserEnabled', true);
         $pdf->setOption('defaultFont', $schema['font_family'] ?? 'Helvetica');

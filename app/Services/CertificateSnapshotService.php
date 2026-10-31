@@ -135,12 +135,12 @@ class CertificateSnapshotService
 
         if (! empty($schema['elements']) && is_array($schema['elements'])) {
             foreach ($schema['elements'] as &$el) {
-                if (in_array($el['type'] ?? '', ['logo', 'signature', 'stamp', 'watermark', 'image'])) {
+                if (in_array($el['type'] ?? '', ['logo', 'signature', 'signature_block', 'stamp', 'watermark', 'image', 'background'])) {
                     $ref = $el['asset_id'] ?? $el['asset_path'] ?? null;
                     if ($ref && empty($el['asset_base64'])) {
                         $el['asset_base64'] = $this->assetManager->getAssetBase64($ref);
                     }
-                } elseif (($el['type'] ?? '') === 'text' && ! empty($el['content'])) {
+                } elseif (in_array($el['type'] ?? '', TemplateEngineService::TEXT_ELEMENT_TYPES, true) && ! empty($el['content'])) {
                     $el['resolved_content'] = $this->templateEngine->interpolate($el['content'], $context);
                 }
             }

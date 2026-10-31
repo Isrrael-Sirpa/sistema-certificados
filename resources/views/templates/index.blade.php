@@ -55,6 +55,9 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @forelse($templates as $tpl)
+            @php
+                $templateHasScoreFields = preg_match('/certificado\.(?:puntaje|calificacion|mencion)\s*\}\}/', json_encode($tpl->configuration ?? [])) === 1;
+            @endphp
             <article class="ft-panel bg-white border border-border overflow-hidden flex flex-col group">
                 <a href="{{ route('templates.designer', $tpl) }}" class="ft-template-preview relative flex min-h-64 items-center justify-center p-6 bg-surface-muted focus-visible:outline-offset-[-4px]" data-orientation="{{ $tpl->orientation }}" aria-label="Abrir diseñador de {{ $tpl->name }}">
                     @include('templates.thumbnail', ['tpl' => $tpl])
@@ -65,6 +68,9 @@
                             <span class="px-2.5 py-1 rounded-full bg-accent-soft text-[#946000] border border-accent/40">PREDETERMINADA</span>
                         @endif
                         <span class="px-2.5 py-1 rounded-full {{ $tpl->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">{{ $tpl->is_active ? 'ACTIVA' : 'INACTIVA' }}</span>
+                        @if($templateHasScoreFields)
+                            <span class="px-2.5 py-1 rounded-full bg-brand-soft text-brand">CON CALIFICACIÓN</span>
+                        @endif
                         <span class="ml-auto text-muted font-mono">v{{ $tpl->current_version }}.0</span>
                     </div>
                     <div class="min-w-0">

@@ -12,6 +12,7 @@ use App\Models\InstitutionalAsset;
 use App\Services\BeneficiaryImportService;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -266,61 +267,13 @@ class ActivityController extends Controller
     /**
      * Emisión masiva de certificados para múltiples beneficiarios seleccionados
      */
-    public function batchIssue(Request $request, Activity $activity, CertificateService $certificateService)
+    public function batchIssue(Request $request, Activity $activity, CertificateService $certificateService, BeneficiaryImportService $importService): RedirectResponse
     {
-        $validated = $request->validate([
+        $request->validate([
             'beneficiary_ids' => ['required', 'array', 'min:1'],
-            'beneficiary_ids.*' => ['exists:beneficiaries,id'],
-            'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
-            'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
-            'issue_date' => ['required', 'date'],
         ]);
 
-        $typeId = $validated['certificate_type_id']
-            ?? $activity->certificate_type_id
-            ?? CertificateType::first()?->id;
-
-        if (! $typeId) {
-            return back()->with('error', 'Debe seleccionar o configurar un tipo de certificado para emitir.');
-        }
-
-        $templateId = $validated['certificate_template_id']
-            ?? $activity->certificateConfig?->certificate_template_id
-            ?? null;
-
-        $count = 0;
-        $skipped = 0;
-
-        foreach ($validated['beneficiary_ids'] as $beneficiaryId) {
-            $alreadyExists = $activity->certificates()
-                ->where('beneficiary_id', $beneficiaryId)
-                ->where('certificate_type_id', $typeId)
-                ->whereNull('revoked_at')
-                ->exists();
-
-            if ($alreadyExists) {
-                $skipped++;
-
-                continue;
-            }
-
-            $certificateService->issueCertificate([
-                'beneficiary_id' => $beneficiaryId,
-                'activity_id' => $activity->id,
-                'certificate_type_id' => $typeId,
-                'certificate_template_id' => $templateId,
-                'issue_date' => $validated['issue_date'],
-            ], $request->user());
-
-            $count++;
-        }
-
-        $msg = "Se generaron exitosamente {$count} certificado(s).";
-        if ($skipped > 0) {
-            $msg .= " ({$skipped} omitidos por ya poseer certificado activo).";
-        }
-
-        return back()->with('success', $msg);
+        return $this->issueToRoster($request, $activity, $importService, $certificateService);
     }
 
     /**

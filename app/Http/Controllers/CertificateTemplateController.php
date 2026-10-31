@@ -10,17 +10,23 @@ use App\Models\CertificateTemplate;
 use App\Models\CertificateTemplateVersion;
 use App\Models\CertificateType;
 use App\Models\InstitutionalAsset;
+use App\Services\CertificateLayoutService;
 use App\Services\CertificatePdfService;
 use App\Services\QRCodeService;
 use App\Services\TemplateEngineService;
+use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CertificateTemplateController extends Controller
 {
     public function __construct(
         protected TemplateEngineService $templateEngine,
-        protected CertificatePdfService $pdfService
+        protected CertificatePdfService $pdfService,
+        protected CertificateLayoutService $layoutService
     ) {}
 
     public function index(Request $request)
@@ -92,7 +98,7 @@ class CertificateTemplateController extends Controller
         }
 
         // Always ensure normalized schema with elements
-        $configuration = $this->templateEngine->normalizeSchema($configuration);
+        $configuration = $this->layoutService->improve($this->templateEngine->normalizeSchema($configuration, $validated['orientation']), $validated['orientation']);
 
         $template = CertificateTemplate::create([
             'name' => $validated['name'],
@@ -125,7 +131,7 @@ class CertificateTemplateController extends Controller
     /**
      * Interfaz del Diseñador Visual de Certificados
      */
-    public function designer(CertificateTemplate $template)
+    public function designer(CertificateTemplate $template): View
     {
         $template->load(['versions.createdBy']);
         $logos = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_LOGO)->get();
@@ -137,8 +143,12 @@ class CertificateTemplateController extends Controller
         $allAssets = InstitutionalAsset::active()->get();
 
         $schema = $this->templateEngine->normalizeSchema($template->configuration ?? [], $template->orientation);
+        $certificateTypes = CertificateType::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'has_score', 'score_scale', 'min_passing_score', 'validity_mode', 'default_validity_years']);
+        $layoutPresets = ['landscape' => $this->layoutService->presets('landscape'), 'portrait' => $this->layoutService->presets('portrait')];
 
-        return view('templates.designer', compact('template', 'logos', 'signatures', 'stamps', 'watermarks', 'backgrounds', 'decoratives', 'allAssets', 'schema'));
+        return view('templates.designer', compact('template', 'logos', 'signatures', 'stamps', 'watermarks', 'backgrounds', 'decoratives', 'allAssets', 'schema', 'certificateTypes', 'layoutPresets'));
     }
 
     /**
@@ -165,6 +175,7 @@ class CertificateTemplateController extends Controller
         }
 
         $schema = $this->templateEngine->normalizeSchema($schema, $validated['orientation']);
+        $schema['layout_version'] = CertificateLayoutService::VERSION;
 
         $newVersionNumber = $template->current_version;
         if (! empty($validated['create_new_version'])) {
@@ -293,9 +304,34 @@ class CertificateTemplateController extends Controller
     /**
      * Genera la previsualización oficial en PDF de la plantilla con datos de prueba
      */
-    public function previewPdf(CertificateTemplate $template)
+    public function previewPdf(Request $request, CertificateTemplate $template): Response
     {
-        $beneficiary = Beneficiary::first() ?? new Beneficiary([
+        $sample = $request->validate([
+            'certificate_type_id' => ['nullable', 'integer', 'exists:certificate_types,id'],
+            'score' => ['nullable', 'numeric', 'between:0,100'],
+            'score_label' => ['nullable', 'string', 'max:255'],
+            'validity_type' => ['nullable', 'string', 'in:permanent,years,custom'],
+            'issue_date' => ['nullable', 'date_format:Y-m-d'],
+            'expiration_date' => ['required_if:validity_type,custom', 'nullable', 'date_format:Y-m-d', 'after_or_equal:issue_date'],
+        ]);
+        $type = isset($sample['certificate_type_id'])
+            ? CertificateType::where('is_active', true)->findOrFail($sample['certificate_type_id'])
+            : (CertificateType::where('is_active', true)->orderBy('name')->first() ?? new CertificateType(['name' => 'Certificado', 'has_score' => false]));
+        $issueDate = Carbon::parse($sample['issue_date'] ?? now()->toDateString());
+        $validityType = $sample['validity_type'] ?? $type->validity_mode ?? CertificateType::VALIDITY_YEARS;
+        if ($validityType === CertificateType::VALIDITY_CUSTOM && empty($sample['expiration_date'])) {
+            throw ValidationException::withMessages(['expiration_date' => 'Indica la fecha de vencimiento de la muestra.']);
+        }
+        $expirationDate = match ($validityType) {
+            CertificateType::VALIDITY_PERMANENT => null,
+            CertificateType::VALIDITY_CUSTOM => $sample['expiration_date'] ?? null,
+            default => $issueDate->copy()->addYears($type->default_validity_years ?? 3)->toDateString(),
+        };
+        $score = $type->has_score
+            ? (array_key_exists('score', $sample) ? $sample['score'] : 92.5)
+            : null;
+
+        $beneficiary = new Beneficiary([
             'first_name' => 'Rodrigo',
             'last_name' => 'Quispe Mamani',
             'academic_title' => 'Univ.',
@@ -304,24 +340,23 @@ class CertificateTemplateController extends Controller
             'document_expedition' => 'LP',
             'email' => 'rodrigo.quispe@example.edu.bo',
         ]);
-        $activity = Activity::first() ?? new Activity([
+        $activity = new Activity([
             'name' => 'Seminario Internacional de Inteligencia Artificial y Ciencia de Datos',
             'activity_type' => 'Seminario',
-            'start_date' => now()->subDays(5),
-            'end_date' => now(),
+            'start_date' => $issueDate->copy()->subDays(5),
+            'end_date' => $issueDate,
             'academic_hours' => 40,
             'location' => 'Paraninfo Universitario',
             'responsible_authority' => 'Dr. Carlos Mendoza Fernández',
         ]);
-        $type = CertificateType::first() ?? new CertificateType([
-            'name' => 'Asistencia y Aprobación',
-        ]);
-
         $dummyCertificate = new Certificate([
             'certificate_code' => 'DEMO-PREVIEW-2026',
             'verification_token' => 'sample-preview-token',
-            'issue_date' => now()->toDateString(),
-            'expiration_date' => now()->addYears(3)->toDateString(),
+            'issue_date' => $issueDate->toDateString(),
+            'expiration_date' => $expirationDate,
+            'validity_type' => $validityType,
+            'score' => $score,
+            'score_label' => $type->has_score ? ($sample['score_label'] ?? null) : null,
             'certificate_template_id' => $template->id,
             'status' => Certificate::STATUS_VIGENTE,
         ]);

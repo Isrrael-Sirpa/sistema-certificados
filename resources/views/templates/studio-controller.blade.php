@@ -32,6 +32,12 @@ function certificateStudio(config) {
         schema: clone(config.initialSchema || {}),
         elements: clone(config.initialElements || config.initialSchema?.elements || []),
         assets: config.assets || {},
+        layoutPresets: config.layoutPresets || {},
+        certificateTypes: clone(config.certificateTypes || []),
+        sampleTypeId: '',
+        sampleIssueDate: config.sampleIssueDate || '2026-09-20',
+        sampleExpirationDate: '',
+        showConditionalElements: false,
         backLink: config.backUrl || config.backLink || '',
         backUrl: config.backUrl || config.backLink || '',
         previewPdfUrl: config.previewPdfUrl || '',
@@ -112,6 +118,10 @@ function certificateStudio(config) {
                     if (element[property] !== undefined && element.styles[property] === undefined) { element.styles[property] = element[property]; }
                 }
             });
+            if (this.certificateTypes.length) {
+                this.sampleTypeId = String((this.certificateTypes.find(type => type.has_score) || this.certificateTypes[0]).id);
+                this.selectSampleType();
+            }
             savedState = this.serializeDocument();
             this.undoStack = [savedState];
             this.redoStack = [];
@@ -184,6 +194,53 @@ function certificateStudio(config) {
         get canvasStageStyle() { return `width:${this.stageWidthStyle};height:${this.stageHeightStyle};flex-shrink:0;`; },
         get canUndo() { return this.undoStack.length > 1 || this.serializeDocument() !== this.undoStack.at(-1); },
         get canRedo() { return this.redoStack.length > 0; },
+        get selectedSampleType() { return this.certificateTypes.find(type => String(type.id) === String(this.sampleTypeId)) || null; },
+        get sampleSupportsScore() { return this.selectedSampleType ? Boolean(this.selectedSampleType.has_score) : true; },
+        get sampleHasScore() {
+            return this.sampleSupportsScore && ((this.sampleData.score !== '' && this.sampleData.score !== null && this.sampleData.score !== undefined) || Boolean(this.sampleData.scoreLabel?.trim()));
+        },
+        get sampleIsPassing() { return this.sampleHasScore && this.sampleData.score !== '' && this.sampleData.score !== null && Number(this.sampleData.score) >= Number(this.selectedSampleType?.min_passing_score ?? 51); },
+        get sampleError() {
+            if (!this.validSampleDate(this.sampleIssueDate)) { return 'Indica una fecha de emisión válida para la muestra.'; }
+            if (this.sampleSupportsScore && this.sampleData.score !== '' && this.sampleData.score !== null && (!Number.isFinite(Number(this.sampleData.score)) || Number(this.sampleData.score) < 0 || Number(this.sampleData.score) > 100)) { return 'El puntaje de muestra debe estar entre 0 y 100.'; }
+            if (this.sampleData.validityType === 'custom' && (!this.validSampleDate(this.sampleExpirationDate) || this.sampleExpirationDate < this.sampleIssueDate)) { return 'Indica un vencimiento igual o posterior a la fecha de emisión.'; }
+            return '';
+        },
+        validSampleDate(value) { return /^\d{4}-\d{2}-\d{2}$/.test(value || '') && !Number.isNaN(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value; },
+        formatSampleDate(value) { return this.validSampleDate(value) ? new Date(`${value}T12:00:00Z`).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : ''; },
+        selectSampleType() {
+            const type = this.selectedSampleType;
+            if (!type) { return; }
+            this.sampleData.certificateType = type.name;
+            this.sampleData.validityType = type.validity_mode || 'years';
+            this.sampleData.score = type.has_score ? Math.min(100, Math.max(92.5, Number(type.min_passing_score) || 0)) : '';
+            this.sampleData.scoreLabel = '';
+            this.sampleExpirationDate = '';
+            this.updateSampleDates();
+        },
+        updateSampleDates() {
+            if (!this.validSampleDate(this.sampleIssueDate)) { return; }
+            const issue = new Date(`${this.sampleIssueDate}T12:00:00Z`);
+            this.sampleData.issueDate = this.formatSampleDate(this.sampleIssueDate);
+            this.sampleData.issueDateLong = `a los ${issue.getUTCDate()} días del mes de ${issue.toLocaleDateString('es-BO', { month: 'long', timeZone: 'UTC' })} del año ${issue.getUTCFullYear()}`;
+            this.sampleData.issuePlaceDate = `Dado en la ciudad de ${this.sampleData.city}, ${this.sampleData.issueDateLong}.`;
+            if (this.sampleData.validityType === 'permanent') { this.sampleData.expirationDate = ''; return; }
+            if (this.sampleData.validityType === 'years') {
+                const expiration = new Date(issue);
+                expiration.setUTCFullYear(issue.getUTCFullYear() + Number(this.selectedSampleType?.default_validity_years ?? 3));
+                this.sampleExpirationDate = expiration.toISOString().slice(0, 10);
+            }
+            this.sampleData.expirationDate = this.formatSampleDate(this.sampleExpirationDate);
+        },
+        matchesVisibilityRule(element) {
+            switch (element.visibility_rule || 'always') {
+                case 'with_score': return this.sampleHasScore;
+                case 'permanent': return this.sampleData.validityType === 'permanent';
+                case 'temporary': return this.sampleData.validityType !== 'permanent';
+                default: return true;
+            }
+        },
+        isElementVisible(element) { return element.is_visible !== false && (this.showConditionalElements || this.matchesVisibilityRule(element)); },
         get allAssets() {
             const groups = Array.isArray(this.assets) ? [this.assets] : Object.values(this.assets);
             const found = new Map();
@@ -266,8 +323,59 @@ function certificateStudio(config) {
         isTextType(type) { return ['header_title', 'header_subtitle', 'certificate_type', 'beneficiary_name', 'beneficiary_document', 'body_text', 'activity_dates', 'metadata_code', 'text'].includes(type); },
         isImageType(type) { return ['logo', 'watermark', 'stamp', 'image', 'background'].includes(type); },
         isQrType(type) { return ['qr', 'qr_code'].includes(type); },
+        qrSizeMm(element = this.selectedElement) {
+            if (!element || !this.isQrType(element.type)) { return 0; }
+            const pageWidth = this.orientation === 'portrait' ? 210 : 297;
+            const pageHeight = this.orientation === 'portrait' ? 297 : 210;
+            return Math.round(Math.min(Number(element.width) * pageWidth / 100, Number(element.height) * pageHeight / 100 * .7) * 10) / 10;
+        },
+        qrDimensions(sizeMm) {
+            const pageWidth = this.orientation === 'portrait' ? 210 : 297;
+            const pageHeight = this.orientation === 'portrait' ? 297 : 210;
+            return { width: sizeMm / pageWidth * 100, height: sizeMm / .7 / pageHeight * 100 };
+        },
+        resizeQr(sizeMm) {
+            const element = this.selectedElement;
+            if (!element || !this.isQrType(element.type) || element.is_locked || this.isSaving || sizeMm === '' || !Number.isFinite(Number(sizeMm))) { return; }
+            const dimensions = this.qrDimensions(clamp(Number(sizeMm), 20, 60));
+            const centerX = Number(element.x) + Number(element.width) / 2;
+            const centerY = Number(element.y) + Number(element.height) / 2;
+            Object.assign(element, dimensions, { x: centerX - dimensions.width / 2, y: centerY - dimensions.height / 2 });
+            this.boundElement(element);
+            this.markDirty();
+        },
         isSignatureType(type) { return ['signature', 'signature_block'].includes(type); },
         isLineType(type) { return ['divider', 'decorative_line', 'line'].includes(type); },
+        isShapeType(type) { return ['shape', 'band', 'rectangle', 'ellipse'].includes(type); },
+        fittedFontSize(element) {
+            const styles = element.styles || {};
+            let size = Number(styles.font_size || element.font_size || 12);
+            if (styles.fit_text !== true) { return size; }
+            const minimum = Math.min(size, Number(styles.min_font_size || Math.max(8, size * .72)));
+            const width = this.canvasWidth * Number(element.width || 80) / 100;
+            const height = this.canvasHeight * Number(element.height || 8) / 100;
+            const resolved = this.interpolateText(element.content || '');
+            const text = styles.text_transform === 'uppercase' ? resolved.toLocaleUpperCase('es') : resolved;
+            const context = typeof document.createElement === 'function' ? document.createElement('canvas').getContext('2d') : null;
+            const measure = value => {
+                if (!context) { return value.length * size * .55; }
+                context.font = `${styles.font_style || 'normal'} ${styles.font_weight || 'normal'} ${size}px "${styles.font_family || this.schema.font_family || 'serif'}"`;
+                return context.measureText(value).width + Math.max(0, value.length - 1) * Number(styles.letter_spacing || 0);
+            };
+            do {
+                let lines = 0;
+                for (const paragraph of text.split(/\r?\n/)) {
+                    let line = '';
+                    for (const word of paragraph.trim().split(/\s+/)) {
+                        const candidate = line ? line + ' ' + word : word;
+                        if (line && measure(candidate) > width) { lines++; line = word; } else { line = candidate; }
+                    }
+                    lines += Math.max(1, Math.ceil(measure(line) / Math.max(1, width)));
+                }
+                if (lines * size * 1.17 * Number(styles.line_height || 1.3) <= height || size <= minimum) { return Math.round(size * 100) / 100; }
+                size = Math.max(minimum, size - .5);
+            } while (true);
+        },
         getElementIcon(type) {
             return ({ header_title: '🏛️', header_subtitle: '🏢', certificate_type: '📜', beneficiary_name: '👤', beneficiary_document: '🪪', body_text: '📝', activity_dates: '📅', metadata_code: '🔢', text: '🔤', logo: '🛡️', signature: '✍️', signature_block: '✍️', stamp: '⭕', watermark: '💧', qr: '🏁', qr_code: '🏁', divider: '➖', decorative_line: '➖' })[type] || '📦';
         },
@@ -286,19 +394,22 @@ function certificateStudio(config) {
             if (!text) { return ''; }
             const sample = this.sampleData;
             const modality = sample.certificateType.replace(/^Certificado de\s+/i, '');
+            const participantRole = ({ asistencia: 'Asistente', 'aprobación': 'Aprobante', aprobacion: 'Aprobante', 'disertante / ponente': 'Disertante / Ponente', organizador: 'Organizador' })[modality.toLowerCase()] || modality;
             const permanent = sample.validityType === 'permanent';
             const values = {
                 'beneficiario.nombre': sample.beneficiaryName, 'beneficiario.documento': sample.beneficiaryDoc, 'beneficiario.email': sample.beneficiaryEmail,
                 'actividad.nombre': sample.activityName, 'actividad.horas': sample.activityHours, 'actividad.fechas': sample.activityDates,
                 'actividad.tipo': sample.activityType, 'actividad.lugar': sample.location, 'actividad.organizador': sample.organizer,
                 'actividad.autoridad': sample.authorityName, 'actividad.resolucion': sample.resolution,
-                'certificado.tipo': sample.certificateType, 'certificado.modalidad': modality, 'participante.rol': modality,
+                'certificado.tipo': sample.certificateType, 'certificado.modalidad': modality, 'participante.rol': participantRole,
                 'certificado.codigo': sample.certificateCode, 'certificado.lugar_fecha_emision': sample.issuePlaceDate,
                 'certificado.fecha_emision_larga': sample.issueDateLong, 'certificado.fecha_emision': sample.issueDate,
                 'certificado.fecha_vencimiento': permanent ? '' : sample.expirationDate,
-                'certificado.puntaje': sample.score ?? '', 'certificado.calificacion': sample.scoreLabel || (sample.score !== '' && sample.score !== null ? `${sample.score} pts` : ''),
-                'certificado.mencion': sample.scoreLabel || '', 'certificado.vigencia': permanent ? 'Vigencia Permanente / No expira' : `Válido hasta el ${sample.expirationDate}`,
-                'certificado.vigencia_corta': permanent ? 'PERMANENTE' : `Hasta ${sample.expirationDate}`,
+                'certificado.puntaje': this.sampleSupportsScore ? (sample.score !== '' && sample.score !== null && sample.score !== undefined ? sample.score : (sample.scoreLabel || '')) : '',
+                'certificado.calificacion': this.sampleSupportsScore ? (sample.scoreLabel || (sample.score !== '' && sample.score !== null ? `${sample.score} pts` : '')) : '',
+                'certificado.mencion': this.sampleSupportsScore ? (sample.scoreLabel || '') : '',
+                'certificado.vigencia': permanent ? 'Vigencia Permanente / No expira' : (sample.expirationDate ? `Válido hasta el ${sample.expirationDate}` : 'Vigencia temporal'),
+                'certificado.vigencia_corta': permanent ? 'PERMANENTE' : (sample.expirationDate ? `Hasta ${sample.expirationDate}` : 'Temporal'),
                 'acreditacion.resolucion': `Acreditado bajo ${sample.resolution}`,
                 'institucion.nombre': sample.institutionName, 'facultad.nombre': sample.facultyName, 'vicedecanato.nombre': sample.departmentName,
                 'autoridad.nombre': sample.authorityName, 'autoridad.cargo': sample.authorityPosition, 'institucion.ciudad': sample.city
@@ -314,6 +425,12 @@ function certificateStudio(config) {
             };
             const profile = profiles[this.sampleProfile] || profiles.participant;
             [this.sampleData.beneficiaryName, this.sampleData.beneficiaryDoc, this.sampleData.certificateType, this.sampleData.validityType, this.sampleData.score, this.sampleData.scoreLabel] = profile;
+            if (this.certificateTypes.length) {
+                const code = { participant: 'aprobacion', speaker: 'disertante', organizer: 'organizador', honor: 'reconocimiento' }[this.sampleProfile];
+                const type = this.certificateTypes.find(item => item.code === code);
+                if (type) { this.sampleTypeId = String(type.id); }
+                this.selectSampleType();
+            }
         },
 
         selectElement(id) { this.selectedId = id; },
@@ -481,12 +598,64 @@ function certificateStudio(config) {
         addTextElement(type, defaultContent, fontSize = 12, isBold = false, fontStyle = 'normal') {
             this.insertElement(this.createElement(type, { name: defaultContent.slice(0, 20).toUpperCase(), content: defaultContent, styles: { font_size: fontSize, font_weight: isBold ? 'bold' : 'normal', font_style: fontStyle, text_align: 'center', text_color: this.schema.text_color || '#1e293b' } }));
         },
-        addQrElement() { this.insertElement(this.createElement('qr', { name: 'CÓDIGO QR OFICIAL', x: 82, y: 72, width: 12, height: 18, z_index: 25 })); },
+        get academicFields() {
+            const variable = name => '{' + '{' + name + '}' + '}';
+            return {
+                qualification: { name: 'Calificación', content: 'Calificación: ' + variable('certificado.puntaje'), visibility_rule: 'with_score', height: 4, font_size: 14, tokens: ['certificado.puntaje', 'certificado.calificacion'] },
+                mention: { name: 'Mención académica', content: variable('certificado.mencion'), visibility_rule: 'with_score', height: 3, font_size: 11, tokens: ['certificado.mencion'] },
+                validity: { name: 'Vigencia del certificado', content: variable('certificado.vigencia'), visibility_rule: 'always', height: 3, font_size: 10, tokens: ['certificado.vigencia', 'certificado.vigencia_corta'] },
+                expiration: { name: 'Fecha de vencimiento', content: 'Válido hasta el ' + variable('certificado.fecha_vencimiento'), visibility_rule: 'temporary', height: 3, font_size: 10, tokens: ['certificado.fecha_vencimiento'] },
+                modality: { name: 'Modalidad de certificación', content: variable('certificado.modalidad'), visibility_rule: 'always', height: 4, font_size: 14, tokens: ['certificado.modalidad'] },
+                role: { name: 'Rol del participante', content: variable('participante.rol'), visibility_rule: 'always', height: 3, font_size: 11, tokens: ['participante.rol'] }
+            };
+        },
+        hasAcademicField(field) {
+            const definition = this.academicFields[field];
+            return Boolean(definition && this.elements.some(element => element.data_field === field || definition.tokens.some(token => new RegExp('\\{\\{\\s*' + token.replaceAll('.', '\\.') + '\\s*\\}\\}').test(element.content || ''))));
+        },
+        academicFieldPosition(height) {
+            const obstacles = this.elements.filter(element => element.is_visible !== false && !['watermark', 'background'].includes(element.type));
+            for (const [x, width] of [[12, 76], [8, 40], [52, 40]]) {
+                for (const [start, end] of [[54, 70], [36, 92]]) {
+                    for (let y = start; y <= end; y += 1) {
+                        if (!obstacles.some(element => x < Number(element.x) + Number(element.width) && x + width > Number(element.x) && y < Number(element.y) + Number(element.height || 3) + 0.4 && y + height + 0.4 > Number(element.y))) { return { x, y, width, height }; }
+                    }
+                }
+            }
+            return null;
+        },
+        addCertificateField(field) {
+            const definition = this.academicFields[field];
+            if (!definition) { return; }
+            const existing = this.elements.find(element => element.data_field === field || definition.tokens.some(token => new RegExp('\\{\\{\\s*' + token.replaceAll('.', '\\.') + '\\s*\\}\\}').test(element.content || '')));
+            if (existing) { this.selectElement(existing.id); this.openInspector(); return; }
+            const position = this.academicFieldPosition(definition.height);
+            if (!position) { this.previewNotice = 'No hay espacio libre para este bloque. Mueve o reduce un elemento antes de insertarlo.'; return; }
+            this.insertElement(this.createElement('text', { ...position, data_field: field, name: definition.name, content: definition.content, visibility_rule: definition.visibility_rule, styles: { font_size: definition.font_size, font_weight: field === 'qualification' ? 'bold' : 'normal', text_align: 'center', text_color: this.schema.primary_color || this.schema.text_color } }));
+        },
+        addQrElement() {
+            const element = this.createElement('qr', { name: 'CÓDIGO QR OFICIAL', x: 82, y: 72, ...this.qrDimensions(32), z_index: 25 });
+            this.boundElement(element);
+            this.insertElement(element);
+            this.openInspector();
+        },
         addSignatureBlock() {
             const asset = this.allAssets.find(item => (item.category || item.type) === 'signature');
             this.insertElement(this.createElement('signature', { name: 'BLOQUE DE FIRMA OFICIAL', x: 35, y: 74, width: 30, height: 16, z_index: 22, asset_id: asset?.id || null, asset_url: asset?.url || '', content: 'Ing. Aniceto Velarde Forest', subtitle: 'Vicedecano de Facultad' }));
         },
         addDecorativeLine() { this.insertElement(this.createElement('divider', { name: 'LÍNEA ORNAMENTAL', x: 25, y: 35, width: 50, height: 2, z_index: 15, opacity: 0.8, styles: { height: 2 } })); },
+        addShape(preset) {
+            const settings = {
+                top: ['Franja superior', 0, 0, 100, 3, 1], bottom: ['Franja inferior', 0, 97, 100, 3, 1],
+                side: ['Franja lateral', 0, 0, 4, 100, 1], rectangle: ['Rectángulo', 15, 38, 70, 20, .12],
+                ellipse: ['Elipse', 40, 40, 18, 18 * this.canvasWidth / this.canvasHeight, .12]
+            }[preset];
+            if (!settings) { return; }
+            const [name, x, y, width, height, opacity] = settings;
+            const element = this.createElement('shape', { name, shape: preset === 'ellipse' ? 'ellipse' : 'rectangle', x, y, width, height, opacity, z_index: 2, styles: { fill: this.schema.primary_color || '#110b51', border_color: this.schema.secondary_color || '#efb43c', border_width: 0, border_radius: 0 } });
+            this.commitChange(() => { this.schema.layout_version = 2; this.elements.push(element); this.selectedId = element.id; });
+            this.activePanel = 'canvas';
+        },
         insertAssetToCanvas(asset) {
             const category = asset.category || asset.type;
             const type = ({ logo: 'logo', watermark: 'watermark', stamp: 'stamp', background: 'background', signature: 'signature' })[category] || 'image';
@@ -557,6 +726,37 @@ function certificateStudio(config) {
             this.commitChange(() => {
                 this.orientation = forceOrientation === 'portrait' || forceOrientation === 'landscape' ? forceOrientation : this.orientation;
                 const portrait = this.orientation === 'portrait';
+                const presets = this.layoutPresets[this.orientation];
+                if (presets) {
+                    this.schema.layout_version = 2;
+                    const ids = { el_header_title: 'header', el_header_subtitle: 'faculty', el_header_department: 'department', el_header_preamble: 'preamble', el_preamble: 'preamble', el_resolution: 'resolution', el_award_title: 'award', el_award_intro: 'intro', el_beneficiary_intro: 'recipient_intro', el_beneficiary_name: 'beneficiary', el_beneficiary_doc: 'document', el_body_text: 'body', el_date_place: 'date', el_divider: 'divider', el_divider_signatures: 'signature_divider' };
+                    this.elements.forEach(element => {
+                        if (element.is_locked) { return; }
+                        const role = element.layout_role || element.data_field || ids[element.id];
+                        const layout = presets[role];
+                        if (layout) {
+                            [element.x, element.y, element.width, element.height] = layout;
+                            Object.assign(element.styles, { font_size: layout[4], min_font_size: layout[5], fit_text: true, line_height: role === 'body' ? 1.45 : 1.2 });
+                            if (role === 'beneficiary') { element.border_bottom = false; element.styles.border_bottom = false; }
+                        } else if (this.isQrType(element.type)) {
+                            Object.assign(element, portrait ? { x: 80, y: 82, width: 13, height: 12 } : { x: 83, y: 76, width: 11, height: 18 });
+                        } else if (element.type === 'stamp') {
+                            Object.assign(element, portrait ? { x: 64, y: 84, width: 12, height: 9 } : { x: 67, y: 80, width: 11, height: 15.6 });
+                        }
+                        this.boundElement(element);
+                    });
+                    const logos = this.elements.filter(element => element.type === 'logo' && !element.is_locked);
+                    logos.forEach((element, index) => Object.assign(element, { x: 6 + index * (88 - (portrait ? 14 : 10)) / Math.max(1, logos.length - 1), y: 5, width: portrait ? 14 : 10, height: portrait ? 11 : 16 }));
+                    const signatures = this.elements.filter(element => this.isSignatureType(element.type) && !element.is_locked);
+                    const columns = Math.min(3, signatures.length);
+                    const rows = Math.ceil(signatures.length / Math.max(1, columns));
+                    signatures.forEach((element, index) => {
+                        const width = (56 - 4 * (columns - 1)) / Math.max(1, columns);
+                        const height = Math.min(portrait ? 10.5 : 13, 18 / rows);
+                        Object.assign(element, { x: 8 + index % columns * (width + 4), y: (portrait ? 82.5 : 81) - (rows - 1) * height + Math.floor(index / columns) * height, width, height });
+                    });
+                    return;
+                }
                 const layouts = {
                     header_title: [15, 20, 70, 4, 13], header_subtitle: [15, 25, 70, 3.5, 11],
                     certificate_type: [10, 30, 80, 6, 23], beneficiary_name: [10, 37.5, 80, 6, 22],
@@ -656,9 +856,15 @@ function certificateStudio(config) {
                 this.previewNotice = 'Guarde los cambios antes de abrir el PDF. La vista PDF corresponde al último diseño guardado.';
                 return false;
             }
+            if (this.sampleError) { this.previewNotice = this.sampleError; return false; }
             if (!this.previewPdfUrl) { this.previewNotice = 'La vista previa PDF no está disponible para esta plantilla.'; return false; }
             this.previewNotice = '';
-            window.open(this.previewPdfUrl, '_blank', 'noopener,noreferrer');
+            let url = this.previewPdfUrl;
+            if (this.selectedSampleType) {
+                const parameters = { certificate_type_id: this.sampleTypeId, score: this.sampleSupportsScore ? (this.sampleData.score ?? '') : '', score_label: this.sampleSupportsScore ? this.sampleData.scoreLabel : '', validity_type: this.sampleData.validityType, issue_date: this.sampleIssueDate, expiration_date: this.sampleData.validityType === 'permanent' ? '' : this.sampleExpirationDate };
+                url += (url.includes('?') ? '&' : '?') + Object.entries(parameters).map(([key, value]) => encodeURIComponent(key) + '=' + encodeURIComponent(value ?? '')).join('&');
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
             return true;
         },
         buildSchemaForSubmission() {

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
+use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\Setting;
 use App\Models\User;
@@ -672,5 +673,88 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
             'issue_date' => now()->toDateString(),
             'score' => 40.0,
         ], $this->user);
+    }
+
+    public function test_roster_bulk_issuance_uses_each_students_activity_grade_in_the_template(): void
+    {
+        $this->assertBulkIssuanceUsesIndividualGrades('activities.participants.issue-certificates');
+    }
+
+    public function test_alternative_bulk_issuance_uses_each_students_activity_grade_in_the_template(): void
+    {
+        $this->assertBulkIssuanceUsesIndividualGrades('activities.batch-issue');
+    }
+
+    private function assertBulkIssuanceUsesIndividualGrades(string $routeName): void
+    {
+        $this->aprobacionType->update(['min_passing_score' => 80]);
+        $template = CertificateTemplate::firstOrFail();
+        $schema = $template->configuration;
+        $schema['body_text'] = 'Nota individual: {{certificado.puntaje}} | Mención: {{certificado.mencion}}';
+        $schema['elements'] = [[
+            'id' => 'individual_grade', 'name' => 'Calificación del estudiante', 'type' => 'text',
+            'content' => '{{beneficiario.nombre}} | Nota individual: {{certificado.puntaje}} | Mención: {{certificado.mencion}}',
+            'visibility_rule' => 'with_score', 'x' => 10, 'y' => 45, 'width' => 80, 'height' => 10,
+            'styles' => ['font_size' => 14],
+        ]];
+        $template->update(['configuration' => $schema]);
+        $activity = Activity::create([
+            'name' => 'Evaluación con notas individuales', 'activity_type' => 'Curso',
+            'certificate_type_id' => $this->aprobacionType->id, 'status' => 'activa',
+            'start_date' => '2026-10-01', 'end_date' => '2026-10-20', 'academic_hours' => 40,
+        ]);
+        $activity->certificateConfig()->create([
+            'certificate_template_id' => $template->id, 'validity_mode' => 'permanent', 'show_score_on_pdf' => true,
+        ]);
+        $otherActivity = Activity::create([
+            'name' => 'Otra evaluación de los mismos estudiantes', 'activity_type' => 'Curso',
+            'certificate_type_id' => $this->aprobacionType->id, 'status' => 'activa',
+            'start_date' => '2026-09-01', 'end_date' => '2026-09-20', 'academic_hours' => 40,
+        ]);
+        $students = [];
+        foreach ([['Ana', 82.5, 'Buen rendimiento'], ['Bruno', 96.5, 'Sobresaliente'], ['Carla', 0, 'Reprobado'], ['Diego', null, null]] as $index => [$name, $score, $label]) {
+            $student = Beneficiary::create(['first_name' => $name, 'last_name' => 'Prueba Notas', 'document_type' => 'CI', 'document_number' => '930000'.$index]);
+            $activity->participants()->attach($student->id, ['role' => 'Participante', 'status' => 'inscrito', 'score' => $score, 'score_label' => $label]);
+            $otherActivity->participants()->attach($student->id, ['score' => 60, 'score_label' => 'Nota de otra actividad', 'status' => 'inscrito']);
+            $students[] = $student;
+        }
+        $payload = [
+            'beneficiary_ids' => array_map(fn (Beneficiary $student): int => $student->id, $students),
+            'certificate_type_id' => $this->aprobacionType->id, 'certificate_template_id' => $template->id,
+            'issue_date' => '2026-10-29', 'score' => 100, 'score_label' => 'Nota genérica que no debe utilizarse',
+        ];
+
+        $this->actingAs($this->user)->post(route($routeName, $activity), $payload)
+            ->assertRedirect()->assertSessionHas('success');
+
+        $certificates = $activity->certificates()->with('activity.certificateConfig')->get()->keyBy('beneficiary_id');
+        $this->assertCount(2, $certificates);
+        foreach ([[0, 82.5, 'Buen rendimiento'], [1, 96.5, 'Sobresaliente']] as [$index, $score, $label]) {
+            $certificate = $certificates->get($students[$index]->id);
+            $this->assertNotNull($certificate);
+            $this->assertSame($score, (float) $certificate->score);
+            $this->assertSame($label, $certificate->score_label);
+            $this->assertSame($score, (float) $certificate->snapshot_data['score']);
+            $this->assertSame($label, $certificate->snapshot_data['score_label']);
+            $element = collect($certificate->snapshot_data['design_schema']['elements'])->firstWhere('id', 'individual_grade');
+            $this->assertStringContainsString('Nota individual: '.$score, $element['resolved_content']);
+            $this->assertStringContainsString('Mención: '.$label, $element['resolved_content']);
+            $this->assertStringContainsString('Nota individual: '.$score, $certificate->snapshot_data['resolved_body_text']);
+            $html = view('certificates.templates.engine', ['certificate' => $certificate, 'schema' => $certificate->snapshot_data['design_schema']])->render();
+            $this->assertStringContainsString('Nota individual: '.$score, $html);
+            $this->assertStringContainsString('Mención: '.$label, $html);
+            $this->assertStringNotContainsString('Nota genérica que no debe utilizarse', $html);
+            $this->assertStringNotContainsString('Nota individual: 60', $html);
+            $this->assertStringNotContainsString('Nota individual: '.($index === 0 ? '96.5' : '82.5'), $html);
+        }
+        $this->assertDatabaseMissing('certificates', ['activity_id' => $activity->id, 'beneficiary_id' => $students[2]->id]);
+        $this->assertDatabaseMissing('certificates', ['activity_id' => $activity->id, 'beneficiary_id' => $students[3]->id]);
+        $this->assertDatabaseMissing('certificates', ['activity_id' => $otherActivity->id]);
+
+        $snapshot = $certificates->get($students[0]->id)->snapshot_data;
+        $activity->participants()->updateExistingPivot($students[0]->id, ['score' => 99, 'score_label' => 'Corrección posterior']);
+        $this->post(route($routeName, $activity), $payload)->assertRedirect()->assertSessionHas('warning');
+        $this->assertSame(2, $activity->certificates()->count());
+        $this->assertSame($snapshot, $certificates->get($students[0]->id)->fresh()->snapshot_data);
     }
 }

@@ -45,7 +45,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
     description: @json($template->description ?? ''),
     initialSchema: @json($normalizedSchema),
     initialElements: @json($normalizedSchema['elements'] ?? []),
-    assets: @json($assetsData)
+    assets: @json($assetsData),
+    certificateTypes: @json($certificateTypes),
+    sampleIssueDate: @json(now()->toDateString()),
+    layoutPresets: @json($layoutPresets)
 };
 </script>
 
@@ -146,28 +149,55 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
             <div class="flex items-center border-b border-slate-200 bg-slate-50/80 p-1.5 gap-1">
                 <button type="button" @click="leftTab = 'tools'"
                         :class="leftTab === 'tools' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-                        class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
+                        class="min-w-0 flex-1 py-2 text-[10px] whitespace-nowrap rounded-lg transition-all text-center cursor-pointer">
                     Elementos
                 </button>
                 <button type="button" @click="leftTab = 'library'"
                         :class="leftTab === 'library' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-                        class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
+                        class="min-w-0 flex-1 py-2 text-[10px] whitespace-nowrap rounded-lg transition-all text-center cursor-pointer">
                     Biblioteca
                 </button>
                 <button type="button" @click="leftTab = 'layers'"
                         :class="leftTab === 'layers' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'"
-                        class="flex-1 py-1.5 text-xs rounded-lg transition-all text-center cursor-pointer">
+                        class="min-w-0 flex-1 py-2 text-[10px] whitespace-nowrap rounded-lg transition-all text-center cursor-pointer">
                     Capas (<span x-text="elements.length"></span>)
                 </button>
+                <button type="button" @click="leftTab = 'data'" :class="leftTab === 'data' ? 'bg-white text-brand font-bold shadow-xs' : 'text-slate-600 hover:text-slate-900'" class="min-w-0 flex-1 py-2 text-[10px] whitespace-nowrap rounded-lg transition-all text-center">Datos</button>
             </div>
 
             <!-- Tab Content (Scrollable) -->
             <div class="p-3.5 space-y-4 overflow-y-auto flex-1 text-xs">
+                @include('templates.sample-data')
 
                 <!-- -------------------------------------------------- -->
                 <!-- SUB-TAB 1: HERRAMIENTAS DE INSERCIÓN              -->
                 <!-- -------------------------------------------------- -->
                 <div x-show="leftTab === 'tools'" class="space-y-4">
+                    <section class="space-y-2" aria-label="Franjas y formas">
+                        <h3 class="text-[11px] font-bold text-brand">Franjas y formas</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @click="addShape('top')" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Franja superior</button>
+                            <button type="button" @click="addShape('bottom')" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Franja inferior</button>
+                            <button type="button" @click="addShape('side')" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Franja lateral</button>
+                            <button type="button" @click="addShape('rectangle')" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Rectángulo</button>
+                            <button type="button" @click="addShape('ellipse')" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Elipse</button>
+                            <button type="button" @click="addDecorativeLine()" class="rounded-xl border border-slate-200 p-2 text-left text-[11px] font-semibold text-brand hover:bg-brand-soft">Línea</button>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-brand/15 bg-brand-soft p-3 space-y-2" aria-label="Bloques académicos">
+                        <h3 class="text-[11px] font-bold text-brand">Calificación y vigencia</h3>
+                        <p class="text-[10px] text-slate-600">Añade estos campos a cualquier plantilla. Los valores se completan al emitir.</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @click="addCertificateField('qualification')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('qualification') ? 'Editar calificación' : '+ Calificación'"></span></button>
+                            <button type="button" @click="addCertificateField('mention')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('mention') ? 'Editar mención' : '+ Mención'"></span></button>
+                            <button type="button" @click="addCertificateField('validity')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('validity') ? 'Editar vigencia' : '+ Vigencia'"></span></button>
+                            <button type="button" @click="addCertificateField('expiration')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('expiration') ? 'Editar vencimiento' : '+ Vencimiento'"></span></button>
+                            <button type="button" @click="addCertificateField('modality')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('modality') ? 'Editar modalidad' : '+ Modalidad'"></span></button>
+                            <button type="button" @click="addCertificateField('role')" class="rounded-lg border border-brand/15 bg-white p-2 text-left text-[11px] font-semibold text-brand"><span x-text="hasAcademicField('role') ? 'Editar rol' : '+ Rol'"></span></button>
+                        </div>
+                        <button type="button" @click="leftTab = 'data'" class="text-[10px] font-semibold text-brand underline underline-offset-2">Probar tipos, notas y vigencias →</button>
+                    </section>
 
                     <!-- Text Blocks Category -->
                     <div>
@@ -271,13 +301,8 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                     <!-- Quick Sample Toggle -->
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                        <label for="studio-control-1" class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Perfil de Ejemplo en Lienzo</label>
-                        <select id="studio-control-1" x-model="sampleProfile" @change="updateSampleProfile()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded-lg bg-white">
-                            <option value="participant">Participante (Univ. Rodrigo Quispe Mamani)</option>
-                            <option value="speaker">Disertante (Dr. Alejandro Morales Ramos)</option>
-                            <option value="organizer">Comité Organizador (Lic. Carmen Vargas Luna)</option>
-                            <option value="honor">Excelencia Académica (Univ. Valeria Torrico Siles)</option>
-                        </select>
+                        <p class="text-[10px] text-slate-500">Los datos del participante y las políticas de cada tipo se prueban desde la pestaña Datos.</p>
+                        <button type="button" @click="leftTab = 'data'" class="text-xs font-semibold text-brand">Configurar muestra →</button>
                     </div>
 
                 </div>
@@ -455,7 +480,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                     <!-- DYNAMIC CANVAS ELEMENTS LOOP                   -->
                     <!-- ---------------------------------------------- -->
                     <template x-for="el in elements" :key="el.id">
-                        <div x-show="el.is_visible !== false"
+                        <div x-show="isElementVisible(el)"
                              :id="'canvas-element-' + el.id"
                              @pointerdown="startDrag($event, el.id)"
                              tabindex="0" role="button" :aria-label="el.name || el.type"
@@ -474,7 +499,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                                  width: el.width + '%',
                                  height: el.height ? (el.height + '%') : 'auto',
                                  zIndex: el.z_index || 10,
-                                 opacity: el.opacity ?? 1,
+                                 opacity: (el.opacity ?? 1) * (matchesVisibilityRule(el) ? 1 : 0.35),
                                  transform: 'rotate(' + (el.rotation || 0) + 'deg)'
                              }">
 
@@ -502,10 +527,10 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                             <!-- 1. TEXT ELEMENTS -->
                             <template x-if="isTextType(el.type)">
-                                <div class="w-full h-full p-0.5 overflow-hidden"
+                                <div class="w-full h-full overflow-hidden whitespace-pre-line"
                                      :style="{
                                          fontFamily: el.styles?.font_family || el.font_family || schema.font_family || 'Helvetica',
-                                         fontSize: (el.styles?.font_size || el.font_size || 12) + 'px',
+                                         fontSize: fittedFontSize(el) + 'px',
                                          fontWeight: el.styles?.font_weight || el.font_weight || 'normal',
                                          fontStyle: el.styles?.font_style || el.font_style || 'normal',
                                          textAlign: el.styles?.text_align || el.text_align || 'center',
@@ -537,46 +562,33 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </template>
 
                             <!-- 3. QR CODE ELEMENT -->
+                            <template x-if="isShapeType(el.type)">
+                                <div class="w-full h-full pointer-events-none" :style="{ backgroundColor: el.styles?.fill || schema.primary_color || '#110b51', border: (el.styles?.border_width || 0) + 'px solid ' + (el.styles?.border_color || schema.secondary_color || '#efb43c'), borderRadius: el.shape === 'ellipse' ? '50%' : (el.styles?.border_radius || 0) + 'px' }"></div>
+                            </template>
                             <template x-if="isQrType(el.type)">
-                                <div class="w-full h-full p-1 flex items-center justify-center text-center pointer-events-none">
-                                    <template x-if="orientation === 'portrait' || el.width >= 22">
-                                        <div class="w-full h-full bg-slate-50/95 border border-slate-300 rounded-lg p-1.5 flex items-center justify-between gap-2 shadow-xs">
-                                            <div class="h-full aspect-square bg-white border border-slate-300 rounded p-1 flex items-center justify-center shrink-0">
-                                                <svg class="w-full h-full text-slate-900" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
-                                                </svg>
-                                            </div>
-                                            <div class="flex-1 text-left overflow-hidden">
-                                                <span class="inline-block text-[8px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Verificación Oficial</span>
-                                                <p class="text-[9px] font-mono font-bold text-slate-800 mt-0.5 truncate">CERT-2026-000042</p>
-                                                <p class="text-[7px] text-slate-500 leading-tight truncate">Validez en línea UMSA</p>
-                                            </div>
-                                        </div>
-                                    </template>
-                                    <template x-if="orientation !== 'portrait' && el.width < 22">
-                                        <div class="w-full h-full flex flex-col items-center justify-center">
-                                            <div class="w-full aspect-square max-h-[85%] bg-white border border-slate-300 rounded p-1 flex items-center justify-center shadow-xs">
-                                                <svg class="w-full h-full text-slate-900" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
-                                                </svg>
-                                            </div>
-                                            <span class="text-[7px] font-mono text-slate-500 mt-0.5 truncate block max-w-full">
-                                                CERT-2026-000042
-                                            </span>
-                                        </div>
-                                    </template>
+                                <div class="w-full h-full overflow-hidden text-center pointer-events-none">
+                                    <div class="h-[70%] flex justify-center">
+                                        <svg class="h-full max-w-full aspect-square text-slate-900" viewBox="0 0 24 24" fill="currentColor" aria-label="QR de ejemplo">
+                                            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-[7px] leading-tight mt-0.5 text-brand">CERT-2026-000042</p>
+                                    <p class="text-[6.5px] leading-tight mt-0.5 text-emerald-700" x-text="sampleData.validityType === 'permanent' ? 'VIGENCIA PERMANENTE' : 'VERIFICAR EN LÍNEA'"></p>
                                 </div>
                             </template>
 
                             <!-- 4. SIGNATURE ELEMENT -->
                             <template x-if="isSignatureType(el.type)">
-                                <div class="w-full h-full flex flex-col items-center justify-end text-center p-1 pointer-events-none">
-                                    <template x-if="resolveAssetUrl(el)">
-                                        <img :src="resolveAssetUrl(el)" class="h-10 max-h-[50%] object-contain mb-1" alt="Firma">
-                                    </template>
-                                    <div class="w-4/5 border-t border-slate-700 my-0.5"></div>
-                                    <p class="text-[10px] font-bold text-slate-900 leading-tight truncate w-full" x-text="el.content || el.name || 'Ing. Aniceto Velarde Forest'"></p>
-                                    <p class="text-[8px] text-slate-500 leading-tight truncate w-full" x-text="el.subtitle || el.position || 'Vicedecano de Facultad'"></p>
+                                <div class="w-full h-full overflow-hidden text-center pointer-events-none">
+                                    <div class="h-[36%] overflow-hidden flex justify-center">
+                                        <template x-if="resolveAssetUrl(el)">
+                                            <img :src="resolveAssetUrl(el)" class="max-w-[80%] object-contain" :style="{height: resolveAssetUrl(el).includes('_ft.svg') ? '140%' : '100%'}" alt="Firma">
+                                        </template>
+                                    </div>
+                                    <div class="w-[88%] border-t border-slate-700 mx-auto mt-0.5 mb-0.75"></div>
+                                    <p class="font-bold text-slate-900 leading-tight w-full" :style="{fontSize: (el.styles?.font_size || 11.5) + 'px'}" x-text="el.content || el.authority_name || el.name || 'Autoridad firmante'"></p>
+                                    <p class="text-[9.5px] text-slate-600 leading-tight w-full" x-text="el.subtitle || el.authority_title || el.position || ''"></p>
+                                    <p class="text-[8px] text-slate-500 leading-tight w-full" x-text="el.institution || 'Facultad de Tecnología · UMSA'"></p>
                                 </div>
                             </template>
 
@@ -626,8 +638,44 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                 <template x-if="selectedElement">
                     <fieldset :disabled="selectedElement.is_locked" class="space-y-4 min-w-0">
                         <p x-show="selectedElement.is_locked" class="rounded-lg bg-accent-soft px-3 py-2 text-amber-800">Elemento bloqueado. Desbloquéalo desde Capas para editarlo.</p>
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                            <label for="element-visibility-rule" class="block text-[10px] font-semibold text-brand">Mostrar este bloque</label>
+                            <select id="element-visibility-rule" :value="selectedElement.visibility_rule || 'always'" @change="selectedElement.visibility_rule = $event.target.value; markDirty()" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs">
+                                <option value="always">En todos los certificados</option><option value="with_score">Cuando tenga calificación</option><option value="permanent">Solo con vigencia permanente</option><option value="temporary">Solo con vencimiento</option>
+                            </select>
+                            <p x-show="!matchesVisibilityRule(selectedElement)" class="text-[10px] leading-relaxed text-amber-800">Este bloque no corresponde a la muestra actual. Puedes cambiar el tipo desde Datos o activar «Ver todos los bloques» para editarlo.</p>
+                        </div>
 
                         <!-- Element Quick Actions: Align, Layer, Clone -->
+                        <template x-if="isQrType(selectedElement.type)">
+                            <section class="rounded-xl border border-brand/15 bg-brand-soft p-3 space-y-3" aria-label="Tamaño del código QR">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h3 class="text-xs font-bold text-brand">Tamaño del QR</h3>
+                                    <output for="qr-size-range" class="text-xs font-semibold text-brand" x-text="qrSizeMm().toFixed(1) + ' mm'"></output>
+                                </div>
+                                <label for="qr-size-range" class="block text-[11px] text-slate-600">Lado del código al imprimir</label>
+                                <input id="qr-size-range" type="range" min="20" max="60" step="0.5" :value="qrSizeMm()" @input="resizeQr($event.target.value)" @change="flushHistory()" class="w-full accent-brand">
+                                <div class="grid grid-cols-3 gap-1.5">
+                                    <template x-for="option in [{size:25, label:'Estándar'}, {size:32, label:'Grande'}, {size:40, label:'Extra grande'}]" :key="option.size">
+                                        <button type="button" @click="resizeQr(option.size); flushHistory()" :aria-pressed="Math.abs(qrSizeMm() - option.size) < .2" :class="Math.abs(qrSizeMm() - option.size) < .2 ? 'border-brand bg-brand text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand'" class="rounded-lg border px-1.5 py-2 text-center text-[10px] leading-tight">
+                                            <span class="block font-semibold" x-text="option.label"></span><span x-text="option.size + ' mm'"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                                <p class="text-[10px] leading-relaxed text-slate-600">Conserva la proporción del QR y el espacio para su código. Puedes mover el bloque para que no cubra firmas o texto.</p>
+                                <p class="text-[10px] leading-relaxed font-medium text-brand">Al guardar, el tamaño se aplica a los próximos certificados que usen esta plantilla.</p>
+                            </section>
+                        </template>
+                        <template x-if="isShapeType(selectedElement.type)">
+                            <section class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3" aria-label="Estilo de la forma">
+                                <h3 class="text-[11px] font-bold text-brand">Franja o forma</h3>
+                                <div class="flex items-center justify-between gap-3"><label for="shape-fill">Color de relleno</label><input id="shape-fill" type="color" x-model="selectedElement.styles.fill" @input="markDirty()" class="h-8 w-10 rounded border border-slate-300"></div>
+                                <div class="flex items-center justify-between gap-3"><label for="shape-border-color">Color del borde</label><input id="shape-border-color" type="color" x-model="selectedElement.styles.border_color" @input="markDirty()" class="h-8 w-10 rounded border border-slate-300"></div>
+                                <div><label for="shape-border-width" class="block mb-1">Grosor del borde</label><input id="shape-border-width" type="number" min="0" max="12" step="0.5" x-model.number="selectedElement.styles.border_width" @input="markDirty()" class="w-full rounded-lg border border-slate-300 px-2 py-1.5"></div>
+                                <div x-show="selectedElement.shape !== 'ellipse'"><label for="shape-radius" class="block mb-1">Redondeado de esquinas</label><input id="shape-radius" type="number" min="0" max="200" x-model.number="selectedElement.styles.border_radius" @input="markDirty()" class="w-full rounded-lg border border-slate-300 px-2 py-1.5"></div>
+                                <p class="text-[10px] text-slate-500">Ajusta posición, tamaño y opacidad abajo. Usa Fondo o Frente para cambiar su orden.</p>
+                            </section>
+                        </template>
                         <div class="grid grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl text-[10px] font-bold">
                             <button type="button" @click="alignElementCenter('x')"
                                     class="p-1.5 rounded-lg text-slate-700 hover:text-brand hover:bg-white transition-all text-center cursor-pointer"
@@ -693,6 +741,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                             </div>
                         </div>
 
+                        <div class="rounded-xl border border-slate-200 p-3"><label for="element-rotation" class="block text-[10px] text-slate-500 mb-1">Rotación</label><input id="element-rotation" type="number" min="-180" max="180" step="1" :value="selectedElement.rotation || 0" @input="selectedElement.rotation = Number($event.target.value); markDirty()" class="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-xs"></div>
                         <!-- 2. Text Content & Variables (For Text Elements) -->
                         <template x-if="isTextType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -783,6 +832,11 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
                         <template x-if="isTextType(selectedElement.type)">
                             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
                                 <span class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tipografía & Estilos</span>
+                                <label class="flex items-center gap-2 text-xs text-slate-700">
+                                    <input type="checkbox" x-model="selectedElement.styles.fit_text" @change="markDirty()" class="rounded border-slate-300 text-brand">
+                                    Ajustar texto al espacio disponible
+                                </label>
+                                <p class="text-[10px] leading-relaxed text-slate-500">Reduce la letra cuando un nombre o párrafo es largo. Amplía el bloque para conservar un tamaño mayor.</p>
                                 <div>
                                     <label for="element-font-family" class="block text-[10px] text-slate-500 mb-1">Fuente del elemento</label>
                                     <select id="element-font-family" x-model="selectedElement.styles.font_family" @change="markDirty()" class="w-full py-1.5 px-2 text-xs border border-slate-300 rounded bg-white">
@@ -797,7 +851,7 @@ window.__CERTIFICATE_STUDIO_CONFIG = {
 
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="block text-[10px] text-slate-500 mb-0.5">Tamaño (px)</label>
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">Tamaño de letra</label>
                                         <div class="flex items-center gap-1">
                                             <button type="button" @click="changeFontSize(-1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 font-bold text-slate-700 cursor-pointer">-</button>
                                             <input type="number" min="6" max="72" x-model.number="selectedElement.styles.font_size"

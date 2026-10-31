@@ -52,6 +52,7 @@
 
     @foreach($thumbnailElements as $thumbnailElement)
         @continue(!is_array($thumbnailElement) || ($thumbnailElement['is_visible'] ?? true) === false)
+        @continue(($thumbnailElement['visibility_rule'] ?? 'always') === 'permanent')
         @php
             $thumbnailStyles = is_array($thumbnailElement['styles'] ?? null) ? $thumbnailElement['styles'] : [];
             $thumbnailType = $thumbnailElement['type'] ?? 'text';
@@ -86,6 +87,8 @@
                 @if($thumbnailAsset !== '')
                     <img src="{{ $thumbnailAsset }}" alt="" loading="lazy" class="w-full h-full" style="object-fit: {{ $thumbnailFit }};">
                 @endif
+            @elseif(in_array($thumbnailType, ['shape', 'band', 'rectangle', 'ellipse'], true))
+                <div class="w-full h-full" style="background: {{ $thumbnailColor($thumbnailStyles['fill'] ?? null, $thumbnailPrimary) }}; border: {{ max(0, (float) ($thumbnailStyles['border_width'] ?? 0)) * 100 / $thumbnailWidth }}cqw solid {{ $thumbnailColor($thumbnailStyles['border_color'] ?? null, $thumbnailSecondary) }}; border-radius: {{ ($thumbnailElement['shape'] ?? $thumbnailType) === 'ellipse' ? '50%' : max(0, (float) ($thumbnailStyles['border_radius'] ?? 0)) * 100 / $thumbnailWidth.'cqw' }};"></div>
             @elseif(in_array($thumbnailType, ['qr', 'qr_code'], true))
                 <svg viewBox="0 0 24 24" class="w-full h-full" fill="currentColor" aria-hidden="true">
                     <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 2h3v4h-3v-4zm-5 2h2v2h-2v-2zm2 2h3v-2h-3v2z"/>

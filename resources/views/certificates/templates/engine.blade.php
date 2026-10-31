@@ -1,3 +1,6 @@
+@if(($schema['layout_version'] ?? 1) >= 2)
+    @include('certificates.templates.canvas', ['font_metrics' => $font_metrics ?? null])
+@else
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -352,11 +355,22 @@
         @endif
 
         @if(!empty($schema['elements']) && count($schema['elements']) > 0)
+            @php
+                $documentHasScore = ($certificate->score !== null || filled($certificate->score_label))
+                    && ($certificate->activity?->certificateConfig?->show_score_on_pdf ?? true);
+                $documentIsPermanent = $certificate->isPermanent();
+            @endphp
             <!-- ============================================== -->
             <!-- DYNAMIC ELEMENT-BASED CANVAS ENGINE            -->
             <!-- ============================================== -->
             @foreach($schema['elements'] as $el)
                 @continue(isset($el['is_visible']) && !$el['is_visible'])
+                @continue(!match ($el['visibility_rule'] ?? 'always') {
+                    'with_score' => $documentHasScore,
+                    'permanent' => $documentIsPermanent,
+                    'temporary' => !$documentIsPermanent,
+                    default => true,
+                })
 
                 @if($el['type'] === 'watermark')
                     @if(($el['watermark_type'] ?? '') === 'image' && !empty($el['asset_base64']))
@@ -563,3 +577,4 @@
     </div>
 </body>
 </html>
+@endif

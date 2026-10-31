@@ -3,7 +3,275 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
+const certificateTypes = [
+    { id: 21, code: 'calificacion-especial', name: 'Certificado de Calificación Especial', has_score: true, min_passing_score: 95, score_scale: 'Sobre 100 puntos', validity_mode: 'years', default_validity_years: 5 },
+    { id: 22, code: 'asistencia', name: 'Certificado de Asistencia', has_score: false, validity_mode: 'years', default_validity_years: 3 },
+    { id: 23, code: 'reconocimiento', name: 'Certificado de Reconocimiento', has_score: false, validity_mode: 'permanent', default_validity_years: null },
+];
+
+test('los tipos registrados aportan nombre, nota mínima y vigencia a la muestra sin cambiar la plantilla', () => {
+    const { studio } = createStudio({ certificateTypes, sampleIssueDate: '2026-10-29' });
+    assert.equal(studio.selectedSampleType.id, 21);
+    assert.equal(studio.sampleData.certificateType, 'Certificado de Calificación Especial');
+    assert.equal(studio.sampleData.score, 95);
+    assert.equal(studio.sampleIsPassing, true);
+    assert.equal(studio.sampleExpirationDate, '2031-10-29');
+    assert.equal(studio.isDirty, false);
+    assert.equal(studio.undoStack.length, 1);
+    assert.equal('sampleTypeId' in studio.getDocumentState(), false);
+});
+
+test('un tipo sin nota elimina puntajes de muestra y el permanente no inventa vencimiento', () => {
+    const { studio } = createStudio({ certificateTypes });
+    studio.sampleData.scoreLabel = 'Distinción';
+    studio.sampleTypeId = '23';
+    studio.selectSampleType();
+    assert.equal(studio.sampleHasScore, false);
+    assert.equal(studio.sampleData.score, '');
+    assert.equal(studio.sampleData.expirationDate, '');
+    assert.equal(studio.interpolateText('{{certificado.puntaje}}|{{certificado.mencion}}|{{certificado.fecha_vencimiento}}'), '||');
+    assert.equal(studio.isDirty, false);
+});
+
+test('la nota cero y una mención se prueban sin alterar la aprobación mínima ni el documento', () => {
+    const { studio, opened } = createStudio({ certificateTypes });
+    studio.sampleData.score = '0';
+    studio.sampleData.scoreLabel = 'Requiere refuerzo';
+    assert.equal(studio.sampleHasScore, true);
+    assert.equal(studio.sampleIsPassing, false);
+    assert.equal(studio.interpolateText('{{certificado.puntaje}}'), '0');
+    assert.equal(studio.previewPdf(), true);
+    const parameters = new URL(opened[0][0], 'http://localhost').searchParams;
+    assert.equal(parameters.get('score'), '0');
+    assert.equal(parameters.get('score_label'), 'Requiere refuerzo');
+    assert.equal(parameters.get('certificate_type_id'), '21');
+    assert.equal(studio.isDirty, false);
+});
+
+test('la muestra valida puntaje y fecha personalizada antes de abrir un PDF', () => {
+    const { studio, opened } = createStudio({ certificateTypes, sampleIssueDate: '2026-10-29' });
+    studio.sampleData.score = '101';
+    assert.equal(studio.previewPdf(), false);
+    studio.sampleData.score = '';
+    studio.sampleData.validityType = 'custom';
+    studio.sampleExpirationDate = '2026-10-28';
+    studio.updateSampleDates();
+    assert.equal(studio.previewPdf(), false);
+    studio.sampleExpirationDate = '2027-01-01';
+    studio.updateSampleDates();
+    assert.equal(studio.previewPdf(), true);
+    assert.equal(new URL(opened[0][0], 'http://localhost').searchParams.get('expiration_date'), '2027-01-01');
+    assert.equal(studio.validSampleDate('2026-02-30'), false);
+    assert.equal(studio.validSampleDate('2028-02-29'), true);
+});
+
+test('una calificación cualitativa sin puntaje muestra la mención sin inventar unidades', () => {
+    const { studio } = createStudio({ certificateTypes });
+    studio.sampleData.score = '';
+    studio.sampleData.scoreLabel = 'Excelente';
+    studio.addCertificateField('qualification');
+    assert.equal(studio.interpolateText(studio.selectedElement.content), 'Calificación: Excelente');
+    assert.equal(studio.isElementVisible(studio.selectedElement), true);
+});
+
+test('las reglas de visibilidad distinguen nota, vigencia y ocultamiento manual', () => {
+    const { studio } = createStudio({ certificateTypes });
+    const scored = element({ visibility_rule: 'with_score' });
+    const permanent = element({ visibility_rule: 'permanent' });
+    const temporal = element({ visibility_rule: 'temporary' });
+    assert.equal(studio.isElementVisible(scored), true);
+    assert.equal(studio.isElementVisible(temporal), true);
+    assert.equal(studio.isElementVisible(permanent), false);
+    studio.sampleTypeId = '23';
+    studio.selectSampleType();
+    assert.equal(studio.isElementVisible(scored), false);
+    assert.equal(studio.isElementVisible(temporal), false);
+    assert.equal(studio.isElementVisible(permanent), true);
+    studio.showConditionalElements = true;
+    assert.equal(studio.isElementVisible(scored), true);
+    assert.equal(studio.isElementVisible(element({ visibility_rule: 'with_score', is_visible: false })), false);
+});
+
+test('insertar calificación conserva el diseño previo, evita duplicados y permite deshacer', () => {
+    const { studio } = createStudio({ certificateTypes });
+    const original = JSON.stringify(studio.elements[0]);
+    studio.addCertificateField('qualification');
+    assert.equal(studio.elements.length, 2);
+    const qualification = studio.elements[1];
+    assert.equal(qualification.type, 'text');
+    assert.equal(qualification.visibility_rule, 'with_score');
+    assert.match(qualification.content, /certificado.puntaje/);
+    assert.equal(JSON.stringify(studio.elements[0]), original);
+    assertInsideSheet(qualification);
+    studio.addCertificateField('qualification');
+    assert.equal(studio.elements.length, 2);
+    studio.undo();
+    assert.equal(studio.elements.length, 1);
+    assert.equal(studio.isDirty, false);
+});
+
+test('la inserción reconoce variables heredadas y no mueve ni desbloquea bloques existentes', () => {
+    const original = element({ content: 'Nota: {{ certificado.calificacion }}', is_locked: true });
+    const { studio } = createStudio({ initialElements: [original] });
+    assert.equal(studio.hasAcademicField('qualification'), true);
+    studio.addCertificateField('qualification');
+    assert.equal(studio.elements.length, 1);
+    assert.equal(studio.selectedId, original.id);
+    assert.equal(studio.elements[0].is_locked, true);
+    assert.equal(studio.isDirty, false);
+});
+
+test('un lienzo ocupado muestra aviso y no superpone automáticamente un bloque académico', () => {
+    const { studio } = createStudio({ initialElements: [element({ x: 0, y: 0, width: 100, height: 100 })] });
+    studio.addCertificateField('qualification');
+    assert.equal(studio.elements.length, 1);
+    assert.match(studio.previewNotice, /espacio libre/);
+    assert.equal(studio.isDirty, false);
+});
+
+test('calificación, mención y vigencia comparten el espacio libre inferior sin superponerse', () => {
+    const { studio } = createStudio({ initialElements: [element({ id: 'body', x: 8, y: 0, width: 84, height: 82 }), element({ id: 'qr', type: 'qr', x: 73, y: 82, width: 20, height: 12 })] });
+    for (const field of ['qualification', 'mention', 'validity']) { studio.addCertificateField(field); }
+    const blocks = studio.elements.filter(item => item.data_field);
+    assert.equal(blocks.length, 3);
+    for (const block of blocks) {
+        assertInsideSheet(block);
+        for (const other of studio.elements.filter(item => item.id !== block.id)) {
+            assert.equal(block.x < other.x + other.width && block.x + block.width > other.x && block.y < other.y + other.height && block.y + block.height > other.y, false);
+        }
+    }
+});
+
+test('el formulario guarda la regla de visibilidad y nunca guarda los ejemplos de notas', () => {
+    const { studio, nodes } = createStudio({ certificateTypes });
+    studio.addCertificateField('expiration');
+    studio.sampleData.score = 88;
+    studio.saveTemplate();
+    const schema = JSON.parse(nodes.schemaJsonInput.value);
+    assert.equal(schema.elements[1].visibility_rule, 'temporary');
+    assert.equal(schema.elements[1].data_field, 'expiration');
+    assert.match(schema.elements[1].content, /certificado.fecha_vencimiento/);
+    assert.equal('sampleData' in schema, false);
+    assert.equal('certificateTypes' in schema, false);
+});
+
 const controllerPath = new URL('../../resources/views/templates/studio-controller.blade.php', import.meta.url);
+
+for (const orientation of ['landscape', 'portrait']) {
+    test(`ampliar el QR a 40 mm en ${orientation} conserva su proporción y permite deshacer`, () => {
+        const qr = element({ id: 'qr', type: 'qr', x: 75, y: 65, width: 12, height: 18 });
+        const { studio } = createStudio({ orientation, initialElements: [qr, element()] });
+        studio.selectElement('qr');
+        const original = studio.serializeDocument();
+
+        studio.resizeQr(40);
+
+        assert.equal(studio.qrSizeMm(), 40);
+        const pageWidth = orientation === 'portrait' ? 210 : 297;
+        const pageHeight = orientation === 'portrait' ? 297 : 210;
+        assert.ok(Math.abs(studio.selectedElement.width * pageWidth / 100 - 40) < .04);
+        assert.ok(Math.abs(studio.selectedElement.height * pageHeight / 100 * .7 - 40) < .04);
+        assertInsideSheet(studio.selectedElement);
+        assert.equal(studio.elements[1].x, 10);
+        assert.equal(studio.isDirty, true);
+        studio.undo();
+        assert.equal(studio.serializeDocument(), original);
+        studio.redo();
+        assert.equal(studio.qrSizeMm(), 40);
+    });
+}
+
+test('el QR nuevo mide 32 mm y su tamaño personalizado viaja en el formulario de la plantilla', () => {
+    const { studio, nodes } = createStudio();
+    studio.addQrElement();
+    assert.equal(studio.qrSizeMm(), 32);
+    studio.resizeQr(40);
+
+    studio.saveTemplate(false);
+
+    const schema = JSON.parse(nodes.schemaJsonInput.value);
+    const qr = schema.elements.find(item => item.type === 'qr');
+    assert.equal(studio.qrSizeMm(qr), 40);
+    assert.equal(qr.width, studio.selectedElement.width);
+    assert.equal(qr.height, studio.selectedElement.height);
+    assert.equal(nodes.createNewVersionInput.value, '0');
+});
+
+test('el control QR respeta bloqueos, ignora valores inválidos y limita el tamaño al interior de la hoja', () => {
+    const { studio } = createStudio({ initialElements: [element({ id: 'qr', type: 'qr_code', x: 95, y: 95, width: 5, height: 5, is_locked: true })] });
+    studio.selectElement('qr');
+    const locked = studio.serializeDocument();
+    studio.resizeQr(40);
+    assert.equal(studio.serializeDocument(), locked);
+    studio.elements[0].is_locked = false;
+    const unlocked = studio.serializeDocument();
+    studio.resizeQr('');
+    studio.resizeQr('invalid');
+    assert.equal(studio.serializeDocument(), unlocked);
+    studio.resizeQr(200);
+    assert.equal(studio.qrSizeMm(), 60);
+    assertInsideSheet(studio.selectedElement);
+    studio.resizeQr(1);
+    assert.equal(studio.qrSizeMm(), 20);
+    assertInsideSheet(studio.selectedElement);
+});
+
+test('las franjas se guardan como formas editables y su inserción se deshace en un paso', () => {
+    const { studio } = createStudio();
+    const original = studio.serializeDocument();
+    studio.addShape('bottom');
+    const band = studio.selectedElement;
+    assert.equal(band.type, 'shape');
+    assert.equal(band.y + band.height, 100);
+    assert.equal(band.width, 100);
+    band.styles.fill = '#950d1f';
+    band.rotation = 5;
+    studio.markDirty();
+    const saved = studio.buildSchemaForSubmission();
+    assert.equal(saved.layout_version, 2);
+    assert.equal(saved.elements.at(-1).styles.fill, '#950d1f');
+    assert.equal(saved.elements.at(-1).rotation, 5);
+    studio.undo();
+    studio.undo();
+    assert.equal(studio.serializeDocument(), original);
+});
+
+test('la elipse conserva una proporción circular en ambos formatos', () => {
+    for (const orientation of ['landscape', 'portrait']) {
+        const { studio } = createStudio({ initialOrientation: orientation });
+        studio.orientation = orientation;
+        studio.addShape('ellipse');
+        const shape = studio.selectedElement;
+        assertInsideSheet(shape);
+        assert.equal(shape.shape, 'ellipse');
+        assert.ok(Math.abs(shape.width * studio.canvasWidth - shape.height * studio.canvasHeight) < .01);
+    }
+});
+
+test('el ajuste de un texto largo respeta el tamaño mínimo y no modifica la plantilla', () => {
+    const text = element({ content: 'María Fernanda Rodríguez Quispe Mamani', width: 20, height: 3, styles: { font_size: 28, min_font_size: 14, fit_text: true } });
+    const { studio } = createStudio({ initialElements: [text] });
+    const original = studio.serializeDocument();
+    assert.ok(studio.fittedFontSize(studio.elements[0]) < 28);
+    assert.ok(studio.fittedFontSize(studio.elements[0]) >= 14);
+    assert.equal(studio.serializeDocument(), original);
+    studio.elements[0].styles.fit_text = false;
+    assert.equal(studio.fittedFontSize(studio.elements[0]), 28);
+});
+
+test('autoajustar usa la composición A4 y conserva los bloques bloqueados', () => {
+    const fixed = element({ id: 'fixed', is_locked: true });
+    const { studio } = createStudio({ initialElements: [fixed, element({ id: 'el_beneficiary_name' })], layoutPresets: { portrait: { beneficiary: [10, 42, 80, 8.5, 26, 20] } } });
+    const original = studio.serializeDocument();
+    studio.autoAdaptLayout('portrait');
+    assert.equal(studio.elements[0].x, fixed.x);
+    assert.equal(studio.elements[0].y, fixed.y);
+    assert.equal(studio.elements[1].y, 42);
+    assert.equal(studio.elements[1].styles.font_size, 26);
+    assert.equal(studio.elements[1].styles.fit_text, true);
+    studio.undo();
+    assert.equal(studio.serializeDocument(), original);
+});
 
 function createTimers() {
     let now = 0;
