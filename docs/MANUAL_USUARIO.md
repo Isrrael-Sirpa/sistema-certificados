@@ -1,338 +1,262 @@
-# Manual de Usuario: Sistema de Certificados Académicos con Diseñador Institucional y Código QR
+# Manual de Usuario y Guía Operativa
 
-**Institución:** Vicedecanato de Facultad  
-**Versión del Sistema:** 2.0.0 (Release con Diseñador Flexible de Plantillas)  
-**Fecha de Publicación:** Octubre 2026  
+**Sistema:** Plataforma Web de Gestión, Generación, Diseño, Emisión y Verificación de Certificados Académicos con Código QR  
+**Institución:** Facultad de Tecnología — Universidad Mayor de San Andrés (UMSA)  
+**Versión del Sistema:** 2.5.0 (Arquitectura Multirrol, Multitenancy de Carreras y Control de Resoluciones)  
+**Fecha:** Noviembre 2026  
 
 ---
 
 ## 📌 Tabla de Contenidos
-1. [Introducción y Objetivos](#1-introducción-y-objetivos)
-2. [Roles de Usuario y Matriz de Permisos](#2-roles-de-usuario-y-matriz-de-permisos)
-3. [Acceso al Sistema y Seguridad](#3-acceso-al-sistema-y-seguridad)
-4. [Dashboard Principal (Métricas y Estados)](#4-dashboard-principal-métricas-y-estados)
-5. [Gestión y Diseñador Visual de Plantillas Institucionales](#5-gestión-y-diseñador-visual-de-plantillas-institucionales)
-   - [5.1 Catálogo de Plantillas y Plantilla Predeterminada](#51-catálogo-de-plantillas-y-plantilla-predeterminada)
-   - [5.2 Creación y Duplicación de Plantillas](#52-creación-y-duplicación-de-plantillas)
-   - [5.3 Uso del Diseñador Visual de Certificados](#53-uso-del-diseñador-visual-de-certificados)
-   - [5.4 Versionado de Plantillas (v1, v2, v3)](#54-versionado-de-plantillas-v1-v2-v3)
-6. [Biblioteca de Recursos Institucionales (Logos, Firmas y Sellos)](#6-biblioteca-de-recursos-institucionales-logos-firmas-y-sellos)
-   - [6.1 Subida y Administración de Escudos y Logos](#61-subida-y-administración-de-escudos-y-logos)
-   - [6.2 Registro de Firmas Digitalizadas con Cargos Institucionales](#62-registro-de-firmas-digitalizadas-con-cargos-institucionales)
-   - [6.3 Sellos Oficiales y Marcas de Agua](#63-sellos-oficiales-y-marcas-de-agua)
-7. [Gestión del Padrón de Beneficiarios](#7-gestión-del-padrón-de-beneficiarios)
-8. [Gestión de Actividades Académicas](#8-gestión-de-actividades-académicas)
-   - [8.1 Registro de Eventos Académicos](#81-registro-de-eventos-académicos)
-   - [8.2 Personalización de Certificados por Actividad Académica](#82-personalización-de-certificados-por-actividad-académica)
-9. [Emisión de Certificados](#9-emisión-de-certificados)
-   - [9.1 Emisión Individual con Selección de Plantilla](#91-emisión-individual-con-selección-de-plantilla)
-   - [9.2 Previsualización en Vivo del Borrador PDF](#92-previsualización-en-vivo-del-borrador-pdf)
-   - [9.3 Emisión Masiva en Lote para Cursos y Talleres](#93-emisión-masiva-en-lote-para-cursos-y-talleres)
-10. [Garantía de Inmutabilidad y Congelación Documental](#10-garantía-de-inmutabilidad-y-congelación-documental)
-11. [Consulta, Vista Previa y Descarga de Certificados](#11-consulta-vista-previa-y-descarga-de-certificados)
-12. [Regla Estricta de Vigencia Institucional (3 Años)](#12-regla-estricta-de-vigencia-institucional-3-años)
-13. [Anulación y Revocación de Certificados](#13-anulación-y-revocación-de-certificados)
-14. [Portal Público de Verificación (QR y Búsqueda Manual)](#14-portal-público-de-verificación-qr-y-búsqueda-manual)
-15. [Módulo de Reportes e Informes Imprimibles](#15-módulo-de-reportes-e-informes-imprimibles)
-16. [Auditoría de Acciones Administrativas](#16-auditoría-de-acciones-administrativas)
-17. [Configuración de Parámetros Globales](#17-configuración-de-parámetros-globales)
-18. [Preguntas Frecuentes (FAQ)](#18-preguntas-frecuentes-faq)
+
+1. [Introducción y Objetivos del Sistema](#1-introducción-y-objetivos-del-sistema)
+2. [Roles de Usuario y Matriz de Permisos Institucionales](#2-roles-de-usuario-y-matriz-de-permisos-institucionales)
+3. [Acceso al Sistema y Cuentas por Defecto](#3-acceso-al-sistema-y-cuentas-por-defecto)
+4. [Dashboard Principal y Métricas Operativas](#4-dashboard-principal-y-métricas-operativas)
+5. [Módulo de Carreras y Departamentos (Exclusivo Super Administrador)](#5-módulo-de-carreras-y-departamentos-exclusivo-super-administrador)
+   - [5.1 Registro y Edición de Carreras](#51-registro-y-edición-de-carreras)
+   - [5.2 Desactivación / Reactivación Segura de Unidades](#52-desactivación--reactivación-segura-de-unidades)
+6. [Padrón Único y Portafolio Académico 360° del Estudiante](#6-padrón-único-y-portafolio-académico-360-del-estudiante)
+7. [Gestión de Actividades Académicas y Resoluciones Facultativas](#7-gestión-de-actividades-académicas-y-resoluciones-facultativas)
+   - [7.1 Registro de Actividades con N° de Resolución](#71-registro-de-actividades-con-n-de-resolución)
+   - [7.2 Delimitación de Audiencia (Propia Carrera, Toda la Facultad o Inter-Carreras)](#72-delimitación-de-audiencia-propia-carrera-toda-la-facultad-o-inter-carreras)
+   - [7.3 Detección Automática de Estudiantes No Autorizados](#73-detección-automática-de-estudiantes-no-autorizados)
+8. [Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)](#8-regla-ética-de-calificaciones-y-aprobación-obligatoria--51-pts)
+9. [Catálogo y Diseñador Visual de Plantillas (WYSIWYG)](#9-catálogo-y-diseñador-visual-de-plantillas-wysiwyg)
+   - [9.1 Herramientas y Elementos del Diseñador](#91-herramientas-y-elementos-del-diseñador)
+   - [9.2 Diccionario de Variables Interpolables](#92-diccionario-de-variables-interpolables)
+   - [9.3 Co-firmantes Oficiales con Nombres y Cargos](#93-co-firmantes-oficiales-con-nombres-y-cargos)
+10. [Emisión de Certificados](#10-emisión-de-certificados)
+    - [10.1 Emisión Individual con Previsualización de Borrador PDF](#101-emisión-individual-con-previsualización-de-borrador-pdf)
+    - [10.2 Emisión Masiva por Nómina de Participantes (Excel / CSV)](#102-emisión-masiva-por-nómina-de-participantes-excel--csv)
+11. [Garantía de Inmutabilidad y Congelación Documental (Regla 40)](#11-garantía-de-inmutabilidad-y-congelación-documental-regla-40)
+12. [Portal Público de Verificación (Código QR y Correlativo)](#12-portal-público-de-verificación-código-qr-y-correlativo)
+13. [Módulo de Reportes Estadísticos e Informes](#13-módulo-de-reportes-estadísticos-e-informes)
+14. [Auditoría Administrativa y Trazabilidad](#14-auditoría-administrativa-y-trazabilidad)
+15. [Preguntas Frecuentes (FAQ)](#15-preguntas-frecuentes-faq)
 
 ---
 
-## 1. Introducción y Objetivos
+## 1. Introducción y Objetivos del Sistema
 
-El **Sistema Web de Gestión, Generación, Diseño y Verificación de Certificados** del Vicedecanato es una plataforma universitaria integral diseñada para automatizar, personalizar y blindar jurídicamente la emisión de certificados de mérito académico, asistencia, aprobación, docencia y reconocimiento institucional.
+El **Sistema de Certificados de la Facultad de Tecnología de la UMSA** es una plataforma universitaria diseñada para centralizar, autenticar y certificar los méritos académicos (aprobación, asistencia, docencia y disertación) garantizando:
 
-### Avances y Capacidades de la Versión 2.0:
-- **Diseño Flexible sin Modificar Código**: Cada evento académico puede tener un diseño visual, paleta de colores, redacción y conjunto de firmas diferente, configurables desde el sistema.
-- **Biblioteca de Recursos Gráficos**: Banco centralizado de escudos, logos co-organizadores, sellos y firmas con nombres y cargos de autoridades.
-- **Interpolación de Variables Dinámicas**: Posibilidad de redactar textos institucionales que insertan automáticamente nombres, horas, fechas y resoluciones mediante etiquetas como `{{beneficiario.nombre}}` o `{{actividad.horas}}`.
-- **Previsualizador de Borradores**: Los operadores pueden inspeccionar visualmente el certificado en PDF antes de emitirlo formalmente.
-- **Congelación Documental Inmutable**: Los certificados emitidos quedan guardados con una copia histórica inalterable. Los cambios futuros en plantillas jamás modifican los certificados ya emitidos.
-- **Verificación Pública Instantánea mediante QR Vectorial**: Cualquier tercero puede comprobar la validez y vigencia del documento escaneando el código QR con un teléfono inteligente o ingresando el código correlativo en la web pública.
-- **Control Autónomo de Vigencia**: Regla estricta de 3 años calendario con cambio dinámico de estado (*Vigente* $\rightarrow$ *Expirado*).
+- **Aislamiento Seguro por Carrera**: Cada una de las 9 carreras oficiales de la Facultad y sus departamentos cuentan con su propio espacio de trabajo sin interferir en los registros de las demás carreras.
+- **Rigor Normativo por Resolución**: Ningún certificado se emite sin respaldo institucional y delimitación estricta de las carreras participantes.
+- **Ética Institucional en Calificaciones**: Se impide la emisión de certificados de aprobación a participantes reprobados (< 51 puntos).
+- **Validez Legal Permanente con Código QR**: Verificación instantánea e infalsificable desde cualquier dispositivo móvil o navegador web.
 
 ---
 
-## 2. Roles de Usuario y Matriz de Permisos
+## 2. Roles de Usuario y Matriz de Permisos Institucionales
 
-| Módulo / Funcionalidad | 👑 Administrador (Vicedecano / Jefe de Unidad) | 💼 Operador (Personal Administrativo) | 🌐 Visitante / Público General |
-| :--- | :---: | :---: | :---: |
-| **Acceso al Panel Privado** | ✅ | ✅ | ❌ |
-| **Diseñador y Catálogo de Plantillas** | ✅ (Crear, Editar, Duplicar, Versiones) | ❌ (Solo utiliza las aprobadas) | ❌ |
-| **Biblioteca de Recursos (Logos/Firmas)** | ✅ (Subir, Activar, Desactivar) | ❌ | ❌ |
-| **Padrón de Beneficiarios** | ✅ | ✅ | ❌ |
-| **Actividades y Emisión Masiva** | ✅ | ✅ | ❌ |
-| **Configurar Diseño por Actividad** | ✅ | ✅ | ❌ |
-| **Emisión Individual con Borrador** | ✅ | ✅ | ❌ |
-| **Descarga e Impresión de PDF** | ✅ | ✅ | ❌ |
-| **Anular / Revocar Certificados** | ✅ | ❌ | ❌ |
-| **Auditoría y Trazabilidad** | ✅ | ❌ | ❌ |
-| **Configuración Institucional** | ✅ | ❌ | ❌ |
-| **Escanear QR y Verificar en Web** | ✅ | ✅ | ✅ (Sin iniciar sesión) |
+| Funcionalidad / Módulo | 👑 Super Admin (Cómputo) | 🎓 Jefe de Carrera | 💼 Secretaria | ⚙️ Operador |
+| :--- | :---: | :---: | :---: | :---: |
+| **Administración de Carreras y Deptos.** | ✅ Total | ❌ Acceso Denegado (403) | ❌ Acceso Denegado (403) | ❌ |
+| **Gestión de Usuarios y Roles** | ✅ Total | ❌ | ❌ | ❌ |
+| **Dashboard Ejecutivo** | ✅ Toda la Facultad | ✅ Su propia carrera | ✅ Su propia carrera | ✅ Global |
+| **Actividades Académicas** | ✅ Ver/Crear todas | ✅ Su propia carrera | ✅ Su propia carrera | ✅ |
+| **Certificados Institucionales** | ✅ Ver/Auditar todos | ✅ Su propia carrera | ✅ Su propia carrera | ✅ |
+| **Padrón de Beneficiarios** | ✅ Padrón Único | ✅ Portafolio 360° | ✅ Portafolio 360° | ✅ |
+| **Diseñador de Plantillas** | ✅ Globales y locales | ✅ De su carrera | ✅ De su carrera | ❌ Solo lectura |
+| **Módulo de Reportes Estadísticos** | ✅ Toda la Facultad | ✅ Su propia carrera | ❌ Acceso Denegado (403) | ❌ |
+| **Biblioteca de Recursos (Logos/Firmas)**| ✅ Globales y locales | ✅ De su carrera | ✅ De su carrera | ❌ |
+| **Anular / Revocar Certificados** | ✅ | ✅ | ❌ | ❌ |
 
 ---
 
-## 3. Acceso al Sistema y Seguridad
+## 3. Acceso al Sistema y Cuentas por Defecto
 
-1. Abra su navegador web e ingrese a: `http://localhost:8000/login` (o el dominio institucional).
-2. Introduzca su correo institucional y contraseña.
-3. Marque **"Recordar mi sesión"** únicamente en computadoras de confianza de la oficina.
-4. Presione **"Iniciar Sesión Segura"**.
-
-### Credenciales por Defecto del Sistema:
-- **Administrador:** `admin@universidad.edu` | Contraseña: `Admin*2026`
-- **Operador:** `operador@universidad.edu` | Contraseña: `Operador*2026`
-
----
-
-## 4. Dashboard Principal (Métricas y Estados)
-
-Al autenticarse, accederá a la pantalla ejecutiva de control con indicadores sincronizados en tiempo real:
-
-- **Total Certificados**: Histórico consolidado de documentos emitidos por la institución.
-- **Certificados Vigentes (Verde)**: Documentos válidos cuyo periodo legal de 3 años está en curso.
-- **Certificados Expirados (Amarillo)**: Documentos que han superado los 3 años desde su fecha de emisión.
-- **Certificados Revocados (Rojo)**: Documentos anulados formalmente por el Vicedecanato.
-- **Últimos Certificados Emitidos**: Acceso inmediato a vista previa rápida (`👁️`), descarga en PDF (`📥`) y detalle (`🔍`).
-- **Monitoreo de Consultas QR**: Registro de verificaciones realizadas recientemente por empleadores o instituciones externas.
+1. Ingrese con su navegador a la dirección del sistema: `http://localhost:8000/login`
+2. Digite sus credenciales institucionales:
+   - **Super Administrador (Cómputo):** `admin@universidad.edu` | Contraseña: `Admin*2026`
+   - **Jefe de Carrera (Ej. Química):** `jefe.quimica@umsa.bo` | Contraseña: `password`
+   - **Secretaria (Ej. Química):** `secretaria.quimica@umsa.bo` | Contraseña: `password`
+   - **Operador:** `operador@universidad.edu` | Contraseña: `Admin*2026`
+3. Presione **"Iniciar Sesión Segura"**.
 
 ---
 
-## 5. Gestión y Diseñador Visual de Plantillas Institucionales
+## 4. Dashboard Principal y Métricas Operativas
 
-> **Acceso:** Menú lateral $\rightarrow$ **"Plantillas y Diseñador"** (Exclusivo Administrador).
-
-### 5.1 Catálogo de Plantillas y Plantilla Predeterminada
-El catálogo muestra las plantillas maestras disponibles en el Vicedecanato, cada una con su categoría, orientación, número de versión activa y estado operativo.
-- **Hacer Predeterminada**: La plantilla marcada como predeterminada será la seleccionada automáticamente en las emisiones individuales y por lotes si el evento no especifica otra.
-- **Activar / Desactivar**: Permite pausar una plantilla para que no aparezca en los formularios de emisión sin perder su historial.
-
-### 5.2 Creación y Duplicación de Plantillas
-- **Crear Nueva Plantilla**: Pulse el botón **"+ Nueva Plantilla"**, asigne un nombre (ej. *Congreso Internacional de Tecnología 2026*), seleccione la categoría (*Seminario, Institucional, Capacitación, Reconocimiento*) y la orientación (*A4 Horizontal* o *A4 Vertical*). Puede basarse en una plantilla existente para heredar su estilo.
-- **Duplicar Plantilla**: En cualquier tarjeta del catálogo, pulse **"Duplicar"**. Esto crea una réplica idéntica lista para ser adaptada a un nuevo evento sin alterar la original.
-
-### 5.3 Uso del Diseñador Visual de Certificados
-Al ingresar a **"Diseñar"** en una plantilla, se despliega el editor gráfico interactivo:
-1. **Identidad Visual y Colores**:
-   - *Color Primario*: Aplica al título del certificado, textos destacados y elementos decorativos principales.
-   - *Color Secundario / Filigrana*: Aplica a los marcos perimetrales y acentos dorados.
-2. **Estilo de Marco y Bordes**:
-   - *Doble Ornamental*: Clásico marco solemne universitario con doble línea.
-   - *Filigrana Dorada*: Marco de lujo con detalle punteado exterior para distinciones de honor.
-   - *Línea Moderna*: Marco limpio y minimalista.
-3. **Encabezados Institucionales**:
-   - Configuración de la jerarquía universitaria: *Universidad*, *Facultad*, *Unidad Emisora*.
-4. **Textos y Redacción Base**:
-   - Ajuste del texto de otorgación por defecto y título del mérito.
-5. **Previsualización en Vivo**:
-   - Permite verificar inmediatamente cómo se verá el documento compilado en PDF.
-
-### 5.4 Versionado de Plantillas (v1, v2, v3)
-Al guardar modificaciones en el Diseñador Visual, el sistema ofrece:
-- **Guardar como Nueva Versión (Recomendado)**: Incrementa el número de versión (ej. de v1 a v2) y solicita un breve resumen del cambio (ej. *Actualización de firma y cambio a azul institucional*).
-- Esto garantiza trazabilidad completa de quién y cuándo modificó cada diseño.
+Al ingresar, el sistema adapta automáticamente las métricas e indicadores al rol del usuario:
+- **Para Jefes y Secretarias de Carrera**:
+  - Muestra únicamente el total de certificados, actividades y beneficiarios de **su propia carrera**.
+  - En la esquina superior e inferior izquierda de la pantalla se visualiza la insignia oficial de su carrera (ej.: `QUI - Química Industrial`).
+- **Para el Super Administrador**:
+  - Presenta las estadísticas consolidadas de toda la Facultad de Tecnología, con desglose de certificados emitidos por carrera y volumen de verificaciones QR públicas.
 
 ---
 
-## 6. Biblioteca de Recursos Institucionales (Logos, Firmas y Sellos)
+## 5. Módulo de Carreras y Departamentos (Exclusivo Super Administrador)
 
-> **Acceso:** Menú lateral $\rightarrow$ **"Recursos Institucionales"** (Exclusivo Administrador).
+Ubicado en el menú lateral: **Administración Central $\rightarrow$ Carreras y Departamentos** (`/carreras-departamentos`).
 
-La biblioteca centraliza los activos gráficos oficiales del Vicedecanato para garantizar máxima calidad visual e impedir distorsiones:
+### 5.1 Registro y Edición de Carreras
+El Super Administrador puede crear nuevas carreras o departamentos con los siguientes datos:
+- **Nombre Oficial**: Nombre de la carrera (ej.: *Carrera de Electromecánica Industrial*).
+- **Código / Sigla**: Sigla de 3 letras que formará parte de los códigos correlativos (ej.: `ELM`).
+- **Tipo de Unidad**: Carrera, Departamento, Instituto o Administrativo.
+- **Autoridad Responsable**: Título y nombre de la autoridad (ej.: *Director de Carrera*, *Ing. Carlos Mendoza*).
 
-### 6.1 Subida y Administración de Escudos y Logos
-- Permite subir logotipos en alta resolución (formatos PNG con transparencia, SVG o JPG).
-- Puede marcar un logo como **"Obligatorio"** para forzar su aparición en todas las plantillas del Vicedecanato (ej. *Escudo Oficial UMSA*).
-
-### 6.2 Registro de Firmas Digitalizadas con Cargos Institucionales
-Al registrar una firma digitalizada, se completan los metadatos de la autoridad:
-- **Nombre de la Autoridad**: Ej. *Dr. Carlos Mendoza Fernández*.
-- **Cargo Oficial**: Ej. *Vicedecano de Facultad*.
-- **Institución / Unidad**: Ej. *Facultad de Ciencias Puras y Naturales*.
-El sistema genera automáticamente el pie de firma profesional con la línea separadora, nombre, cargo e institución tipográficamente alineados.
-
-### 6.3 Sellos Oficiales y Marcas de Agua
-- **Sellos Institucionales**: Se colocan en la esquina inferior para autenticar la validez formal del documento.
-- **Marcas de Agua**: Escudos o emblemas que se estampan en el centro del certificado con opacidad controlada (10% a 15%) para no entorpecer la legibilidad de los textos.
-
----
-
-## 7. Gestión del Padrón de Beneficiarios
-
-> **Acceso:** Menú lateral $\rightarrow$ **"Beneficiarios"**.
-
-1. **Registrar Participante**:
-   - Tipo y Número de Documento (CI, Pasaporte, DNI). El sistema previene automáticamente la duplicidad de documentos.
-   - Grado / Título Académico (`Univ.`, `Lic.`, `Ing.`, `Dr.`, `Mg.`, etc.).
-   - Nombres y Apellidos completos.
-   - Correo electrónico y teléfono de contacto.
-   - Carrera o institución de procedencia.
-2. **Historial del Beneficiario**:
-   - Al hacer clic en el nombre o en el icono `👁️`, se muestra la ficha del participante con todos los certificados que le han sido emitidos a lo largo del tiempo, sus estados de vigencia y los enlaces de descarga directa.
+### 5.2 Desactivación / Reactivación Segura de Unidades
+Si una carrera concluye su ciclo académico o suspende temporalmente la emisión de certificados, el Super Administrador puede presionar el botón **"Desactivar"**:
+- **Efecto de la Desactivación**:
+  - Sus usuarios no podrán crear nuevos eventos ni emitir nuevos certificados.
+- **Preservación Histórica Garantizada**:
+  - **Ningún certificado emitido en el pasado pierde validez**.
+  - Los códigos QR impresos en los certificados continúan respondiendo con estado **VIGENTE** en el portal público de verificación.
+  - Al reactivar la carrera, todo su historial de actividades y plantillas queda inmediatamente disponible.
 
 ---
 
-## 8. Gestión de Actividades Académicas
+## 6. Padrón Único y Portafolio Académico 360° del Estudiante
 
-> **Acceso:** Menú lateral $\rightarrow$ **"Actividades Académicas"**.
-
-### 8.1 Registro de Eventos Académicos
-Complete los datos del evento:
-- Nombre oficial del curso, taller, seminario o congreso.
-- Tipo de actividad, carga horaria en horas académicas, rango de fechas y lugar.
-- Autoridad responsable de la actividad.
-
-### 8.2 Personalización de Certificados por Actividad Académica
-Al abrir el detalle de cualquier actividad, encontrará el panel **"Configuración del Certificado para esta Actividad"**:
-- **Asignación de Plantilla**: Seleccione la plantilla visual que mejor represente la temática del evento.
-- **Título Especial**: Ej. *DIPLOMA DE RECONOCIMIENTO ESPECIAL*.
-- **Colores Propios del Evento**: Sobrescriba los colores primario y secundario para que coincidan con la identidad gráfica del congreso o curso.
-- **Redacción Personalizada con Variables Dinámicas**: Escriba el cuerpo del certificado utilizando etiquetas como:
-  ```text
-  Por su sobresaliente participación y aprobación del {{actividad.nombre}}, realizado del {{actividad.fechas}} con una carga horaria de {{actividad.horas}} horas académicas.
-  ```
-- **Campos Especiales**: Ingrese el N° de Resolución Facultativa (ej. *Resol. Fac. N° 451/2026*) o la Modalidad (*Presencial / Virtual*).
+El sistema cuenta con un **Padrón Único Institucional**:
+- Cada estudiante se registra una sola vez en el sistema mediante su número de C.I.
+- Al acceder a la ficha de un estudiante en **Beneficiarios $\rightarrow$ Ver Portafolio** (`beneficiaries/{id}`), se despliega el **Portafolio Académico 360°**, donde se muestran cronológicamente todos los certificados que el estudiante ha obtenido en la Facultad de Tecnología:
+  - 🏷️ **Certificados de su Propia Carrera**: Emitidos directamente por su carrera de origen.
+  - 🏛️ **Certificados de la Facultad**: Emitidos por Vicedecanato o Cómputo (ej. Jornadas de Inducción).
+  - 📜 **Certificados Inter-carreras**: Emitidos en eventos conjuntos respaldados por Resolución Facultativa.
 
 ---
 
-## 9. Emisión de Certificados
+## 7. Gestión de Actividades Académicas y Resoluciones Facultativas
 
-### 9.1 Emisión Individual con Selección de Plantilla
-1. Ingrese a **"Certificados"** $\rightarrow$ **"+ Emitir Nuevo Certificado"**.
-2. **Paso 1: Beneficiario**: Seleccione al participante del padrón.
-3. **Paso 2: Actividad Académica**: Seleccione el evento. Si la actividad tiene plantilla y configuración asignada, el sistema la cargará automáticamente.
-4. **Paso 3: Tipo de Certificado**: Elija entre *Aprobación, Asistencia, Disertante, Organizador o Reconocimiento*.
-5. **Paso 4: Plantilla de Diseño**: Puede conservar la asignada a la actividad o seleccionar otra alternativa del catálogo.
-6. **Paso 5: Fecha de Emisión**: El sistema calcula y muestra de forma automática la **Fecha de Vencimiento legal (+3 años exactos)**.
-7. **Paso 6 (Opcional): Aclaración Especial**: Ingrese menciones de honor particulares exclusivas para este participante.
+### 7.1 Registro de Actividades con N° de Resolución
+Al crear un evento académico en **Actividades Académicas $\rightarrow$ Nueva Actividad**, se debe consignar obligatoriamente:
+- Título del evento, fechas de realización y carga horaria académica (horas aula).
+- **Número de Resolución Facultativa** (`resolution_number`, ej.: *RF-045/2026*).
+- **Tipo de Certificado**: Aprobación, Asistencia, Participación, Reconocimiento, etc.
+- **Esquema de Vigencia**: Permanente (por vida) o Temporal (con fecha de expiración o años de validez).
 
-### 9.2 Previsualización en Vivo del Borrador PDF
-Antes de generar el certificado definitivo:
-- Haga clic en el botón **"[ 👁️ PREVISUALIZAR ]"**.
-- El sistema compilará en una nueva pestaña del navegador el documento PDF tal como se imprimiría, con su marco, logos, textos interpolados, firmas y código QR de muestra.
-- **Ventaja:** Esta acción no crea registros en la base de datos ni consume números correlativos oficiales, permitiendo corregir errores tipográficos con total seguridad.
+### 7.2 Delimitación de Audiencia
+Se debe seleccionar una de las tres opciones de alcance:
+1. **Exclusivo para la propia Carrera (`own_unit`)**:
+   El evento es cerrado y solo permite la certificación de estudiantes de la carrera organizadora.
+2. **Toda la Facultad (`all_faculty`)**:
+   Evento institucional abierto a estudiantes de cualquiera de las 9 carreras de la Facultad de Tecnología.
+3. **Carreras específicas autorizadas por Resolución (`specific_units`)**:
+   Despliega una lista con las 9 carreras oficiales para marcar con casilla de verificación cuáles fueron expresamente autorizadas en la Resolución Facultativa (ej. Taller conjunto de *Química Industrial* y *Mecánica Industrial*).
 
-### 9.3 Emisión Masiva en Lote para Cursos y Talleres
-Para emitir decenas de certificados en una sola acción tras concluir un curso:
-1. Abra la ficha de la actividad académica.
-2. Pulse el botón superior **"⚡ Emisión Masiva de Certificados"**.
-3. Seleccione el tipo de mérito (*Asistencia* o *Aprobación*).
-4. Marque las casillas de los participantes aprobados (o utilice el botón *"Seleccionar Todos"*).
-5. Pulse **"Emitir Certificados Seleccionados"**.
-6. El sistema generará en lote los códigos correlativos, tokens QR y copias inmutables, omitiendo automáticamente a participantes que ya cuenten con certificado activo en dicho evento.
+### 7.3 Detección Automática de Estudiantes No Autorizados
+Si un estudiante perteneciente a una carrera no autorizada intenta ser agregado manualmente o figura en el archivo Excel de la nómina:
+- El sistema lo clasifica inmediatamente como **`Observado`**.
+- Muestra la advertencia: `Carrera no autorizada (según Resolución RF-045/2026)`.
+- **El sistema bloquea la emisión de su certificado**, impidiendo la emisión irregular de certificados fuera de su carrera.
 
 ---
 
-## 10. Garantía de Inmutabilidad y Congelación Documental
+## 8. Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)
 
-Como documento oficial emitido por una universidad, un certificado es un instrumento público de fe probatoria.
-
-### ¿Cómo protege el sistema la validez de los certificados antiguos?
-- Al momento exacto de emitir un certificado, el sistema genera un **Snapshot Documental Inmutable (JSON)** que almacena:
-  - Todo el esquema gráfico, fuentes y colores utilizados.
-  - La redacción textual completa con las variables ya sustituidas.
-  - Las imágenes de los escudos, logos y sellos institucionales.
-  - Los nombres, cargos e instituciones de las autoridades firmantes al momento de la emisión.
-- **Regla Estricta:** Si un administrador rediseña una plantilla, cambia los logos de la facultad o asume un nuevo Vicedecano el año siguiente, **los certificados emitidos en el pasado conservan permanentemente su diseño, firmas y textos originales**.
+Para actividades asociadas a un **Certificado de Aprobación** (o que tengan activada la opción de calificación):
+1. **Nota Mínima Aprobatoria**: Es obligatoriamente de **51 puntos** sobre 100.
+2. **Comportamiento ante Reprobados o Sin Nota**:
+   - En la nómina de participantes, el estudiante con nota $< 51$ pts queda marcado como **`Reprobado`** con un distintivo rojo.
+   - El estudiante sin calificación registrada queda marcado como **`Observado`**.
+   - Al ejecutar la emisión masiva de certificados, **el sistema omite automáticamente a los reprobados y a los no calificados**, emitiendo certificados **única y exclusivamente para los estudiantes aprobados**.
+   - En pantalla se presenta un resumen indicando cuántos certificados fueron emitidos y cuántos reprobados fueron omitidos éticamente.
 
 ---
 
-## 11. Consulta, Vista Previa y Descarga de Certificados
+## 9. Catálogo y Diseñador Visual de Plantillas (WYSIWYG)
 
-Desde el listado general de **"Certificados"**:
-- **Búsqueda y Filtros**: Busque por código correlativo (`CERT-2026-000001`), nombre del beneficiario, cédula de identidad, actividad académica o estado de vigencia (*Vigente, Expirado, Revocado*).
-- **Vista Previa (`👁️`)**: Visualice el documento en el visor PDF del navegador.
-- **Descarga Directa (`📥`)**: Descarga el archivo PDF A4 listo para impresión en papel membretado o cartulina de graduación.
-- **Ficha de Detalle (`🔍`)**: Muestra el código QR ampliado, enlace de verificación pública, hash criptográfico SHA-256 y bitácora de escaneos recibidos.
+Acceda mediante el menú lateral: **Plantillas y Diseñador**.
 
----
+### 9.1 Herramientas y Elementos del Diseñador
+- **Lienzo A4 Proporcional**: Visualización exacta de lo que se imprimirá en el documento PDF.
+- **Arrastre de Elementos (Drag & Drop)**: Desplace títulos, textos, firmas y el código QR con el mouse o con las flechas del teclado para un ajuste milimétrico.
+- **Inspector Lateral de Propiedades**: Permite modificar tamaño de tipografía (px), color institucional, peso de la fuente, alineación y orden de capas.
 
-## 12. Regla Estricta de Vigencia Institucional (3 Años)
+### 9.2 Diccionario de Variables Interpolables
+Escriba estas etiquetas dentro de los textos para que el sistema inserte los datos automáticamente:
+- `{{beneficiario.nombre}}`: Nombres y apellidos completos del estudiante o participante.
+- `{{beneficiario.documento}}`: Carnet de Identidad (ej. `CI 8345291 LP`).
+- `{{beneficiario.carrera}}`: Carrera universitaria del estudiante.
+- `{{actividad.nombre}}`: Nombre oficial del curso o seminario.
+- `{{actividad.horas}}`: Carga horaria en horas académicas.
+- `{{actividad.resolucion}}`: Número de Resolución Facultativa.
+- `{{certificado.puntaje}}`: Calificación numérica aprobatoria obtenida (ej. `88.5 pts`).
+- `{{certificado.mencion}}`: Mención cualitativa (ej. `Aprobado con Excelencia`).
+- `{{certificado.codigo}}`: Código correlativo único (ej. `CERT-QUI-2026-0001`).
 
-Por normativa universitaria, todo certificado emitido goza de **3 años calendario de validez oficial**:
-- **Fecha de Emisión:** `15 de Septiembre de 2026`
-- **Fecha de Vencimiento:** `15 de Septiembre de 2029` (calculada automáticamente).
-- **Cálculo Autónomo:** El sistema evalúa diariamente la fecha del calendario contra la de vencimiento:
-  - Mientras $\text{Fecha Actual} \le \text{Fecha de Vencimiento}$ $\rightarrow$ Se muestra en **VERDE (VIGENTE)**.
-  - Al superar los 3 años $\rightarrow$ Cambia automáticamente a **AMARILLO (EXPIRADO)** en todo el sistema y en el portal público.
-
----
-
-## 13. Anulación y Revocación de Certificados
-
-Si un certificado fue emitido por error de identidad o debe anularse por resolución administrativa:
-1. Acción reservada exclusivamente al **Administrador**.
-2. Abra la ficha del certificado (`Certificados` $\rightarrow$ Detalle).
-3. Pulse el botón rojo **"🚫 Anular / Revocar"**.
-4. Ingrese obligatoriamente la **justificación formal de la anulación** (ej. *Error en el número de cédula de identidad del participante según informe de secretaría*).
-5. Confirme la operación.
-6. El certificado quedará marcado permanentemente como **REVOCADO (ROJO)**.
-7. Al escanear el código QR del documento físico, el portal público mostrará de inmediato una advertencia roja indicando que el certificado ha sido revocado y carece de validez legal.
+### 9.3 Co-firmantes Oficiales con Nombres y Cargos
+En el panel de Firmas se pueden insertar los sellos y firmas digitales con el nombre y cargo de cada autoridad (Director de Carrera, Docente Responsable, Vicedecano).
 
 ---
 
-## 14. Portal Público de Verificación (QR y Búsqueda Manual)
+## 10. Emisión de Certificados
 
-El portal público está disponible para cualquier persona las 24 horas del día **sin necesidad de credenciales ni inicio de sesión**:
+### 10.1 Emisión Individual con Previsualización de Borrador PDF
+1. Diríjase a **Certificados $\rightarrow$ Emitir Certificado**.
+2. Seleccione al beneficiario por su C.I. o nombre.
+3. Seleccione la actividad académica y la plantilla a emplear.
+4. Presione el botón **"Previsualizar Borrador PDF"** para revisar en pantalla el documento antes de emitirlo.
+5. Ingrese la calificación (si la actividad es evaluada) y presione **"Emitir Certificado Oficial"**.
 
-### Opción A: Mediante Escaneo de Código QR
-1. El empleador o evaluador apunta la cámara de su teléfono celular al código QR impreso en el certificado.
-2. El teléfono abre la URL oficial: `https://certificados.vicedecanato.edu/verificar/{token}`.
-3. Se despliega la tarjeta de validación institucional con el estado del documento, nombre del titular, actividad, fechas y autoridad emisora.
-
-### Opción B: Mediante Búsqueda Manual de Código Correlativo
-1. Ingrese a la dirección web: `http://localhost:8000/verificar`.
-2. Escriba el código que figura en el certificado (ej. `CERT-2026-000001`).
-3. Presione **"🔍 Verificar Autenticidad"**.
-4. Si el certificado figura en el padrón oficial del Vicedecanato, se mostrará su ficha de validez; si el código no existe o fue alterado, se notificará que el documento no es auténtico.
-
----
-
-## 15. Módulo de Reportes e Informes Imprimibles
-
-> **Acceso:** Menú lateral $\rightarrow$ **"Reportes"**.
-
-- Filtre por rango de fechas (*Desde / Hasta*), actividad académica, tipo de certificado o estado de vigencia.
-- Visualice los totales consolidados (Total emitidos, Vigentes, Expirados, Revocados).
-- Utilice el botón **🖨️ Imprimir Reporte** para generar una nómina física en formato ejecutivo para archivos de gestión y rendición de cuentas.
+### 10.2 Emisión Masiva por Nómina de Participantes (Excel / CSV)
+1. Ingrese a la actividad académica en **Actividades Académicas $\rightarrow$ [Ver Actividad]**.
+2. En la pestaña **"Importar Nómina"**, suba el archivo `.xlsx` o `.csv`.
+3. El sistema realizará un diagnóstico previo indicando:
+   - Cuántos alumnos están listos para ser certificados.
+   - Cuántos estudiantes están aprobados ($\ge 51$ pts) y cuántos reprobados ($< 51$ pts).
+   - Cuántos estudiantes pertenecen a carreras no autorizadas por la resolución (`observados`).
+4. Presione **"Emitir Certificados a la Nómina"**: el sistema emitirá en lote solo a los aprobados y habilitados por resolución, descartando reprobados y observados.
 
 ---
 
-## 16. Auditoría de Acciones Administrativas
+## 11. Garantía de Inmutabilidad y Congelación Documental (Regla 40)
 
-> **Acceso:** Menú lateral $\rightarrow$ **"Auditoría de Acciones"** (Exclusivo Administrador).
-
-- Registra cada acción relevante: inicio de sesión, creación de plantillas, modificaciones de diseño, emisiones individuales y masivas, descargas de PDFs, revocaciones y cambios en la configuración.
-- Permite filtrar por usuario responsable, tipo de acción y fecha, garantizando transparencia absoluta.
-
----
-
-## 17. Configuración de Parámetros Globales
-
-> **Acceso:** Menú lateral $\rightarrow$ **"Configuración"** (Exclusivo Administrador).
-
-Permite actualizar la información institucional del Vicedecanato:
-- Nombre de la Universidad (ej. `UNIVERSIDAD MAYOR DE SAN ANDRÉS`).
-- Nombre de la Facultad (ej. `FACULTAD DE CIENCIAS PURAS Y NATURALES`).
-- Unidad emisora (ej. `VICEDECANATO`).
-- Autoridad en ejercicio y cargo oficial.
-- Ciudad y País.
-- Años de vigencia legal estándar (`3`).
+Una vez que un certificado es emitido:
+- El sistema genera un **Snapshot Documental Inmutable** que almacena en la base de datos la copia idéntica del texto, diseño, firmas, sellos y calificaciones de ese momento.
+- Si en el futuro la carrera cambia de Director, modifica el diseño de la plantilla o actualiza su logotipo, **los certificados emitidos en el pasado conservan sus firmas y diseño originales sin ninguna alteración**, garantizando seguridad jurídica ante auditorías universitarias.
 
 ---
 
-## 18. Preguntas Frecuentes (FAQ)
+## 12. Portal Público de Verificación (Código QR y Correlativo)
 
-**¿Qué sucede si modifico una plantilla después de haber emitido 100 certificados?**  
-Gracias al motor de *Snapshot Documental Inmutable*, los 100 certificados ya emitidos conservarán de por vida su diseño, colores, firmas y textos originales. Las modificaciones de la plantilla aplicarán exclusivamente a las emisiones que se realicen a partir de ese momento.
+Cualquier persona, empleador o entidad pública puede verificar la autenticidad de un certificado sin necesidad de iniciar sesión:
+1. **Mediante Código QR**:
+   - Escanee con la cámara de su celular el código QR impreso en la esquina del certificado.
+   - El enlace abrirá inmediatamente la página oficial de verificación: `http://localhost:8000/verificar/{token}`.
+2. **Mediante Búsqueda Manual**:
+   - Ingrese a `http://localhost:8000/verificar`.
+   - Digite el código correlativo (ej. `CERT-QUI-2026-0001`) o el número de C.I. del estudiante.
+3. **Resultado en Pantalla**:
+   - Muestra el estado del certificado (**VIGENTE**, **EXPIRADO** o **REVOCADO**).
+   - Datos del beneficiario, actividad, carrera organizadora, resolución y calificación obtenida.
+   - Sello de integridad criptográfica SHA-256 validado.
 
-**¿Puedo previsualizar cómo se verá un certificado antes de emitirlo?**  
-Sí. En el formulario de emisión individual, pulse el botón `[ 👁️ PREVISUALIZAR ]`. Esto abrirá una vista previa en PDF con los datos reales del participante sin guardar nada en la base de datos.
+---
 
-**¿El código QR expone información privada sensible del beneficiario?**  
-No. El código QR almacena únicamente una dirección web segura protegida con un token UUID criptográfico. La página pública muestra únicamente el nombre, la actividad académica y el estado de vigencia, resguardando la privacidad de datos personales.
+## 13. Módulo de Reportes Estadísticos e Informes
 
-**¿Se pueden emitir certificados duplicados para un mismo evento?**  
-No. El sistema cuenta con validaciones que impiden emitir dos veces un certificado del mismo tipo a un mismo beneficiario dentro de una misma actividad académica.
+Acceda mediante el menú lateral: **Reportes** (Exclusivo para Super Administrador y Jefes de Carrera; no visible para Secretarias).
+- Permite filtrar la emisión por rango de fechas, carrera/departamento y modalidad de certificación.
+- Genera métricas de total de certificados emitidos, distribución por carreras y gráficos comparativos.
+- Exportación en formato imprimible y PDF formal para informes de gestión ante el Honorable Consejo Facultativo.
+
+---
+
+## 14. Auditoría Administrativa y Trazabilidad
+
+En **Auditoría**, el Super Administrador y los Jefes de Carrera pueden auditar cada evento:
+- Quién emitió cada certificado, desde qué dirección IP y a qué hora exacta.
+- Registro de modificaciones de actividades y cambios de estado en carreras.
+- Registro de consultas y escaneos QR realizados por el público.
+
+---
+
+## 15. Preguntas Frecuentes (FAQ)
+
+### ¿Qué sucede si desactivo una carrera en el sistema?
+La desactivación impide que sus usuarios emitan nuevos certificados. Sin embargo, **todos los certificados históricos emitidos por esa carrera siguen siendo válidos y verificables vía QR** en el portal público.
+
+### ¿Puede una secretaria de una carrera ver las actividades de otra carrera?
+**No.** El sistema aplica aislamiento estricto por unidad organizativa (`isUnitScoped`). Las secretarias y jefes solo tienen acceso a los registros de su respectiva carrera.
+
+### ¿Se le puede emitir un certificado de aprobación a un alumno con nota 50?
+**No.** Por estricta normativa universitaria y ética institucional, la nota mínima aprobatoria es de **51 puntos**. El sistema lo clasifica automáticamente como *Reprobado* y omite la emisión de su certificado.
+
+### ¿Puede una carrera emitir certificados para estudiantes de otra carrera?
+Solo si la actividad cuenta con una **Resolución Facultativa** expresa y se ha configurado la audiencia en modo `specific_units` o `all_faculty` autorizando a esa carrera. De lo contrario, los estudiantes no autorizados son bloqueados automáticamente como *Observados*.

@@ -1,9 +1,8 @@
 # Informe Completo de Avances, Correcciones y Evolución del Sistema
 
 **Sistema de Gestión, Generación, Emisión y Verificación de Certificados Institucionales**  
-**Vicedecanato — Facultad de Ciencias Puras y Naturales (FCPN)**  
-**Universidad Mayor de San Andrés (UMSA)**  
-*Fecha de Registro: Octubre de 2026 — Versión 2.0.0*  
+**Facultad de Tecnología — Universidad Mayor de San Andrés (UMSA)**  
+*Fecha de Registro: Noviembre de 2026 — Versión 2.5.0*  
 *Documento de Referencia para Continuación Operativa y de Desarrollo*  
 
 ---
@@ -25,6 +24,8 @@
 7. [Mapeo de Archivos Modificados, Nuevos y Recursos](#7-mapeo-de-archivos-modificados-nuevos-y-recursos)
 8. [Guía Rápida para Continuar Mañana](#8-guía-rápida-para-continuar-mañana)
 9. [Tareas y Mejoras Recomendadas para las Siguientes Fases](#9-tareas-y-mejoras-recomendadas-para-las-siguientes-fases)
+10. [Auditoría Integral del Sistema y Corrección de Inconsistencias (Octubre 2026)](#10-auditoría-integral-del-sistema-y-corrección-de-inconsistencias-octubre-2026)
+11. [Evolución a Arquitectura Multirrol, Multitenancy Facultativo y Motor de Resoluciones (Noviembre 2026)](#11-evolución-a-arquitectura-multirrol-multitenancy-facultativo-y-motor-de-resoluciones-noviembre-2026)
 
 ---
 
@@ -362,4 +363,55 @@ Se realizó una auditoría completa de todos los módulos del sistema (servicios
 8. **Batería de Pruebas Automatizadas de Auditoría**:
    - **Archivo:** [`tests/Feature/GeneralSystemAuditFixesTest.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/GeneralSystemAuditFixesTest.php)
    - **Resultado:** 9 pruebas adicionales creadas y validadas. La suite completa del sistema cuenta ahora con **39 pruebas unitarias y de integración**, pasando al **100% (39 tests, 145 assertions, 0 failures)**.
+
+---
+
+## 11. Evolución a Arquitectura Multirrol, Multitenancy Facultativo y Motor de Resoluciones (Noviembre 2026)
+
+Esta actualización representa la mayor transformación estructural del sistema desde su concepción, adaptándolo para operar en **toda la Facultad de Tecnología de la UMSA**, otorgando autonomía operativa a sus 9 carreras y departamentos administrativos bajo un esquema de gobernanza centralizada y cumplimiento normativo estricto.
+
+### 11.1 Nuevos Roles y Matriz de Acceso Institucional
+Se amplió el esquema de autenticación y autorización con dos nuevos roles fundamentales:
+1. **Jefe de Carrera / Departamento (`jefe_carrera`)**:
+   - Acceso completo a su carrera: Dashboard, Actividades Académicas, Certificados, Beneficiarios, Diseñador de Plantillas y **Módulo de Reportes Estadísticos**.
+   - Todos los datos e informes quedan restringidos de forma automática a su respectiva carrera.
+2. **Secretaria (`secretaria`)**:
+   - Acceso operativo a su carrera: Dashboard, Actividades, Certificados, Beneficiarios y Diseñador de Plantillas.
+   - **Restricción de Acceso**: Bloqueada expresamente del módulo de Reportes mediante el middleware [`EnsureCanAccessReports`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/app/Http/Middleware/EnsureCanAccessReports.php) (HTTP 403 Forbidden).
+3. **Super Administrador (`admin` / Departamento de Cómputo y Sistemas)**:
+   - Control total de la plataforma, creación de cuentas de usuario y administración exclusiva de Carreras y Departamentos. Cuenta con selectores dinámicos para filtrar actividades, certificados y reportes por carrera o a nivel facultativo global.
+
+### 11.2 Módulo de Carreras y Departamentos (`/carreras-departamentos`)
+- **Implementación:** Controlador [`OrganizationalUnitController`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/app/Http/Controllers/OrganizationalUnitController.php), vistas [`resources/views/units/`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/resources/views/units/) y rutas REST protegidas con `EnsureUserIsAdmin`.
+- **9 Carreras Oficiales Registradas:** Aeronáutica (`AER`), Construcciones Civiles (`CIV`), Electricidad Industrial (`ELE`), Electrónica y Telecomunicaciones (`ELT`), Electromecánica Industrial (`ELM`), Geodesia/Topografía/Geomática (`TOP`), Mecánica Automotriz (`AUT`), Mecánica Industrial (`MEC`) y Química Industrial (`QUI`), además de *Vicedecanato*, *Cómputo* y *Decanato*.
+- **Desactivación Segura con Protección Histórica:**
+  - Cuando una carrera o departamento suspende sus emisiones, el Super Admin puede desactivarla.
+  - La desactivación bloquea la creación de nuevos eventos o certificados en esa carrera.
+  - **Todos los certificados emitidos en el pasado conservan su vigencia al 100%**, y su verificación pública mediante código QR continúa funcionando sin alteraciones.
+
+### 11.3 Motor de Resoluciones Facultativas y Reglas de Audiencia
+- **Campos en Actividades:** Se añadieron `resolution_number` (N° de Resolución Facultativa oficial) y `target_audience_mode`.
+- **Modos de Audiencia:**
+  1. `own_unit`: Evento exclusivo para estudiantes de la carrera organizadora.
+  2. `all_faculty`: Evento abierto a cualquiera de las 9 carreras de la Facultad de Tecnología.
+  3. `specific_units`: Evento conjunto respaldado por resolución, con selección múltiple de carreras autorizadas mediante la tabla `activity_allowed_units`.
+- **Filtrado Preventivo:** Al inscribir o importar estudiantes, el método `Activity::isCareerAllowed()` verifica la procedencia de cada alumno. Quienes pertenezcan a carreras no autorizadas son marcados como `status = 'observado'` (`career_eligible = false`), bloqueando de forma preventiva la emisión indebida de certificados.
+
+### 11.4 Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)
+- Para modalidades evaluadas (`has_score = true`, ej.: *Certificado de Aprobación*), se fijó la nota mínima reglamentaria en **51.0 puntos**.
+- En la emisión masiva por nómina (`issueToRoster`) o en lote (`batchIssue`), el sistema **omite automáticamente a los estudiantes reprobados (< 51 pts) y a los participantes sin nota registrada**, asegurando que la institución jamás certifique la aprobación de un participante no evaluado o reprobado.
+
+### 11.5 Padrón Único y Portafolio Académico 360°
+- Unificación de estudiantes por C.I. (`document_number`).
+- En la vista [`resources/views/beneficiaries/show.blade.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/resources/views/beneficiaries/show.blade.php), el estudiante visualiza su **Portafolio Académico 360°**, reuniendo en una sola línea de tiempo los certificados obtenidos en su propia carrera, en Vicedecanato o en congresos inter-carreras con distintivos visuales claros.
+
+### 11.6 Validación y Suite de Pruebas Automatizadas
+Se crearon y ejecutaron dos suites completas de pruebas de integración con PHPUnit:
+1. [`tests/Feature/MultiCareerTenancyAndRolesTest.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/MultiCareerTenancyAndRolesTest.php):
+   - **8/8 pruebas superadas (39 aserciones, 100% éxito)**.
+   - Valida permisos RBAC, aislamiento de actividades entre Química y Mecánica, bloqueo de carreras ajenas por resolución, protección histórica ante desactivación de carrera y portafolio 360°.
+2. [`tests/Feature/MultiTypeActivityAndScoreCertificateTest.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/MultiTypeActivityAndScoreCertificateTest.php):
+   - **16/16 pruebas superadas (168 aserciones, 100% éxito)**.
+   - Valida tipos de certificados, esquemas de vigencia permanente vs temporal, exclusión automática de reprobados (< 51 pts) y resolución de notas individuales en el PDF y el verificador QR.
+
 
