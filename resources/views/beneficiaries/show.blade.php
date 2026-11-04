@@ -37,8 +37,15 @@
                 {{ substr($beneficiary->first_name, 0, 1) }}{{ substr($beneficiary->last_name, 0, 1) }}
             </div>
             <div class="min-w-0 break-words">
-                <h3 class="text-xl font-bold text-brand">{{ $beneficiary->full_title_name }}</h3>
-                <p class="text-xs text-slate-500 font-mono">{{ $beneficiary->formatted_document }} • {{ $beneficiary->institution_or_department ?? 'Sin unidad especificada' }}</p>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <h3 class="text-xl font-bold text-brand">{{ $beneficiary->full_title_name }}</h3>
+                    @if($beneficiary->primaryOrganizationalUnit)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand/10 text-brand border border-brand/20">
+                            🎓 Carrera: {{ $beneficiary->primaryOrganizationalUnit->name }}
+                        </span>
+                    @endif
+                </div>
+                <p class="text-xs text-slate-500 font-mono">{{ $beneficiary->formatted_document }} • {{ $beneficiary->institution_or_department ?? 'Padrón Central UMSA' }}</p>
             </div>
         </div>
 
@@ -88,8 +95,8 @@
         <div class="lg:col-span-2 ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
-                    <h4 class="text-xs font-bold text-brand uppercase tracking-wider">Historial de Certificados Emitidos</h4>
-                    <p class="text-xs text-slate-400">{{ $beneficiary->certificates->count() }} certificado(s) registrados a este titular</p>
+                    <h4 class="text-xs font-bold text-brand uppercase tracking-wider">Portafolio Académico 360° (Historial Unificado)</h4>
+                    <p class="text-xs text-slate-400">{{ $beneficiary->certificates->count() }} certificado(s) emitidos tanto por su carrera como por la Facultad u otras unidades</p>
                 </div>
             </div>
 
@@ -98,8 +105,9 @@
                     <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
                         <tr>
                             <th class="px-5 py-3">Código</th>
-                            <th class="px-5 py-3">Actividad</th>
-                            <th class="px-5 py-3">Tipo</th>
+                            <th class="px-5 py-3">Actividad Académica</th>
+                            <th class="px-5 py-3">Unidad Emisora / Respaldo</th>
+                            <th class="px-5 py-3">Tipo / Nota</th>
                             <th class="px-5 py-3">Emisión</th>
                             <th class="px-5 py-3">Estado</th>
                             <th class="px-5 py-3 text-right">Acciones</th>
@@ -107,6 +115,10 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse($beneficiary->certificates as $cert)
+                            @php
+                                $isOwnCareer = $cert->organizational_unit_id && $beneficiary->primary_organizational_unit_id && $cert->organizational_unit_id === $beneficiary->primary_organizational_unit_id;
+                                $isFacultyWide = $cert->activity?->target_audience_mode === 'all_faculty' || ($cert->organizationalUnit && $cert->organizationalUnit->code === 'VICEDECANATO');
+                            @endphp
                             <tr class="hover:bg-slate-50/80 transition-colors">
                                 <td class="px-5 py-3 font-mono font-bold text-brand-hover">
                                     <a href="{{ route('certificates.show', $cert) }}" class="hover:underline">
@@ -116,8 +128,26 @@
                                 <td class="px-5 py-3 text-slate-800 max-w-xs truncate" title="{{ $cert->activity->name }}">
                                     {{ $cert->activity->name }}
                                 </td>
-                                <td class="px-5 py-3 text-slate-600">
-                                    {{ $cert->certificateType->name }}
+                                <td class="px-5 py-3">
+                                    @if($isOwnCareer)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                            🟢 Propia Carrera ({{ $cert->organizationalUnit->code ?? 'CARRERA' }})
+                                        </span>
+                                    @elseif($isFacultyWide)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                            🌐 Facultad de Tecnología
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200" title="{{ $cert->activity?->resolution_number }}">
+                                            📜 {{ $cert->activity?->resolution_number ?? 'Resolución' }} / {{ $cert->organizationalUnit->code ?? 'Ext.' }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-3">
+                                    <div class="text-slate-800 font-semibold">{{ $cert->certificateType->name }}</div>
+                                    @if($cert->score !== null || !empty($cert->score_label))
+                                        <div class="text-[10px] text-emerald-700 font-bold">Nota: {{ $cert->score_label ?? ($cert->score . ' pts') }}</div>
+                                    @endif
                                 </td>
                                 <td class="px-5 py-3 text-slate-600">
                                     {{ $cert->issue_date->format('d/m/Y') }}
@@ -148,7 +178,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-5 py-8 text-center text-slate-400">
+                                <td colspan="7" class="px-5 py-8 text-center text-slate-400">
                                     No se han emitido certificados para este beneficiario todavía.
                                 </td>
                             </tr>

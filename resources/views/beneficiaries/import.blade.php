@@ -243,6 +243,9 @@
                                             <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
                                                 <span>✓</span> Listo
                                             </span>
+                                            @if(($r['data']['career_status'] ?? '') === 'pending')
+                                                <p class="text-xs text-amber-700">Carrera pendiente de identificación</p>
+                                            @endif
                                         @elseif($r['status'] === 'duplicate_skip')
                                             <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200" title="{{ $r['message'] }}">
                                                 <span>⚠</span> Omitir (Existe)

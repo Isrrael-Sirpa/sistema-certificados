@@ -46,6 +46,22 @@
                 </select>
             </div>
 
+            <div>
+                <label for="organizational_unit_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Carrera o Departamento Asignado
+                </label>
+                <select name="organizational_unit_id" id="organizational_unit_id"
+                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                    <option value="">-- Sin Unidad Específica (Administración Central / Dpto. Cómputo) --</option>
+                    @foreach($units as $u)
+                        <option value="{{ $u->id }}" {{ old('organizational_unit_id', $user->organizational_unit_id) == $u->id ? 'selected' : '' }}>
+                            [{{ $u->code }}] {{ $u->name }} ({{ $u->type_label }})
+                        </option>
+                    @endforeach
+                </select>
+                <p class="text-[11px] text-slate-400 mt-1">Obligatorio para Jefes de Carrera y Secretarias para delimitar su espacio de emisión.</p>
+            </div>
+
             <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
                 <span class="text-xs font-bold text-slate-700 block">Cambiar Contraseña (opcional)</span>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

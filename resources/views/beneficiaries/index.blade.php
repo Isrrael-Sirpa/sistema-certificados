@@ -8,13 +8,26 @@
 
     <!-- Actions & Search Bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('beneficiaries.index') }}" class="w-full min-w-0 sm:flex-1 sm:min-w-64 max-w-md">
-            <div class="relative">
+        <form method="GET" action="{{ route('beneficiaries.index') }}" class="w-full min-w-0 sm:flex-1 sm:min-w-64 max-w-lg flex items-center gap-2">
+            <div class="relative flex-1">
                 <input type="text" name="search" value="{{ request('search') }}"
                        placeholder="Buscar por nombre, apellido, CI o correo..."
                        class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
             </div>
+
+            @if(auth()->user()->isAdmin())
+                <div class="w-48">
+                    <select name="unit_id" onchange="this.form.submit()" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                        <option value="">Todas las Carreras</option>
+                        @foreach($units as $u)
+                            <option value="{{ $u->id }}" {{ request('unit_id') == $u->id ? 'selected' : '' }}>
+                                [{{ $u->code }}] {{ $u->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
         </form>
 
         <div class="flex w-full flex-col sm:w-auto sm:flex-row sm:flex-wrap sm:items-center gap-2">
@@ -65,7 +78,14 @@
                                 <div class="text-[10px] text-slate-400">{{ $ben->phone }}</div>
                             </td>
                             <td class="px-5 py-3 text-slate-600">
-                                {{ $ben->institution_or_department ?? '-' }}
+                                @if($ben->primaryOrganizationalUnit)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand border border-brand/20">
+                                        [{{ $ben->primaryOrganizationalUnit->code }}] {{ $ben->primaryOrganizationalUnit->name }}
+                                    </span>
+                                @else
+                                    <span>{{ $ben->institution_or_department ?? 'Sin carrera base' }}</span>
+                                    <div class="text-xs text-amber-700">Carrera pendiente de identificación</div>
+                                @endif
                             </td>
                             <td class="px-5 py-3 text-center">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand/10 text-brand border border-brand/20">

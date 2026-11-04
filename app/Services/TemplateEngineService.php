@@ -135,16 +135,15 @@ class TemplateEngineService
             $resolution = '';
             if (isset($context['activity'])) {
                 $a = $context['activity'];
-                $actConfig = is_array($a) ? null : ($a->certificateConfig ?? null);
-                if ($actConfig && ! empty($actConfig->custom_fields_schema['resolucion'])) {
-                    $resolution = $actConfig->custom_fields_schema['resolucion'];
+                if (is_array($a)) {
+                    $resolution = $a['resolution_number'] ?? $a['resolution'] ?? '';
+                } else {
+                    $resolution = $a->resolution_number ?? $a->certificateConfig?->custom_fields_schema['resolucion'] ?? '';
                 }
             }
-            if (empty($resolution)) {
-                $resolution = 'Resolución del H. Consejo Facultativo N° 342/2026';
-            }
+            $resolution = trim((string) $resolution);
             $replacements['{{actividad.resolucion}}'] = $resolution;
-            $replacements['{{acreditacion.resolucion}}'] = "Acreditado bajo {$resolution}";
+            $replacements['{{acreditacion.resolucion}}'] = $resolution !== '' ? "Acreditado bajo {$resolution}" : '';
 
             $replacements['en calidad de {{certificado.tipo}}'] = match (mb_strtolower($modality)) {
                 'asistencia' => 'en calidad de Asistente',

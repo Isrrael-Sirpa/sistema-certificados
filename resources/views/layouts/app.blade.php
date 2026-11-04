@@ -133,21 +133,32 @@
                 <span>Actividades Académicas</span>
             </a>
 
-            <a href="{{ route('reports.index') }}"
-               aria-current="{{ request()->routeIs('reports.*') ? 'page' : 'false' }}"
-               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('reports.*') ? 'bg-white/15 text-white shadow-inner font-semibold border-l-4 border-accent' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <svg class="w-5 h-5 {{ request()->routeIs('reports.*') ? 'text-accent' : 'text-slate-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                <span>Reportes</span>
-            </a>
-
-            @if(auth()->user()->isAdmin())
-                <div class="pt-4 px-3 pb-2 text-[10px] font-semibold tracking-wider text-slate-300/80 uppercase">Administración</div>
-
+            @if(auth()->user()->canManageTemplates())
                 <a href="{{ route('templates.index') }}"
                    aria-current="{{ request()->routeIs('templates.*') ? 'page' : 'false' }}"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('templates.*') ? 'bg-white/15 text-white shadow-inner font-semibold border-l-4 border-accent' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
                     <svg class="w-5 h-5 {{ request()->routeIs('templates.*') ? 'text-accent' : 'text-slate-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
                     <span>Plantillas y Diseñador</span>
+                </a>
+            @endif
+
+            @if(auth()->user()->canAccessReports())
+                <a href="{{ route('reports.index') }}"
+                   aria-current="{{ request()->routeIs('reports.*') ? 'page' : 'false' }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('reports.*') ? 'bg-white/15 text-white shadow-inner font-semibold border-l-4 border-accent' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                    <svg class="w-5 h-5 {{ request()->routeIs('reports.*') ? 'text-accent' : 'text-slate-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    <span>Reportes</span>
+                </a>
+            @endif
+
+            @if(auth()->user()->isAdmin())
+                <div class="pt-4 px-3 pb-2 text-[10px] font-semibold tracking-wider text-slate-300/80 uppercase">Administración Central</div>
+
+                <a href="{{ route('carreras-departamentos.index') }}"
+                   aria-current="{{ request()->routeIs('carreras-departamentos.*') ? 'page' : 'false' }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all {{ request()->routeIs('carreras-departamentos.*') ? 'bg-white/15 text-white shadow-inner font-semibold border-l-4 border-accent' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                    <svg class="w-5 h-5 {{ request()->routeIs('carreras-departamentos.*') ? 'text-accent' : 'text-slate-300' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    <span>Carreras y Departamentos</span>
                 </a>
 
                 <a href="{{ route('assets.index') }}"
@@ -192,18 +203,25 @@
         <!-- User Profile & Sign Out Footer -->
         <div class="ft-sidebar-profile p-4 border-t border-white/10 flex items-center justify-between shrink-0">
             <div class="flex items-center space-x-3 overflow-hidden">
-                <div class="w-9 h-9 rounded-full bg-action text-white font-bold flex items-center justify-center text-sm border border-red-400/40 shadow-sm">
+                <div class="w-9 h-9 rounded-full bg-action text-white font-bold flex items-center justify-center text-sm border border-red-400/40 shadow-sm shrink-0">
                     {{ substr(auth()->user()->name, 0, 2) }}
                 </div>
                 <div class="truncate">
                     <p class="text-xs font-semibold text-white truncate">{{ auth()->user()->name }}</p>
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium {{ auth()->user()->isAdmin() ? 'bg-red-500/20 text-red-200 border border-red-500/40' : 'bg-blue-500/20 text-blue-200 border border-blue-500/40' }}">
-                        {{ auth()->user()->role->display_name ?? 'Usuario' }}
-                    </span>
+                    <div class="flex flex-wrap items-center gap-1 mt-0.5">
+                        <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-medium {{ auth()->user()->isAdmin() ? 'bg-red-500/20 text-red-200 border border-red-500/40' : 'bg-blue-500/20 text-blue-200 border border-blue-500/40' }}">
+                            {{ auth()->user()->role->display_name ?? 'Usuario' }}
+                        </span>
+                        @if(auth()->user()->organizationalUnit)
+                            <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 truncate max-w-[130px]" title="{{ auth()->user()->organizationalUnit->name }}">
+                                {{ auth()->user()->organizationalUnit->code }}
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('logout') }}" class="ml-2">
+            <form method="POST" action="{{ route('logout') }}" class="ml-2 shrink-0">
                 @csrf
                 <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión" class="min-h-11 min-w-11 inline-flex items-center justify-center p-2 text-slate-300 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -222,8 +240,12 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
                 <div class="min-w-0">
-                    <p class="ft-topbar-label">CERTIFICACIÓN ACADÉMICA / FT UMSA</p>
-                    <p class="ft-topbar-subtitle">Espacio de gestión institucional</p>
+                    <p class="ft-topbar-label truncate uppercase font-bold text-xs tracking-wider text-brand">
+                        {{ auth()->user()->isUnitScoped() ? (auth()->user()->organizationalUnit->name ?? 'FACULTAD DE TECNOLOGÍA') : 'ADMINISTRACIÓN CENTRAL / TECNOLOGÍA UMSA' }}
+                    </p>
+                    <p class="ft-topbar-subtitle text-xs text-slate-500">
+                        {{ auth()->user()->role->display_name ?? 'Usuario' }} • Sistema Oficial de Certificación
+                    </p>
                 </div>
             </div>
 

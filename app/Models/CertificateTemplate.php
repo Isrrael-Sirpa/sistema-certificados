@@ -16,6 +16,7 @@ class CertificateTemplate extends Model
         'name',
         'slug',
         'category',
+        'organizational_unit_id',
         'description',
         'view_path',
         'orientation',
@@ -42,6 +43,11 @@ class CertificateTemplate extends Model
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    public function organizationalUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
+    }
+
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
@@ -54,8 +60,14 @@ class CertificateTemplate extends Model
 
     public function currentVersionRecord(): ?CertificateTemplateVersion
     {
-        return $this->versions()->where('version_number', $this->current_version)->first()
-            ?? $this->versions()->first();
+        $current = $this->versions()->reorder()->where('version_number', $this->current_version)->first();
+        if ($current) {
+            return $current;
+        }
+
+        $latestId = $this->versions()->value('id');
+
+        return $latestId ? CertificateTemplateVersion::find($latestId) : null;
     }
 
     public function activityConfigs(): HasMany
@@ -73,17 +85,30 @@ class CertificateTemplate extends Model
         return $query->where('is_default', true);
     }
 
+    public function scopeForUnit($query, ?int $unitId)
+    {
+        if ($unitId === null) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($unitId) {
+            $q->where('organizational_unit_id', $unitId)
+                ->orWhereNull('organizational_unit_id');
+        });
+    }
+
     /**
      * Duplica la plantilla actual generando una nueva versión independiente.
      */
     public function duplicate(string $newName, ?User $user = null): self
     {
-        $newSlug = Str::slug($newName) . '-' . Str::lower(Str::random(5));
+        $newSlug = Str::slug($newName).'-'.Str::lower(Str::random(5));
 
         $newTemplate = self::create([
             'name' => $newName,
             'slug' => $newSlug,
             'category' => $this->category,
+            'organizational_unit_id' => $user?->organizational_unit_id ?? $this->organizational_unit_id,
             'description' => "Copia creada a partir de: {$this->name}",
             'view_path' => $this->view_path,
             'orientation' => $this->orientation,
@@ -98,7 +123,7 @@ class CertificateTemplate extends Model
         // Clonar versión inicial
         $newTemplate->versions()->create([
             'version_number' => 1,
-            'name' => "Versión Inicial (Duplicado)",
+            'name' => 'Versión Inicial (Duplicado)',
             'orientation' => $this->orientation,
             'design_schema' => $this->configuration ?? [],
             'change_summary' => "Duplicado desde {$this->name} (v{$this->current_version})",

@@ -43,6 +43,18 @@
                 </select>
             </div>
 
+            @if(auth()->user()->isAdmin())
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Carrera / Unidad</label>
+                    <select name="unit_id" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand">
+                        <option value="">Todas las Unidades</option>
+                        @foreach($units as $u)
+                            <option value="{{ $u->id }}" {{ request('unit_id') == $u->id ? 'selected' : '' }}>[{{ $u->code }}] {{ $u->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
             <!-- Buttons -->
             <div class="flex items-end gap-2">
                 <button type="submit" class="w-full py-2 px-4 bg-brand hover:bg-brand-deep text-white text-xs font-semibold rounded-lg transition-all shadow-xs">
@@ -104,7 +116,12 @@
                                 <span class="text-[10px] text-slate-400">{{ $cert->beneficiary->formatted_document }}</span>
                             </td>
                             <td class="px-5 py-3 text-slate-700 max-w-xs truncate" title="{{ $cert->activity->name }}">
-                                {{ $cert->activity->name }}
+                                <div>{{ $cert->activity->name }}</div>
+                                @if($cert->organizationalUnit)
+                                    <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200 mt-0.5">
+                                        [{{ $cert->organizationalUnit->code }}] {{ $cert->organizationalUnit->name }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-5 py-3 text-slate-600">
                                 {{ $cert->certificateType->name }}

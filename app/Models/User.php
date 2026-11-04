@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -20,6 +21,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'role_id',
+        'organizational_unit_id',
         'name',
         'email',
         'password',
@@ -57,6 +59,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function organizationalUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class);
+    }
+
     public function generatedCertificates(): HasMany
     {
         return $this->hasMany(Certificate::class, 'generated_by_user_id');
@@ -77,9 +84,55 @@ class User extends Authenticatable
         return $this->role && $this->role->name === Role::ADMIN;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin();
+    }
+
     public function isOperator(): bool
     {
         return $this->role && $this->role->name === Role::OPERATOR;
+    }
+
+    public function isJefeCarrera(): bool
+    {
+        return $this->role && $this->role->name === Role::JEFE_CARRERA;
+    }
+
+    public function isSecretaria(): bool
+    {
+        return $this->role && $this->role->name === Role::SECRETARIA;
+    }
+
+    public function isUnitScoped(): bool
+    {
+        return $this->isJefeCarrera() || $this->isSecretaria() || ($this->isOperator() && ! empty($this->organizational_unit_id));
+    }
+
+    public function canAccessReports(): bool
+    {
+        return $this->isAdmin() || $this->isJefeCarrera();
+    }
+
+    public function canAccessOrganizationalUnit(?int $unitId): bool
+    {
+        return ! $this->isUnitScoped()
+            || ($this->organizational_unit_id !== null && $unitId !== null
+                && (int) $this->organizational_unit_id === $unitId);
+    }
+
+    public function canManageTemplates(): bool
+    {
+        return $this->isAdmin() || $this->isJefeCarrera() || $this->isSecretaria();
+    }
+
+    public function isUnitActive(): bool
+    {
+        if ($this->isAdmin() || empty($this->organizational_unit_id)) {
+            return true;
+        }
+
+        return (bool) ($this->organizationalUnit && $this->organizationalUnit->is_active);
     }
 
     public function hasRole(string $roleName): bool

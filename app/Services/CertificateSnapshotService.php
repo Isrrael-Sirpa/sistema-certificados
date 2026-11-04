@@ -159,6 +159,7 @@ class CertificateSnapshotService
                 'hours' => $activity->academic_hours,
                 'dates' => $activity->formatted_date_range,
                 'authority' => $activity->responsible_authority,
+                'resolution_number' => $activity->resolution_number,
                 'location' => $activity->location,
             ],
             'certificate_type' => $certificateType->name,

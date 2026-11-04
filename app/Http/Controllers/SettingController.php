@@ -36,18 +36,38 @@ class SettingController extends Controller
         'portal_verify_footer_note' => ['group' => 'verification_portal', 'display_name' => 'Mensaje Institucional al Pie', 'type' => 'text'],
     ];
 
-    public function index()
+    public function index(Request $request)
     {
         $allSettings = Setting::all()->keyBy('key');
-        $templates = CertificateTemplate::all();
+        $templates = CertificateTemplate::get(['id', 'name', 'description', 'is_active']);
         $types = CertificateType::orderBy('id')->get();
+        $activeTab = in_array($request->input('tab'), ['portal', 'institutional', 'certificates'], true) ? $request->input('tab') : 'portal';
 
-        return view('settings.index', compact('allSettings', 'templates', 'types'));
+        return view('settings.index', compact('allSettings', 'templates', 'types', 'activeTab'));
     }
 
     public function update(Request $request)
     {
-        $data = $request->except(['_token', '_method']);
+        $rules = [
+            'institution_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'faculty_name' => ['sometimes', 'required', 'string', 'max:255'],
+            'department_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'authority_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'authority_position' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dean_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dean_position' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'faculty_motto' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'institution_city' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'institution_address' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'system_email' => ['sometimes', 'nullable', 'email', 'max:255'],
+            'certificate_validity_years' => ['sometimes', 'required', 'integer', 'min:1', 'max:50'],
+        ];
+        foreach ($this->settingDefinitions as $key => $definition) {
+            $rules[$key] = $definition['type'] === 'boolean'
+                ? ['sometimes', 'boolean']
+                : ['sometimes', 'nullable', 'string', 'max:'.($definition['type'] === 'text' ? 2000 : 255)];
+        }
+        $data = $request->validate($rules);
         $oldSettings = Setting::all()->pluck('value', 'key')->toArray();
 
         // Si se actualizaron conmutadores del portal de verificación, tratar los checkboxes ausentes como 0
@@ -68,7 +88,6 @@ class SettingController extends Controller
                     $data[$bKey] = '0';
                 }
             }
-            unset($data['tab_verification_portal']);
         }
 
         foreach ($data as $key => $value) {
@@ -106,7 +125,7 @@ class SettingController extends Controller
             'default_validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
             'has_score' => ['nullable', 'boolean'],
             'score_scale' => ['nullable', 'string', 'max:100'],
-            'min_passing_score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'min_passing_score' => ['nullable', 'numeric', 'min:51', 'max:1000'],
             'icon' => ['nullable', 'string', 'max:10'],
             'badge_color' => ['nullable', 'string', 'max:30'],
         ]);
@@ -115,7 +134,7 @@ class SettingController extends Controller
             $validated['code'] = Str::slug($validated['name'], '_');
         }
 
-        $validated['has_score'] = (bool) ($request->has('has_score'));
+        $validated['has_score'] = $request->boolean('has_score');
         $validated['is_active'] = true;
 
         if ($validated['validity_mode'] === 'permanent') {
@@ -141,14 +160,14 @@ class SettingController extends Controller
             'default_validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
             'has_score' => ['nullable', 'boolean'],
             'score_scale' => ['nullable', 'string', 'max:100'],
-            'min_passing_score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'min_passing_score' => ['nullable', 'numeric', 'min:51', 'max:1000'],
             'icon' => ['nullable', 'string', 'max:10'],
             'badge_color' => ['nullable', 'string', 'max:30'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $validated['has_score'] = (bool) ($request->has('has_score'));
-        $validated['is_active'] = (bool) ($request->has('is_active'));
+        $validated['has_score'] = $request->boolean('has_score');
+        $validated['is_active'] = $request->boolean('is_active');
 
         if ($validated['validity_mode'] === 'permanent') {
             $validated['default_validity_years'] = null;

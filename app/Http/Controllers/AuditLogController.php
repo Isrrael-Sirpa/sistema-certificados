@@ -10,7 +10,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = AuditLog::with('user');
+        $query = AuditLog::select(['id', 'user_id', 'action', 'description', 'ip_address', 'created_at'])->with('user');
 
         if ($action = $request->input('action')) {
             $query->where('action', $action);

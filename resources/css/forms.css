@@ -1,0 +1,55 @@
+@layer components {
+    .ft-form-page { max-width: 1240px; margin-inline: auto; }
+    .ft-form-hero { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; padding: 30px 32px; margin-bottom: 24px; color: white; border-radius: 24px; background: radial-gradient(ellipse at 95% 0%, rgb(149 13 31 / 38%), transparent 58%), var(--color-brand-deep); }
+    .ft-form-hero h2 { margin-top: 10px; font-size: clamp(22px, 2.1vw, 30px); font-weight: 750; line-height: 1.2; letter-spacing: -.035em; }
+    .ft-form-hero p { max-width: 66ch; margin-top: 10px; color: #d4d0ea; font-size: 13px; line-height: 1.7; }
+    .ft-form-kicker { color: #f4c762; font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+    .ft-form-back { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid rgb(255 255 255 / 25%); border-radius: 12px; color: white; font-size: 12px; font-weight: 600; }
+    .ft-form-back:hover { background: rgb(255 255 255 / 10%); }
+    .ft-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+    .ft-form-section { padding: 26px; border: 1px solid var(--color-border); border-radius: 20px; background: white; box-shadow: var(--shadow-panel); }
+    .ft-form-section + .ft-form-section { margin-top: 20px; }
+    .ft-section-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--color-border); }
+    .ft-section-number { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 10px; background: var(--color-brand-soft); color: var(--color-brand); font-size: 12px; font-weight: 750; }
+    .ft-section-heading h3 { color: var(--color-brand); font-size: 16px; font-weight: 750; }
+    .ft-section-heading p, .ft-field-help { color: var(--color-muted); font-size: 12px; line-height: 1.65; margin-top: 5px; }
+    .ft-field-label { display: block; color: var(--color-ink); font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+    .ft-input { width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); background: white; border-radius: 12px; }
+    .ft-workspace .ft-form-page :where(input, select, textarea):not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']) { min-height: 48px; font-size: 14px; }
+    .ft-form-page [aria-invalid='true'] { border-color: var(--color-action) !important; }
+    .ft-field-error { margin-top: 6px; color: var(--color-action); font-size: 12px; }
+    .ft-form-note { padding: 14px 16px; background: var(--color-surface-muted); border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-muted); font-size: 12px; line-height: 1.7; }
+    .ft-form-aside { position: sticky; top: 104px; padding: 24px; background: white; border: 1px solid var(--color-border); border-radius: 20px; }
+    .ft-form-aside h3 { color: var(--color-brand); font-size: 15px; font-weight: 750; }
+    .ft-summary-row { display: grid; gap: 5px; padding-block: 14px; border-bottom: 1px solid var(--color-border); }
+    .ft-summary-row dt { color: var(--color-muted); font-size: 11px; }
+    .ft-summary-row dd { color: var(--color-ink); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+    .ft-form-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-top: 24px; padding: 20px 24px; border: 1px solid var(--color-border); border-radius: 16px; background: white; }
+    .ft-form-primary { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 12px; background: var(--color-action); color: white; font-size: 13px; font-weight: 700; }
+    .ft-form-primary:hover { background: var(--color-action-hover); }
+    .ft-form-primary:disabled { opacity: .55; cursor: wait; }
+    .ft-template-choice { position: relative; display: block; padding: 14px; border: 1px solid var(--color-border); border-radius: 16px; background: white; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+    .ft-template-choice:hover { border-color: var(--color-brand); }
+    .ft-template-choice.is-selected { border-color: var(--color-brand); box-shadow: 0 0 0 2px rgb(17 11 81 / 12%); background: #faf9fd; }
+    .ft-template-choice:focus-within { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+    .ft-choice-preview { display: grid; place-items: center; min-height: 150px; height: 170px; overflow: hidden; border-radius: 10px; background: var(--color-surface-muted); padding: 12px; margin-bottom: 14px; }
+    .ft-choice-preview > .ft-template-thumbnail { max-width: 230px; max-height: 145px; width: auto; height: 100%; }
+    .ft-choice-preview > .ft-template-thumbnail[style*='297 / 210'] { width: 100%; height: auto; }
+    .ft-settings-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 8px; background: white; border: 1px solid var(--color-border); border-radius: 18px; margin-bottom: 24px; }
+    .ft-settings-tabs > button { min-height: 68px; padding: 16px; border: 1px solid transparent; border-radius: 12px; text-align: left; font-size: 13px; font-weight: 650; }
+    .ft-settings-page :where(form) { gap: 20px; }
+    .ft-settings-page :where(form label) { font-size: 12px; }
+    .ft-settings-page :where(form h4) { font-size: 12px; letter-spacing: .06em; padding-bottom: 12px; }
+    .ft-settings-page [role='dialog'] > div { border-radius: 22px; }
+    .ft-settings-page :where(form > .grid) { column-gap: 24px; row-gap: 22px; }
+    @media (min-width: 1180px) { .ft-form-grid { grid-template-columns: minmax(0, 1fr) 288px; } }
+    @media (max-width: 640px) {
+        .ft-form-hero { padding: 24px 20px; border-radius: 18px; }
+        .ft-form-section { padding: 20px 16px; }
+        .ft-form-actions { padding: 16px; }
+        .ft-form-primary { width: 100%; }
+        .ft-settings-tabs { grid-template-columns: 1fr; }
+        .ft-settings-tabs > button { min-height: 52px; }
+        .ft-form-aside { position: static; }
+    }
+}

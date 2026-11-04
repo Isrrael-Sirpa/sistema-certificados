@@ -17,6 +17,8 @@ class ActivityParticipant extends Model
         'beneficiary_id',
         'role',
         'status',
+        'career_eligible',
+        'ineligibility_reason',
         'score',
         'score_label',
     ];
@@ -25,6 +27,7 @@ class ActivityParticipant extends Model
     {
         return [
             'score' => 'float',
+            'career_eligible' => 'boolean',
         ];
     }
 
@@ -72,5 +75,22 @@ class ActivityParticipant extends Model
         }
 
         return (float) $this->score < ($minScore ?? 51.0);
+    }
+
+    /**
+     * Determina si el participante está habilitado para recibir certificado
+     * (cumple carrera/resolución y nota mínima >= 51 si tiene evaluación).
+     */
+    public function isEligibleForCertificate(?float $minScore = 51.0): bool
+    {
+        if (! $this->career_eligible) {
+            return false;
+        }
+
+        if ($this->hasScore() && $this->isFailing($minScore)) {
+            return false;
+        }
+
+        return true;
     }
 }

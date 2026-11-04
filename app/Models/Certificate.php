@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,7 @@ class Certificate extends Model
         'verification_token',
         'beneficiary_id',
         'activity_id',
+        'organizational_unit_id',
         'certificate_type_id',
         'certificate_template_id',
         'template_version_id',
@@ -62,6 +64,16 @@ class Certificate extends Model
         ];
     }
 
+    public function scopeForListing(Builder $query): Builder
+    {
+        return $query->select(array_map(fn (string $column): string => $this->qualifyColumn($column), [
+            'id', 'certificate_code', 'verification_token', 'beneficiary_id', 'activity_id',
+            'organizational_unit_id', 'certificate_type_id', 'certificate_template_id',
+            'template_version_id', 'generated_by_user_id', 'issue_date', 'expiration_date',
+            'validity_type', 'status', 'revoked_at', 'revoked_by_user_id', 'score', 'score_label',
+        ]));
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Certificate $certificate) {
@@ -91,6 +103,10 @@ class Certificate extends Model
 
             if (empty($certificate->status)) {
                 $certificate->status = self::STATUS_VIGENTE;
+            }
+
+            if (empty($certificate->organizational_unit_id) && $certificate->activity_id) {
+                $certificate->organizational_unit_id = $certificate->activity?->organizational_unit_id;
             }
         });
     }
@@ -123,6 +139,11 @@ class Certificate extends Model
     public function activity(): BelongsTo
     {
         return $this->belongsTo(Activity::class)->withTrashed();
+    }
+
+    public function organizationalUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     public function certificateType(): BelongsTo

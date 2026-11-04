@@ -1,233 +1,124 @@
 @extends('layouts.app')
 
 @section('page-title', 'Crear plantilla')
-@section('page-subtitle', 'Elige un punto de partida y continúa en el diseñador visual')
+@section('page-subtitle', 'Un punto de partida claro para tu próximo certificado')
 
 @section('content')
-<div class="max-w-5xl mx-auto space-y-6" x-data="{
+@php
+    $baseChoices = collect($initialTemplates)->keyBy('slug')->map(fn ($base) => ['name' => $base['name'], 'orientation' => $base['orientation']]);
+@endphp
+<div class="ft-form-page" x-data="{
     creationMode: @js(old('creation_mode', 'predefined')),
     selectedBase: @js(old('base_template_slug', 'institucional-clasica')),
     selectedOrientation: @js(old('orientation', 'landscape')),
-    selectedSourceId: @js(old('source_template_id', $existingTemplates->first()?->id ?? ''))
+    selectedSourceId: @js((string) old('source_template_id', $existingTemplates->first()?->id ?? '')),
+    templateName: @js(old('name', '')),
+    bases: @js($baseChoices),
+    sources: @js($existingTemplates->keyBy('id')->map->only(['name', 'orientation'])),
+    submitting: false
 }">
+    <header class="ft-form-hero">
+        <div><span class="ft-form-kicker">Biblioteca de certificados</span><h2>El próximo diseño empieza aquí.</h2><p>Elige una composición institucional, reutiliza una plantilla de tu unidad o comienza con un lienzo en blanco.</p></div>
+        <a href="{{ route('templates.index') }}" class="ft-form-back">← Volver al catálogo</a>
+    </header>
 
-    <!-- Header Card -->
-    <div class="ft-panel bg-white border border-border p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
-        <div class="min-w-0">
-            <p class="ft-eyebrow">Un nuevo diseño</p>
-            <h2 class="mt-2 text-xl font-bold text-brand">Elige cómo comenzar.</h2>
-            <p class="mt-2 max-w-2xl text-sm text-muted">Después podrás editar textos, imágenes y composición sin perder el estilo de tu documento.</p>
-        </div>
-        <a href="{{ route('templates.index') }}" class="inline-flex min-h-11 items-center px-4 py-2 text-brand text-xs font-semibold rounded-xl border border-border hover:bg-surface-muted transition-colors">
-            &larr; Volver al catálogo
-        </a>
-    </div>
-
-    <!-- Mode Selector Tabs -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        <!-- Mode 1: Predefined -->
-        <button type="button" @click="creationMode = 'predefined'"
-                :aria-pressed="creationMode === 'predefined'"
-                class="p-5 rounded-2xl border-2 text-left transition-colors cursor-pointer"
-                :class="creationMode === 'predefined' ? 'border-brand bg-brand-soft ring-1 ring-brand/15' : 'border-border bg-white hover:border-brand/40'">
-            <div class="w-10 h-10 rounded-xl bg-white text-brand flex items-center justify-center text-lg mb-4" aria-hidden="true">
-                ▧
-            </div>
-            <h3 class="text-sm font-bold text-brand">Desde un diseño base</h3>
-            <p class="text-xs leading-relaxed text-muted mt-2">Parte de una composición institucional con logos, marco y textos listos para personalizar.</p>
-            <span class="mt-3 inline-block text-[10px] font-semibold text-action">RECOMENDADO PARA COMENZAR</span>
-        </button>
-
-        <!-- Mode 2: Blank Canvas -->
-        <button type="button" @click="creationMode = 'blank'"
-                :aria-pressed="creationMode === 'blank'"
-                class="p-5 rounded-2xl border-2 text-left transition-colors cursor-pointer"
-                :class="creationMode === 'blank' ? 'border-brand bg-brand-soft ring-1 ring-brand/15' : 'border-border bg-white hover:border-brand/40'">
-            <div class="w-10 h-10 rounded-xl bg-white text-brand flex items-center justify-center text-lg mb-4" aria-hidden="true">
-                ＋
-            </div>
-            <h3 class="text-sm font-bold text-brand">Con un lienzo en blanco</h3>
-            <p class="text-xs leading-relaxed text-muted mt-2">Añade tus propios elementos y construye la composición a tu medida desde el editor.</p>
-        </button>
-
-        <!-- Mode 3: Duplicate -->
-        <button type="button" @click="creationMode = 'duplicate'"
-                :aria-pressed="creationMode === 'duplicate'"
-                class="p-5 rounded-2xl border-2 text-left transition-colors cursor-pointer"
-                :class="creationMode === 'duplicate' ? 'border-brand bg-brand-soft ring-1 ring-brand/15' : 'border-border bg-white hover:border-brand/40'">
-            <div class="w-10 h-10 rounded-xl bg-white text-brand flex items-center justify-center text-lg mb-4" aria-hidden="true">
-                ▣
-            </div>
-            <h3 class="text-sm font-bold text-brand">Duplicando una plantilla</h3>
-            <p class="text-xs leading-relaxed text-muted mt-2">Crea una variante de un diseño que ya utilizas. La plantilla de origen se conserva.</p>
-        </button>
-
-    </div>
-
-    <form method="POST" action="{{ route('templates.store') }}" class="space-y-6">
+    <form method="POST" action="{{ route('templates.store') }}" @submit="submitting = true">
         @csrf
-        <input type="hidden" name="creation_mode" :value="creationMode">
+        <input type="hidden" name="creation_mode" :value="creationMode" value="{{ old('creation_mode', 'predefined') }}">
+        <div class="ft-form-grid">
+            <div>
+                <section class="ft-form-section">
+                    <div class="ft-section-heading"><span class="ft-section-number">01</span><div><h3>Identifica tu plantilla</h3><p>Utiliza un nombre que ayude a encontrarla al crear una actividad.</p></div></div>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div><label for="template-name" class="ft-field-label">Nombre <span class="text-action">*</span></label><input id="template-name" name="name" type="text" x-model="templateName" value="{{ old('name') }}" required maxlength="150" placeholder="Ej. Talleres de Química · Certificado oficial" class="ft-input" aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}">@error('name')<p class="ft-field-error">{{ $message }}</p>@enderror</div>
+                        <div><label for="template-category" class="ft-field-label">Categoría <span class="text-action">*</span></label><select id="template-category" name="category" class="ft-input" required>@foreach($categories as $category)<option value="{{ $category }}" @selected(old('category', 'institucional') === $category)>{{ ucfirst($category) }}</option>@endforeach</select>@error('category')<p class="ft-field-error">{{ $message }}</p>@enderror</div>
+                        <div class="sm:col-span-2"><label for="template-description" class="ft-field-label">Descripción <span class="text-muted font-normal">Opcional</span></label><textarea id="template-description" name="description" rows="2" maxlength="255" class="ft-input" placeholder="Indica para qué actividades se utilizará…">{{ old('description') }}</textarea>@error('description')<p class="ft-field-error">{{ $message }}</p>@enderror</div>
+                        @if(auth()->user()->isAdmin())
+                            <div class="sm:col-span-2"><label for="template-unit" class="ft-field-label">Disponibilidad de la plantilla</label><select id="template-unit" name="organizational_unit_id" class="ft-input"><option value="">Institucional · Compartida con todas las unidades</option>@foreach($units as $unit)<option value="{{ $unit->id }}" @selected(old('organizational_unit_id') == $unit->id)>{{ $unit->name }}</option>@endforeach</select><p class="ft-field-help">Puedes crear un diseño compartido o reservarlo para una carrera o departamento.</p></div>
+                        @else
+                            <div class="sm:col-span-2 ft-form-note"><strong class="text-brand">Unidad propietaria</strong><p>{{ auth()->user()->organizationalUnit?->name }}. La nueva plantilla quedará disponible para tu unidad.</p></div>
+                        @endif
+                    </div>
+                </section>
 
-        <!-- Section 1: Basic Info -->
-        <div class="ft-panel bg-white p-5 sm:p-6 border border-border space-y-5">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
-                <span>1.</span> Datos Generales de la Plantilla
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                    <label for="template-name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Nombre de la Plantilla <span class="text-red-500">*</span>
-                    </label>
-                    <input id="template-name" type="text" name="name" value="{{ old('name') }}" required placeholder="Ej: Certificado de Seminario Internacional 2026"
-                           class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                </div>
-
-                <div>
-                    <label for="template-category" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Categoría Institucional <span class="text-red-500">*</span>
-                    </label>
-                    <select id="template-category" name="category" required
-                            class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat }}" {{ old('category') === $cat ? 'selected' : '' }}>{{ ucfirst($cat) }}</option>
+                <section class="ft-form-section">
+                    <div class="ft-section-heading"><span class="ft-section-number">02</span><div><h3>Elige cómo comenzar</h3><p>Después podrás personalizar cada elemento en el diseñador.</p></div></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        @foreach(['predefined' => ['▧', 'Diseño institucional', 'Composición lista para personalizar'], 'blank' => ['＋', 'Lienzo en blanco', 'Crea tu propia composición'], 'duplicate' => ['⧉', 'Duplicar plantilla', 'Reutiliza un diseño disponible']] as $mode => $choice)
+                            <button type="button" @click="creationMode = '{{ $mode }}'" :aria-pressed="creationMode === '{{ $mode }}'" class="ft-template-choice text-left" :class="creationMode === '{{ $mode }}' ? 'is-selected' : ''">
+                                <span class="ft-section-number mb-3" aria-hidden="true">{{ $choice[0] }}</span><strong class="block text-sm text-brand">{{ $choice[1] }}</strong><span class="block ft-field-help">{{ $choice[2] }}</span>
+                            </button>
                         @endforeach
-                    </select>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="template-description" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                        Descripción o Propósito Académico
-                    </label>
-                    <input id="template-description" type="text" name="description" value="{{ old('description') }}" placeholder="Ej: Plantilla oficial para talleres con sello seco y firma digital"
-                           class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 2: Orientation Selection -->
-        <div class="ft-panel bg-white p-5 sm:p-6 border border-border space-y-4">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
-                <span>2.</span> Orientación del Documento A4
-            </h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label class="border-2 rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-accent"
-                       :class="selectedOrientation === 'landscape' ? 'border-brand bg-blue-50/40 shadow-xs ring-1 ring-brand/20' : 'border-slate-200 hover:border-slate-300'">
-                    <input type="radio" name="orientation" value="landscape" x-model="selectedOrientation" class="sr-only">
-                    <div class="w-16 h-11 shrink-0 bg-white border-2 border-slate-400 rounded flex items-center justify-center shadow-xs">
-                        <span class="text-[10px] font-bold text-slate-500">297×210 mm</span>
                     </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-brand">Horizontal</h4>
-                        <p class="mt-1 text-xs text-muted">297 × 210 mm. Ideal para certificados y reconocimientos.</p>
-                    </div>
-                </label>
+                    @error('creation_mode')<p class="ft-field-error">{{ $message }}</p>@enderror
 
-                <label class="border-2 rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-accent"
-                       :class="selectedOrientation === 'portrait' ? 'border-brand bg-blue-50/40 shadow-xs ring-1 ring-brand/20' : 'border-slate-200 hover:border-slate-300'">
-                    <input type="radio" name="orientation" value="portrait" x-model="selectedOrientation" class="sr-only">
-                    <div class="w-11 h-16 shrink-0 bg-white border-2 border-slate-400 rounded flex items-center justify-center shadow-xs">
-                        <span class="text-[9px] font-bold text-slate-500">210×297 mm</span>
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-brand">Vertical</h4>
-                        <p class="mt-1 text-xs text-muted">210 × 297 mm. Adecuado para constancias y diplomas.</p>
-                    </div>
-                </label>
-            </div>
-        </div>
-
-        <!-- Section 3A: Predefined Baseline Templates -->
-        <div x-show="creationMode === 'predefined'" class="ft-panel bg-white p-5 sm:p-6 border border-border space-y-4">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
-                <span>3.</span> Estilo Base Prediseñado (Punto de Partida)
-            </h3>
-            <p class="text-xs text-slate-500">Seleccione el diseño base sobre el cual cargaremos colores, marcos, logos y tipografías para afinarlo luego en el diseñador:</p>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                @foreach($initialTemplates as $initTpl)
-                    <label class="border-2 rounded-2xl p-4 flex flex-col justify-between cursor-pointer transition-all group focus-within:ring-2 focus-within:ring-accent"
-                           :class="selectedBase === '{{ $initTpl['slug'] }}' ? 'border-brand bg-blue-50/30 shadow-md ring-2 ring-brand/20' : 'border-slate-200 hover:border-slate-300'">
-                        <input type="radio" name="base_template_slug" value="{{ $initTpl['slug'] }}" x-model="selectedBase" class="sr-only">
-
-                        <!-- Mini color bar -->
-                        <div class="h-16 rounded-xl flex items-center justify-center p-2 mb-3 relative overflow-hidden"
-                             style="background: linear-gradient(135deg, {{ $initTpl['configuration']['primary_color'] ?? '#024966' }} 0%, #01354a 100%);">
-                            <span class="text-[10px] font-bold text-amber-300 tracking-wider uppercase text-center">
-                                {{ $initTpl['name'] }}
-                            </span>
+                    <fieldset x-show="creationMode === 'predefined'" :disabled="creationMode !== 'predefined'" class="mt-6">
+                        <legend class="ft-field-label">Diseños de referencia</legend>
+                        <p class="ft-field-help mb-4">Las miniaturas son ejemplos. El diseño se adaptará al formato A4 que elijas.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[620px] overflow-y-auto p-1">
+                            @foreach($initialTemplates as $base)
+                                <label class="ft-template-choice" :class="selectedBase === @js($base['slug']) ? 'is-selected' : ''">
+                                    <input type="radio" name="base_template_slug" value="{{ $base['slug'] }}" x-model="selectedBase" class="sr-only" :required="creationMode === 'predefined'">
+                                    <div class="ft-choice-preview">@include('templates.thumbnail', ['tpl' => (object) ['configuration' => $base['configuration'], 'orientation' => $base['orientation']]])</div>
+                                    <strong class="block text-sm text-brand">{{ $base['name'] }}</strong><span class="block ft-field-help">{{ $base['description'] }}</span>
+                                </label>
+                            @endforeach
                         </div>
+                        @error('base_template_slug')<p class="ft-field-error">{{ $message }}</p>@enderror
+                    </fieldset>
 
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-900 group-hover:text-brand">{{ $initTpl['name'] }}</h4>
-                            <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">{{ $initTpl['description'] }}</p>
-                        </div>
+                    <div x-show="creationMode === 'blank'" x-cloak class="ft-form-note mt-6"><strong class="text-brand">Tu espacio para diseñar</strong><p>Empieza con una hoja A4 y agrega textos, logos, firmas, franjas y el código QR desde el diseñador.</p></div>
 
-                        <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-                            <span class="font-semibold" style="color: {{ $initTpl['configuration']['secondary_color'] ?? '#d4af37' }};">
-                                ● {{ ucfirst($initTpl['category']) }}
-                            </span>
-                            <span>{{ strtoupper($initTpl['orientation']) }}</span>
-                        </div>
-                    </label>
-                @endforeach
-            </div>
-        </div>
-
-        <!-- Section 3B: Blank Canvas Note -->
-        <div x-show="creationMode === 'blank'" x-cloak class="bg-accent-soft border border-accent/40 p-5 sm:p-6 rounded-2xl space-y-2">
-            <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
-                <span>🎨</span> Modo Lienzo en Blanco Activado
-            </div>
-            <p class="text-xs text-amber-800 leading-relaxed">
-                Se generará una plantilla con un marco ornamental base y sin elementos predefinidos. Al ingresar al Diseñador Visual interactivo, podrá insertar títulos, logos institucionales (PNG/SVG/JPG), bloques de firmas, códigos QR y sellos secos a su entera medida mediante la paleta de herramientas y la biblioteca de recursos.
-            </p>
-        </div>
-
-        <!-- Section 3C: Duplicate Selector -->
-        <div x-show="creationMode === 'duplicate'" x-cloak class="ft-panel bg-white p-5 sm:p-6 border border-border space-y-4">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
-                <span>3.</span> Seleccionar Plantilla a Clonar
-            </h3>
-
-            @if($existingTemplates->isEmpty())
-                <p class="text-xs text-slate-500">No hay plantillas existentes para duplicar. Utilice una plantilla base o lienzo en blanco.</p>
-            @else
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    @foreach($existingTemplates as $exTpl)
-                        <label class="border-2 rounded-xl p-4 flex items-center justify-between gap-3 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-accent"
-                               :class="selectedSourceId == '{{ $exTpl->id }}' ? 'border-brand bg-blue-50/40 ring-1 ring-brand' : 'border-slate-200 hover:border-slate-300'">
-                            <input type="radio" name="source_template_id" value="{{ $exTpl->id }}" x-model="selectedSourceId" class="sr-only">
-                            <div>
-                                <h4 class="text-xs font-bold text-slate-800">{{ $exTpl->name }}</h4>
-                                <div class="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-0.5">
-                                    <span class="capitalize">{{ $exTpl->category }}</span>
-                                    <span>•</span>
-                                    <span>{{ strtoupper($exTpl->orientation) }}</span>
-                                    <span>•</span>
-                                    <span>v{{ $exTpl->current_version }}.0</span>
-                                </div>
+                    <fieldset x-show="creationMode === 'duplicate'" x-cloak :disabled="creationMode !== 'duplicate'" class="mt-6">
+                        <legend class="ft-field-label">Plantilla de origen</legend>
+                        @if($existingTemplates->isEmpty())
+                            <p class="ft-form-note">Todavía no hay plantillas disponibles para duplicar. Puedes comenzar con un diseño institucional o un lienzo en blanco.</p>
+                        @else
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                @foreach($existingTemplates as $source)
+                                    <label class="ft-template-choice" :class="String(selectedSourceId) === '{{ $source->id }}' ? 'is-selected' : ''">
+                                        <input type="radio" name="source_template_id" value="{{ $source->id }}" x-model="selectedSourceId" class="sr-only" :required="creationMode === 'duplicate'">
+                                        <strong class="block text-sm text-brand">{{ $source->name }}</strong><span class="block ft-field-help">A4 {{ $source->orientation === 'landscape' ? 'horizontal' : 'vertical' }} · Versión {{ $source->current_version }}.0</span>
+                                    </label>
+                                @endforeach
                             </div>
-                            <span class="text-xs" :class="selectedSourceId == '{{ $exTpl->id }}' ? 'text-brand font-bold' : 'text-slate-300'">✓</span>
-                        </label>
-                    @endforeach
-                </div>
-            @endif
+                        @endif
+                        @error('source_template_id')<p class="ft-field-error">{{ $message }}</p>@enderror
+                    </fieldset>
+                </section>
+
+                <fieldset class="ft-form-section">
+                    <div class="ft-section-heading"><span class="ft-section-number">03</span><div><h3>Formato del documento</h3><p>Elige la orientación de la nueva plantilla.</p></div></div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        @foreach(['landscape' => ['Horizontal', '297 × 210 mm', 'Ideal para certificados y reconocimientos.'], 'portrait' => ['Vertical', '210 × 297 mm', 'Una composición de diploma o constancia.']] as $orientation => $format)
+                            <label class="ft-template-choice flex items-center gap-4" :class="selectedOrientation === '{{ $orientation }}' ? 'is-selected' : ''">
+                                <input type="radio" name="orientation" value="{{ $orientation }}" x-model="selectedOrientation" required class="text-brand">
+                                <span><strong class="block text-sm text-brand">{{ $format[0] }} · A4</strong><span class="block ft-field-help">{{ $format[1] }}<br>{{ $format[2] }}</span></span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('orientation')<p class="ft-field-error">{{ $message }}</p>@enderror
+                </fieldset>
+            </div>
+
+            <aside class="ft-form-aside">
+                <span class="ft-form-kicker" style="color:var(--color-action)">Tu nuevo documento</span><h3 class="mt-2">Resumen del diseño</h3>
+                <dl class="mt-3">
+                    <div class="ft-summary-row"><dt>Nombre</dt><dd x-text="templateName || 'Por completar'"></dd></div>
+                    <div class="ft-summary-row"><dt>Punto de partida</dt><dd x-text="creationMode === 'blank' ? 'Lienzo en blanco' : (creationMode === 'duplicate' ? sources[selectedSourceId]?.name || 'Selecciona una plantilla' : bases[selectedBase]?.name || 'Selecciona un diseño')"></dd></div>
+                    <div class="ft-summary-row"><dt>Formato</dt><dd x-text="selectedOrientation === 'landscape' ? 'A4 horizontal · 297 × 210 mm' : 'A4 vertical · 210 × 297 mm'"></dd></div>
+                </dl>
+                <p class="ft-field-help mt-5">Crear una plantilla abre el diseñador. Allí podrás ajustar textos, firmas, colores y el tamaño del QR antes de utilizarla.</p>
+            </aside>
         </div>
 
-        <!-- Submit Button -->
-        <div class="ft-panel flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4 border border-border bg-white p-5">
-            <a href="{{ route('templates.index') }}" class="inline-flex min-h-11 items-center justify-center px-5 py-2.5 text-muted text-sm font-semibold rounded-xl hover:bg-surface-muted transition-colors">
-                Cancelar
-            </a>
-            <button type="submit" class="min-h-11 px-6 py-3 bg-action hover:bg-action-hover text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">
-                <span>Crear y abrir diseñador</span>
-                <span>&rarr;</span>
-            </button>
-        </div>
+        <footer class="ft-form-actions">
+            <p class="text-xs text-muted">Se creará una plantilla nueva; el diseño de origen se conserva.</p>
+            <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                <a href="{{ route('templates.index') }}" class="text-sm font-semibold text-muted">Cancelar</a>
+                <button type="submit" :disabled="submitting || (creationMode === 'duplicate' && !selectedSourceId)" class="ft-form-primary"><span x-text="submitting ? 'Preparando diseñador…' : 'Crear y abrir diseñador'">Crear y abrir diseñador</span><span aria-hidden="true">→</span></button>
+            </div>
+        </footer>
     </form>
-
 </div>
 @endsection

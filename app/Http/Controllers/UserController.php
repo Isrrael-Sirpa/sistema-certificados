@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Certificate;
+use App\Models\InstitutionalAsset;
+use App\Models\OrganizationalUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,15 +16,19 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('role')->latest('id')->paginate(15);
+        $users = User::with(['role', 'organizationalUnit'])->latest('id')->paginate(15);
         $roles = Role::all();
-        return view('users.index', compact('users', 'roles'));
+        $units = OrganizationalUnit::orderBy('type')->orderBy('name')->get();
+
+        return view('users.index', compact('users', 'roles', 'units'));
     }
 
     public function create()
     {
         $roles = Role::all();
-        return view('users.create', compact('roles'));
+        $units = OrganizationalUnit::active()->orderBy('type')->orderBy('name')->get();
+
+        return view('users.create', compact('roles', 'units'));
     }
 
     public function store(Request $request)
@@ -30,6 +37,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'role_id' => ['required', 'exists:roles,id'],
+            'organizational_unit_id' => [Rule::requiredIf(Role::whereKey($request->input('role_id'))->whereIn('name', [Role::JEFE_CARRERA, Role::SECRETARIA])->exists()), 'nullable', 'exists:organizational_units,id'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'is_active' => ['boolean'],
         ]);
@@ -47,7 +55,9 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::all();
-        return view('users.edit', compact('user', 'roles'));
+        $units = OrganizationalUnit::orderBy('type')->orderBy('name')->get();
+
+        return view('users.edit', compact('user', 'roles', 'units'));
     }
 
     public function update(Request $request, User $user)
@@ -56,13 +66,14 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role_id' => ['required', 'exists:roles,id'],
+            'organizational_unit_id' => [Rule::requiredIf(Role::whereKey($request->input('role_id'))->whereIn('name', [Role::JEFE_CARRERA, Role::SECRETARIA])->exists()), 'nullable', 'exists:organizational_units,id'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['boolean'],
         ]);
 
         $old = $user->toArray();
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
@@ -83,12 +94,12 @@ class UserController extends Controller
             return back()->with('error', 'No puede desactivar su propia cuenta.');
         }
 
-        $user->is_active = !$user->is_active;
+        $user->is_active = ! $user->is_active;
         $user->save();
 
-        AuditLog::log('user_status_toggled', "Estado de {$user->name} cambiado a " . ($user->is_active ? 'Activo' : 'Inactivo'), $user);
+        AuditLog::log('user_status_toggled', "Estado de {$user->name} cambiado a ".($user->is_active ? 'Activo' : 'Inactivo'), $user);
 
-        return back()->with('success', "Estado del usuario actualizado a: " . ($user->is_active ? 'Activo' : 'Inactivo'));
+        return back()->with('success', 'Estado del usuario actualizado a: '.($user->is_active ? 'Activo' : 'Inactivo'));
     }
 
     public function show(User $user)
@@ -110,15 +121,16 @@ class UserController extends Controller
             }
         }
 
-        $hasCertificates = \App\Models\Certificate::where('generated_by_user_id', $user->id)
+        $hasCertificates = Certificate::where('generated_by_user_id', $user->id)
             ->orWhere('revoked_by_user_id', $user->id)
             ->exists();
-        $hasAuditLogs = \App\Models\AuditLog::where('user_id', $user->id)->exists();
-        $hasAssets = \App\Models\InstitutionalAsset::where('created_by_user_id', $user->id)->exists();
+        $hasAuditLogs = AuditLog::where('user_id', $user->id)->exists();
+        $hasAssets = InstitutionalAsset::where('created_by_user_id', $user->id)->exists();
 
         if ($hasCertificates || $hasAuditLogs || $hasAssets) {
             $user->update(['is_active' => false]);
             AuditLog::log('user_deactivated_historic', "Usuario '{$user->name}' desactivado para preservar trazabilidad documental histórica", $user);
+
             return redirect()->route('users.index')->with('warning', "El usuario '{$user->name}' tiene registros vinculados (certificados o auditoría). Para proteger la integridad documental histórica, su cuenta fue desactivada en lugar de eliminarse.");
         }
 

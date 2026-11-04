@@ -8,10 +8,14 @@ use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\CertificateTemplateController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InstitutionalAssetController;
+use App\Http\Controllers\OrganizationalUnitController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Middleware\EnsureCanAccessReports;
+use App\Http\Middleware\EnsureCanManageTemplates;
+use App\Http\Middleware\EnsureOrganizationalUnitAccess;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -42,7 +46,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 // ==========================================
 // Panel Administrativo y Operativo (Protegido)
 // ==========================================
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', EnsureOrganizationalUnitAccess::class])->group(function () {
     // Dashboard principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -84,14 +88,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/actividades/{activity}/descargar-zip', [ActivityController::class, 'downloadZip'])->name('activities.download-zip');
     Route::post('/actividades/{activity}/configuracion-certificado', [ActivityController::class, 'updateCertificateConfig'])->name('activities.certificate-config');
 
-    // Módulo de Reportes
-    Route::get('/reportes', [ReportController::class, 'index'])->name('reports.index');
+    // Módulo de Reportes (Acceso: Super Admin y Jefe de Carrera)
+    Route::middleware([EnsureCanAccessReports::class])->group(function () {
+        Route::get('/reportes', [ReportController::class, 'index'])->name('reports.index');
+    });
 
-    // ==========================================
-    // Rutas Exclusivas para Administradores
-    // ==========================================
-    Route::middleware([EnsureUserIsAdmin::class])->group(function () {
-        // Gestión y Diseñador de Plantillas Institucionales
+    // Módulo de Plantillas y Diseñador (Acceso: Super Admin, Jefe de Carrera y Secretaría)
+    Route::middleware([EnsureCanManageTemplates::class])->group(function () {
         Route::resource('plantillas', CertificateTemplateController::class)
             ->names('templates')
             ->parameters(['plantillas' => 'template']);
@@ -102,6 +105,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/plantillas/{template}/hacer-predeterminada', [CertificateTemplateController::class, 'setDefault'])->name('templates.set-default');
         Route::get('/plantillas/{template}/previsualizar-pdf', [CertificateTemplateController::class, 'previewPdf'])->name('templates.preview');
         Route::post('/plantillas/{template}/previsualizar-en-vivo', [CertificateTemplateController::class, 'livePreview'])->name('templates.live-preview');
+    });
+
+    // ==========================================
+    // Rutas Exclusivas para Super Administrador (Dpto. de Cómputo)
+    // ==========================================
+    Route::middleware([EnsureUserIsAdmin::class])->group(function () {
+        // Gestión Dinámica de Carreras y Departamentos
+        Route::resource('carreras-departamentos', OrganizationalUnitController::class)
+            ->names('carreras-departamentos')
+            ->parameters(['carreras-departamentos' => 'carreras_departamento'])
+            ->only(['index', 'store', 'update']);
+        Route::patch('/carreras-departamentos/{carreras_departamento}/toggle', [OrganizationalUnitController::class, 'toggleStatus'])
+            ->name('carreras-departamentos.toggle');
 
         // Biblioteca de Recursos Institucionales (Logos, Firmas, Sellos, Marcas de Agua)
         Route::resource('recursos-institucionales', InstitutionalAssetController::class)

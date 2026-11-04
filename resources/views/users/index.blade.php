@@ -28,6 +28,7 @@
                         <th class="px-5 py-3">Usuario</th>
                         <th class="px-5 py-3">Correo Electrónico</th>
                         <th class="px-5 py-3">Rol</th>
+                        <th class="px-5 py-3">Carrera / Unidad</th>
                         <th class="px-5 py-3">Último Acceso</th>
                         <th class="px-5 py-3">Estado</th>
                         <th class="px-5 py-3 text-right">Acciones</th>
@@ -46,6 +47,15 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ $u->isAdmin() ? 'bg-amber-100 text-amber-800' : 'bg-brand/10 text-brand' }}">
                                     {{ $u->role->display_name ?? 'Sin Rol' }}
                                 </span>
+                            </td>
+                            <td class="px-5 py-3">
+                                @if($u->organizationalUnit)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+                                        [{{ $u->organizationalUnit->code }}] {{ $u->organizationalUnit->name }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400 italic text-[11px]">Global (Cómputo / Central)</span>
+                                @endif
                             </td>
                             <td class="px-5 py-3 text-slate-500">
                                 {{ $u->last_login_at ? $u->last_login_at->diffForHumans() : 'Nunca' }}
@@ -78,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-8 text-center text-slate-400">
+                            <td colspan="7" class="px-5 py-8 text-center text-slate-400">
                                 No hay usuarios registrados.
                             </td>
                         </tr>

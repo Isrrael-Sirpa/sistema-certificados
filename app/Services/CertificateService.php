@@ -8,9 +8,12 @@ use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
+use App\Models\Setting;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CertificateService
 {
@@ -32,6 +35,21 @@ class CertificateService
         $activity = Activity::findOrFail($data['activity_id']);
         $certificateType = CertificateType::findOrFail($data['certificate_type_id']);
 
+        if (! $generatedBy->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
+            throw new AuthorizationException('No puede emitir certificados para actividades de otra carrera o unidad.');
+        }
+
+        // Validación de unidad activa
+        if ($activity->organizationalUnit && ! $activity->organizationalUnit->is_active) {
+            throw new \InvalidArgumentException("La unidad '{$activity->organizationalUnit->name}' se encuentra temporalmente inactiva. No se pueden emitir nuevos certificados.");
+        }
+
+        // Validación de resolución y carrera autorizada
+        if (! $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id)) {
+            $resMsg = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricciones de la actividad';
+            throw new \InvalidArgumentException("El estudiante {$beneficiary->full_name} no pertenece a una carrera autorizada ({$resMsg}).");
+        }
+
         // 1. Resolver modo de vigencia y fecha de vencimiento
         $validityType = $data['validity_type']
             ?? $activity->certificateConfig?->validity_mode
@@ -45,7 +63,7 @@ class CertificateService
             $years = $data['validity_years']
                 ?? $activity->certificateConfig?->validity_years
                 ?? $certificateType->default_validity_years
-                ?? 3;
+                ?? (int) Setting::get('certificate_validity_years', 3);
             $expirationDate = $issueCarbon->copy()->addYears((int) $years)->toDateString();
         }
 
@@ -59,18 +77,24 @@ class CertificateService
         // Validación de aprobación institucional: si el tipo de certificado evalúa notas, no se emite a reprobados
         if ($certificateType->supportsScore()) {
             $minScore = (float) ($certificateType->min_passing_score ?? 51.0);
-            if ($score !== null && $score < $minScore) {
+            if ($score === null) {
+                throw new \InvalidArgumentException('Debe registrar una calificación antes de emitir este certificado.');
+            }
+            if ($score < $minScore) {
                 throw new \InvalidArgumentException("No se puede emitir un '{$certificateType->name}' con calificación de {$score} pts. La nota mínima reglamentaria de aprobación es de {$minScore} pts.");
             }
         }
 
         $templateId = $data['certificate_template_id']
             ?? $activity->certificateConfig?->certificate_template_id
-            ?? CertificateTemplate::where('is_default', true)->first()?->id
-            ?? CertificateTemplate::where('is_active', true)->first()?->id
-            ?? CertificateTemplate::firstOrFail()->id;
+            ?? CertificateTemplate::active()->forUnit($activity->organizational_unit_id)
+                ->orderByDesc('is_default')->orderBy('id')->value('id')
+            ?? throw ValidationException::withMessages(['certificate_template_id' => 'No hay una plantilla activa disponible para esta unidad. Seleccione o cree una plantilla antes de emitir.']);
 
         $template = CertificateTemplate::findOrFail($templateId);
+        if ($template->organizational_unit_id !== null && ! $generatedBy->canAccessOrganizationalUnit($template->organizational_unit_id)) {
+            throw new AuthorizationException('No puede utilizar plantillas privadas de otra carrera o unidad.');
+        }
         $currentVersion = $template->currentVersionRecord();
 
         $token = (string) Str::uuid();
@@ -113,6 +137,7 @@ class CertificateService
             'verification_token' => $token,
             'beneficiary_id' => $beneficiary->id,
             'activity_id' => $activity->id,
+            'organizational_unit_id' => $activity->organizational_unit_id,
             'certificate_type_id' => $certificateType->id,
             'certificate_template_id' => $template->id,
             'template_version_id' => $currentVersion?->id,

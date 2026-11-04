@@ -8,6 +8,7 @@ use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
+use App\Models\OrganizationalUnit;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
 use Carbon\Carbon;
@@ -22,7 +23,14 @@ class CertificateController extends Controller
 
     public function index(Request $request)
     {
-        $query = Certificate::with(['beneficiary', 'activity', 'certificateType', 'certificateTemplate', 'generatedBy', 'revokedBy']);
+        $user = $request->user();
+        $query = Certificate::forListing()->with(['beneficiary', 'activity', 'certificateType', 'certificateTemplate:id,name', 'generatedBy', 'revokedBy', 'organizationalUnit']);
+
+        if ($user->isUnitScoped()) {
+            $query->where('organizational_unit_id', $user->organizational_unit_id);
+        } elseif ($request->filled('unit_id')) {
+            $query->where('organizational_unit_id', $request->input('unit_id'));
+        }
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -69,10 +77,17 @@ class CertificateController extends Controller
         }
 
         $certificates = $query->latest('id')->paginate(15)->withQueryString();
-        $activities = Activity::orderBy('name')->get();
-        $types = CertificateType::where('is_active', true)->get();
 
-        return view('certificates.index', compact('certificates', 'activities', 'types'));
+        $activitiesQuery = Activity::orderBy('name');
+        if ($user->isUnitScoped()) {
+            $activitiesQuery->where('organizational_unit_id', $user->organizational_unit_id);
+        }
+        $activities = $activitiesQuery->get();
+
+        $types = CertificateType::where('is_active', true)->get();
+        $units = OrganizationalUnit::active()->orderBy('type')->orderBy('name')->get();
+
+        return view('certificates.index', compact('certificates', 'activities', 'types', 'units'));
     }
 
     public function create(Request $request)
@@ -116,8 +131,24 @@ class CertificateController extends Controller
         $certType = CertificateType::find($validated['certificate_type_id']);
         if ($certType && $certType->supportsScore()) {
             $minScore = (float) ($certType->min_passing_score ?? 51.0);
-            if (isset($validated['score']) && (float) $validated['score'] < $minScore) {
-                return back()->withInput()->with('error', "No se puede emitir un {$certType->name} con una calificación de {$validated['score']} puntos (reprobado). La nota mínima es de {$minScore} pts.");
+            $score = isset($validated['score']) ? (float) $validated['score'] : null;
+            if ($score === null || $score < $minScore) {
+                $activity = Activity::findOrFail($validated['activity_id']);
+                $beneficiary = Beneficiary::findOrFail($validated['beneficiary_id']);
+                $allowed = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
+                if (! $activity->certificates()->where('beneficiary_id', $beneficiary->id)->exists()) {
+                    $activity->participants()->syncWithoutDetaching([$beneficiary->id => [
+                        'score' => $score,
+                        'score_label' => $validated['score_label'] ?? null,
+                        'status' => ! $allowed || $score === null ? 'observado' : 'reprobado',
+                        'career_eligible' => $allowed,
+                        'ineligibility_reason' => $allowed ? null : 'Carrera no autorizada para este evento.',
+                    ]]);
+                }
+
+                $message = $score === null ? 'Falta la calificación.' : "Calificación reprobatoria: {$score} pts.";
+
+                return back()->withInput()->with('error', "{$message} No se emitió un certificado. La nota mínima es de {$minScore} pts; el participante permanece en la nómina.");
             }
         }
 
@@ -144,9 +175,13 @@ class CertificateController extends Controller
         return redirect()->route('certificates.show', $certificate)->with('success', "Certificado {$certificate->certificate_code} generado exitosamente.");
     }
 
-    public function show(Certificate $certificate)
+    public function show(Request $request, Certificate $certificate)
     {
-        $certificate->load(['beneficiary', 'activity', 'certificateType', 'certificateTemplate', 'templateVersion', 'generatedBy', 'revokedBy', 'verifications']);
+        if ($request->user()->isUnitScoped() && $certificate->organizational_unit_id !== $request->user()->organizational_unit_id) {
+            abort(403, 'No tiene autorización para visualizar certificados de otra carrera o unidad.');
+        }
+
+        $certificate->load(['beneficiary', 'activity', 'certificateType', 'certificateTemplate', 'templateVersion', 'generatedBy', 'revokedBy', 'verifications', 'organizationalUnit']);
 
         return view('certificates.show', compact('certificate'));
     }

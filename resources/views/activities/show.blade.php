@@ -73,6 +73,26 @@
                         </span>
                     @endif
 
+                    @if($activity->resolution_number)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            📜 {{ $activity->resolution_number }}
+                        </span>
+                    @endif
+
+                    @if($activity->target_audience_mode === 'all_faculty')
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                            🌐 TODA LA FACULTAD (9 CARRERAS)
+                        </span>
+                    @elseif($activity->target_audience_mode === 'specific_units')
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200" title="{{ $activity->allowedUnits->pluck('name')->join(', ') }}">
+                            👥 {{ $activity->allowedUnits->count() }} CARRERAS AUTORIZADAS
+                        </span>
+                    @else
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            🔒 SOLO {{ $activity->organizationalUnit->code ?? 'PROPIA CARRERA' }}
+                        </span>
+                    @endif
+
                     @if($activity->status === 'activa')
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                             ● ACTIVA
@@ -409,18 +429,22 @@
         $certifiedCount = $participants->filter(fn ($p) => $p->pivot->status === 'certificado' || isset($issuedCertificatesByBenId[$p->id]))->count();
 
         if ($hasScoreType) {
-            $failingParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->score !== null && (float) $p->pivot->score < $minPassingScore);
-            $unscoredParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->score === null);
-            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->score !== null && (float) $p->pivot->score >= $minPassingScore);
+            $failingParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score < $minPassingScore);
+            $unscoredParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score === null);
+            $ineligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && ! $p->pivot->career_eligible);
+            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score >= $minPassingScore);
 
             $pendingCount = $eligibleParticipants->count();
             $failingCount = $failingParticipants->count();
             $unscoredCount = $unscoredParticipants->count();
+            $ineligibleCount = $ineligibleParticipants->count();
         } else {
-            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado');
+            $ineligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && ! $p->pivot->career_eligible);
+            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible);
             $pendingCount = $eligibleParticipants->count();
             $failingCount = 0;
             $unscoredCount = 0;
+            $ineligibleCount = $ineligibleParticipants->count();
         }
     @endphp
 
@@ -439,6 +463,12 @@
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                         {{ $certifiedCount }} certificados
                     </span>
+                    @if($ineligibleCount > 0)
+                        ·
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="No cumplen con la resolución de carreras autorizadas">
+                            <span>⚠️</span> {{ $ineligibleCount }} no habilitados por resolución
+                        </span>
+                    @endif
                     @if($hasScoreType && $failingCount > 0)
                         ·
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
@@ -524,7 +554,14 @@
                                 </div>
                             </td>
                             <td class="px-5 py-3 text-slate-600">
-                                {{ $part->institution_or_department ?? 'Facultad de Tecnología' }}
+                                <div class="font-medium text-slate-800">
+                                    {{ $part->primaryOrganizationalUnit?->name ?? $part->institution_or_department ?? 'Facultad de Tecnología' }}
+                                </div>
+                                @if(! $part->pivot->career_eligible)
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200 mt-0.5" title="{{ $part->pivot->ineligibility_reason ?? 'Carrera no autorizada según resolución' }}">
+                                        ⚠️ Carrera No Habilitada
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-5 py-3">
                                 @if($hasScore)
@@ -553,6 +590,10 @@
                                 @elseif($isCertified)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                         🟢 CERTIFICADO EMITIDO
+                                    </span>
+                                @elseif(! $part->pivot->career_eligible)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="{{ $part->pivot->ineligibility_reason ?? 'No habilitado por resolución' }}">
+                                        <span>⚠️</span> OBSERVADO (Resolución)
                                     </span>
                                 @elseif($isFailing)
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200" title="No alcanza la nota mínima de {{ $minPassingScore }} pts">

@@ -10,8 +10,8 @@ class EnsureUserIsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->user() || !$request->user()->isAdmin()) {
-            abort(403, 'Acceso restringido únicamente a administradores del Vicedecanato.');
+        if (! $request->user() || ! $request->user()->isAdmin()) {
+            abort(403, 'Acceso restringido únicamente a la Administración Central / Dpto. de Cómputo.');
         }
 
         return $next($request);

@@ -22,7 +22,12 @@ class Role extends Model
     }
 
     public const ADMIN = 'admin';
+
     public const OPERATOR = 'operator';
+
+    public const JEFE_CARRERA = 'jefe_carrera';
+
+    public const SECRETARIA = 'secretaria';
 
     public function isAdmin(): bool
     {
@@ -32,5 +37,15 @@ class Role extends Model
     public function isOperator(): bool
     {
         return $this->name === self::OPERATOR;
+    }
+
+    public function isJefeCarrera(): bool
+    {
+        return $this->name === self::JEFE_CARRERA;
+    }
+
+    public function isSecretaria(): bool
+    {
+        return $this->name === self::SECRETARIA;
     }
 }

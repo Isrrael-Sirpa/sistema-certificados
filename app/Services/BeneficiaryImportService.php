@@ -7,7 +7,9 @@ use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateType;
+use App\Models\OrganizationalUnit;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use ZipArchive;
@@ -64,7 +66,7 @@ class BeneficiaryImportService
     /**
      * Analiza el archivo subido (.csv o .xlsx) y genera el diagnóstico previo de importación.
      */
-    public function parseAndPreview(UploadedFile $file): array
+    public function parseAndPreview(UploadedFile $file, ?User $user = null): array
     {
         $extension = strtolower($file->getClientOriginalExtension());
         $rawRows = match ($extension) {
@@ -116,6 +118,9 @@ class BeneficiaryImportService
 
             $rowStatus = 'ready';
             $errorMsg = null;
+            $unit = $this->resolveOrganizationalUnit($extracted['institution_or_department'] ?? null);
+            $extracted['career_label'] = $unit?->name;
+            $extracted['career_status'] = $unit ? 'identified' : 'pending';
 
             // Validación de campos mínimos obligatorios
             if (empty($docNumber)) {
@@ -135,6 +140,15 @@ class BeneficiaryImportService
                 // Duplicado dentro del mismo archivo Excel
                 $rowStatus = 'duplicate_skip';
                 $errorMsg = 'CI repetido dentro del mismo archivo (se omitirá la repetición).';
+            }
+
+            if ($rowStatus === 'ready' && $user?->isUnitScoped() && ! $user->canAccessOrganizationalUnit($unit?->id)) {
+                $rowStatus = 'error';
+                $errorMsg = $unit
+                    ? 'La carrera pertenece a otra unidad. Para un evento conjunto, utilice la importación de su nómina.'
+                    : 'Carrera pendiente de identificación. Corrija la columna CARRERA antes de importar.';
+            } elseif ($rowStatus === 'ready' && ! $unit) {
+                $errorMsg = 'Carrera pendiente de identificación; podrá completarla en el padrón.';
             }
 
             if ($rowStatus === 'ready') {
@@ -176,6 +190,7 @@ class BeneficiaryImportService
         return DB::transaction(function () use ($rows, $user) {
             $createdCount = 0;
             $skippedCount = 0;
+            $pendingCareerCount = 0;
             $createdBeneficiaries = [];
 
             // Obtener CIs actuales para garantizar idempotencia durante la transacción
@@ -206,6 +221,14 @@ class BeneficiaryImportService
                     continue;
                 }
 
+                $unit = $this->resolveOrganizationalUnit($data['institution_or_department'] ?? null);
+                if ($user->isUnitScoped() && ! $user->canAccessOrganizationalUnit($unit?->id)) {
+                    $skippedCount++;
+                    $pendingCareerCount++;
+
+                    continue;
+                }
+
                 $beneficiary = Beneficiary::create([
                     'document_type' => $data['document_type'] ?? 'CI',
                     'document_number' => $docNumber,
@@ -213,6 +236,7 @@ class BeneficiaryImportService
                     'last_name' => trim($data['last_name']),
                     'academic_title' => ! empty($data['academic_title']) ? trim($data['academic_title']) : 'Univ.',
                     'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : 'Facultad de Tecnología - UMSA',
+                    'primary_organizational_unit_id' => $unit?->id,
                     'email' => ! empty($data['email']) ? strtolower(trim($data['email'])) : null,
                     'phone' => ! empty($data['phone']) ? trim($data['phone']) : null,
                     'notes' => 'Registrado mediante importación masiva el '.now()->format('d/m/Y H:i'),
@@ -221,6 +245,9 @@ class BeneficiaryImportService
                 $existingCis[$docNumber] = true;
                 $createdBeneficiaries[] = $beneficiary;
                 $createdCount++;
+                if (! $unit) {
+                    $pendingCareerCount++;
+                }
             }
 
             // Registrar en la bitácora oficial de auditoría institucional
@@ -239,6 +266,7 @@ class BeneficiaryImportService
             return [
                 'created_count' => $createdCount,
                 'skipped_count' => $skippedCount,
+                'pending_career_count' => $pendingCareerCount,
                 'total_processed' => count($rows),
             ];
         });
@@ -282,10 +310,10 @@ class BeneficiaryImportService
         $rawHeaders = array_shift($rawRows);
         $mappedColumns = $this->mapHeadersToFields($rawHeaders);
 
-        // 2. Beneficiarios existentes indexados por CI normalizado -> id del beneficiario
+        // 2. Beneficiarios existentes indexados por CI normalizado -> objeto beneficiario
         $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
-            return [$this->normalizeDocumentNumber($ben->document_number) => $ben->id];
-        })->toArray();
+            return [$this->normalizeDocumentNumber($ben->document_number) => $ben];
+        })->all();
 
         // 3. Beneficiarios que YA tienen certificado activo en ESTA actividad
         $certQuery = Certificate::where('activity_id', $activity->id)
@@ -307,6 +335,7 @@ class BeneficiaryImportService
         $alreadyCertifiedCount = 0;
         $failingStudentsCount = 0;
         $unscoredStudentsCount = 0;
+        $ineligibleCareerCount = 0;
         $errorCount = 0;
         $seenInFile = [];
 
@@ -321,6 +350,7 @@ class BeneficiaryImportService
             $rowStatus = 'new_student';
             $errorMsg = null;
             $existingBenId = null;
+            $studentUnitId = null;
 
             if (empty($docNumber)) {
                 $rowStatus = 'error';
@@ -337,7 +367,10 @@ class BeneficiaryImportService
                 $errorMsg = 'CI repetido dentro del mismo archivo (se omitirá la repetición).';
             } elseif (isset($existingBeneficiariesByCi[$docNumber])) {
                 // El estudiante YA existe en el padrón
-                $existingBenId = $existingBeneficiariesByCi[$docNumber];
+                $existingBen = $existingBeneficiariesByCi[$docNumber];
+                $existingBenId = $existingBen->id;
+                $studentUnitId = $existingBen->primary_organizational_unit_id;
+
                 if (isset($alreadyCertifiedBeneficiaryIds[$existingBenId])) {
                     // Ya tiene certificado en este evento
                     $rowStatus = 'already_certified';
@@ -351,6 +384,19 @@ class BeneficiaryImportService
                 // Nuevo estudiante completo
                 $rowStatus = 'new_student';
                 $errorMsg = 'Nuevo estudiante. Se registrará en el padrón y se emitirá su certificado.';
+            }
+
+            // Resolver carrera si aún no está asignada
+            if (! $studentUnitId && ! empty($extracted['institution_or_department'])) {
+                $matchedUnit = $this->resolveOrganizationalUnit($extracted['institution_or_department']);
+                $studentUnitId = $matchedUnit?->id;
+            }
+
+            // Validación de carrera autorizada según resolución
+            if (($rowStatus === 'new_student' || $rowStatus === 'existing_student') && ! $activity->isCareerAllowed($studentUnitId)) {
+                $rowStatus = 'ineligible_career';
+                $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricciones del evento';
+                $errorMsg = "Carrera no autorizada ({$resText}). Se agregará a la nómina como observado sin emitir certificado.";
             }
 
             // Validación de aprobación si el tipo de certificado evalúa notas
@@ -373,6 +419,9 @@ class BeneficiaryImportService
             } elseif ($rowStatus === 'existing_student') {
                 $seenInFile[$docNumber] = true;
                 $existingStudentsCount++;
+            } elseif ($rowStatus === 'ineligible_career') {
+                $seenInFile[$docNumber] = true;
+                $ineligibleCareerCount++;
             } elseif ($rowStatus === 'failing_student') {
                 $seenInFile[$docNumber] = true;
                 $failingStudentsCount++;
@@ -405,6 +454,7 @@ class BeneficiaryImportService
                 'new_students' => $newStudentsCount,
                 'existing_students' => $existingStudentsCount,
                 'already_certified' => $alreadyCertifiedCount,
+                'ineligible_career' => $ineligibleCareerCount,
                 'failing_students' => $failingStudentsCount,
                 'unscored_students' => $unscoredStudentsCount,
                 'errors' => $errorCount,
@@ -429,6 +479,10 @@ class BeneficiaryImportService
         User $user,
         CertificateService $certificateService
     ): array {
+        if (! $user->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
+            throw new AuthorizationException('No puede gestionar la nómina de otra carrera o unidad.');
+        }
+
         return DB::transaction(function () use ($rows, $activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService) {
             $issuedCount = 0;
             $newStudentsCount = 0;
@@ -436,6 +490,9 @@ class BeneficiaryImportService
             $skippedCount = 0;
             $failingCount = 0;
             $unscoredCount = 0;
+            $ineligibleCount = 0;
+            $duplicateCount = 0;
+            $invalidCount = 0;
 
             $certType = CertificateType::find($certificateTypeId);
             $hasScoreRule = $certType && $certType->supportsScore();
@@ -456,8 +513,26 @@ class BeneficiaryImportService
 
             foreach ($rows as $item) {
                 $status = $item['status'] ?? '';
+                if (in_array($status, ['ineligible_career', 'failing_student', 'unscored_student'], true)) {
+                    $this->enrollParticipantsFromRows([$item], $activity, $user);
+                    $skippedCount++;
+                    if ($status === 'ineligible_career') {
+                        $ineligibleCount++;
+                    } elseif ($status === 'failing_student') {
+                        $failingCount++;
+                    } else {
+                        $unscoredCount++;
+                    }
+
+                    continue;
+                }
                 if ($status !== 'new_student' && $status !== 'existing_student') {
                     $skippedCount++;
+                    if ($status === 'already_certified') {
+                        $duplicateCount++;
+                    } else {
+                        $invalidCount++;
+                    }
 
                     continue;
                 }
@@ -467,17 +542,27 @@ class BeneficiaryImportService
 
                 if (empty($docNumber) || empty($data['first_name']) || empty($data['last_name'])) {
                     $skippedCount++;
+                    $invalidCount++;
 
                     continue;
                 }
 
                 // 1. Obtener o crear el Beneficiario
                 $beneficiary = null;
+                $resolvedUnit = ! empty($data['institution_or_department']) ? $this->resolveOrganizationalUnit($data['institution_or_department']) : null;
+                $defaultUnitId = $resolvedUnit?->id;
+
                 if ($status === 'existing_student' && isset($existingBeneficiariesByCi[$docNumber])) {
                     $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                    if (! $beneficiary->primary_organizational_unit_id && $defaultUnitId) {
+                        $beneficiary->update(['primary_organizational_unit_id' => $defaultUnitId]);
+                    }
                 } elseif (isset($existingBeneficiariesByCi[$docNumber])) {
                     // Por si acaso ya existía en BD aunque haya llegado como new_student
                     $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                    if (! $beneficiary->primary_organizational_unit_id && $defaultUnitId) {
+                        $beneficiary->update(['primary_organizational_unit_id' => $defaultUnitId]);
+                    }
                 } else {
                     $beneficiary = Beneficiary::create([
                         'document_type' => $data['document_type'] ?? 'CI',
@@ -485,7 +570,8 @@ class BeneficiaryImportService
                         'first_name' => trim($data['first_name']),
                         'last_name' => trim($data['last_name']),
                         'academic_title' => ! empty($data['academic_title']) ? trim($data['academic_title']) : 'Univ.',
-                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : 'Facultad de Tecnología - UMSA',
+                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : ($resolvedUnit?->name ?? 'Facultad de Tecnología - UMSA'),
+                        'primary_organizational_unit_id' => $defaultUnitId,
                         'email' => ! empty($data['email']) ? strtolower(trim($data['email'])) : null,
                         'phone' => ! empty($data['phone']) ? trim($data['phone']) : null,
                         'notes' => 'Registrado vía nómina masiva de actividad: '.$activity->name.' ('.now()->format('d/m/Y H:i').')',
@@ -505,24 +591,48 @@ class BeneficiaryImportService
                     $existingStudentsCount++;
                 }
 
-                // 2. Verificar que no tenga certificado ya emitido para esta actividad
-                if (isset($alreadyCertifiedBeneficiaryIds[$beneficiary->id])) {
+                // 2. Verificar que la carrera esté autorizada en este evento según resolución
+                $isAllowedCareer = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
+                if (! $isAllowedCareer) {
                     $skippedCount++;
+                    $ineligibleCount++;
+                    $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
+                    $activity->participants()->syncWithoutDetaching([
+                        $beneficiary->id => [
+                            'role' => 'Participante',
+                            'status' => 'observado',
+                            'career_eligible' => false,
+                            'ineligibility_reason' => "Carrera no autorizada ({$resText})",
+                            'score' => isset($data['score']) && $data['score'] !== '' ? (float) $data['score'] : null,
+                            'score_label' => $data['score_label'] ?? null,
+                        ],
+                    ]);
 
                     continue;
                 }
 
-                // 3. Validación de aprobación reglamentaria: si exige puntaje, omitir a reprobados o sin nota
+                // 3. Verificar que no tenga certificado ya emitido para esta actividad
+                if (isset($alreadyCertifiedBeneficiaryIds[$beneficiary->id])) {
+                    $skippedCount++;
+                    $duplicateCount++;
+
+                    continue;
+                }
+
+                // 4. Validación de aprobación reglamentaria: si exige puntaje, omitir a reprobados o sin nota
                 $rawScore = $data['score'] ?? null;
                 $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
 
                 if ($hasScoreRule) {
                     if ($scoreNum === null) {
                         $unscoredCount++;
+                        $skippedCount++;
                         $activity->participants()->syncWithoutDetaching([
                             $beneficiary->id => [
                                 'role' => 'Participante',
                                 'status' => 'observado',
+                                'career_eligible' => true,
+                                'ineligibility_reason' => null,
                                 'score' => null,
                                 'score_label' => $data['score_label'] ?? null,
                             ],
@@ -532,10 +642,13 @@ class BeneficiaryImportService
                     }
                     if ($scoreNum < $minScore) {
                         $failingCount++;
+                        $skippedCount++;
                         $activity->participants()->syncWithoutDetaching([
                             $beneficiary->id => [
                                 'role' => 'Participante',
                                 'status' => 'reprobado',
+                                'career_eligible' => true,
+                                'ineligibility_reason' => null,
                                 'score' => $scoreNum,
                                 'score_label' => $data['score_label'] ?? null,
                             ],
@@ -545,7 +658,7 @@ class BeneficiaryImportService
                     }
                 }
 
-                // 4. Emitir el certificado institucional con snapshot inmutable y token QR
+                // 5. Emitir el certificado institucional con snapshot inmutable y token QR
                 $certificateService->issueCertificate([
                     'beneficiary_id' => $beneficiary->id,
                     'activity_id' => $activity->id,
@@ -560,6 +673,8 @@ class BeneficiaryImportService
                     $beneficiary->id => [
                         'role' => 'Participante',
                         'status' => 'certificado',
+                        'career_eligible' => true,
+                        'ineligibility_reason' => null,
                         'score' => $scoreNum,
                         'score_label' => $data['score_label'] ?? null,
                     ],
@@ -595,6 +710,9 @@ class BeneficiaryImportService
                 'skipped_count' => $skippedCount,
                 'failing_count' => $failingCount,
                 'unscored_count' => $unscoredCount,
+                'ineligible_count' => $ineligibleCount,
+                'duplicate_count' => $duplicateCount,
+                'invalid_count' => $invalidCount,
                 'total_processed' => count($rows),
             ];
         });
@@ -606,10 +724,15 @@ class BeneficiaryImportService
      */
     public function enrollParticipantsFromRows(array $rows, Activity $activity, User $user): array
     {
+        if (! $user->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
+            throw new AuthorizationException('No puede gestionar la nómina de otra carrera o unidad.');
+        }
+
         return DB::transaction(function () use ($rows, $activity) {
             $enrolledCount = 0;
             $newStudentsCount = 0;
             $alreadyEnrolledCount = 0;
+            $lockedCount = 0;
             $errorCount = 0;
 
             $certType = $activity->certificateType;
@@ -621,6 +744,7 @@ class BeneficiaryImportService
             })->all();
 
             $currentlyEnrolledIds = $activity->participants()->pluck('beneficiaries.id')->flip()->toArray();
+            $issuedCertificates = $activity->certificates()->pluck('beneficiary_id')->flip();
 
             foreach ($rows as $item) {
                 $data = $item['data'] ?? [];
@@ -633,8 +757,20 @@ class BeneficiaryImportService
                 }
 
                 $beneficiary = null;
+                $resolvedUnit = ! empty($data['institution_or_department']) ? $this->resolveOrganizationalUnit($data['institution_or_department']) : null;
+                $defaultUnitId = $resolvedUnit?->id;
+
                 if (isset($existingBeneficiariesByCi[$docNumber])) {
                     $beneficiary = $existingBeneficiariesByCi[$docNumber];
+                    if (isset($issuedCertificates[$beneficiary->id])) {
+                        $alreadyEnrolledCount++;
+                        $lockedCount++;
+
+                        continue;
+                    }
+                    if (! $beneficiary->primary_organizational_unit_id && $defaultUnitId) {
+                        $beneficiary->update(['primary_organizational_unit_id' => $defaultUnitId]);
+                    }
                 } else {
                     $beneficiary = Beneficiary::create([
                         'document_type' => $data['document_type'] ?? 'CI',
@@ -642,7 +778,8 @@ class BeneficiaryImportService
                         'first_name' => trim($data['first_name']),
                         'last_name' => trim($data['last_name']),
                         'academic_title' => ! empty($data['academic_title']) ? trim($data['academic_title']) : 'Univ.',
-                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : 'Facultad de Tecnología - UMSA',
+                        'institution_or_department' => ! empty($data['institution_or_department']) ? trim($data['institution_or_department']) : ($resolvedUnit?->name ?? 'Facultad de Tecnología - UMSA'),
+                        'primary_organizational_unit_id' => $defaultUnitId,
                         'email' => ! empty($data['email']) ? strtolower(trim($data['email'])) : null,
                         'phone' => ! empty($data['phone']) ? trim($data['phone']) : null,
                         'notes' => 'Registrado vía nómina de actividad: '.$activity->name.' ('.now()->format('d/m/Y H:i').')',
@@ -656,14 +793,22 @@ class BeneficiaryImportService
                 $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
                 $isFailing = $hasScoreRule && ($scoreNum !== null && $scoreNum < $minScore);
 
+                $isAllowedCareer = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
+                $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
+                $ineligibilityReason = $isAllowedCareer ? null : "Carrera no autorizada ({$resText})";
+
                 if (isset($currentlyEnrolledIds[$beneficiary->id])) {
-                    if (isset($data['score']) || isset($data['score_label'])) {
+                    if (isset($data['score']) || isset($data['score_label']) || ! $isAllowedCareer) {
                         $updateData = array_filter([
                             'score' => $scoreNum,
                             'score_label' => ! empty($data['score_label']) ? trim((string) $data['score_label']) : null,
+                            'career_eligible' => $isAllowedCareer,
+                            'ineligibility_reason' => $ineligibilityReason,
                         ], fn ($v) => $v !== null);
 
-                        if ($isFailing) {
+                        if (! $isAllowedCareer) {
+                            $updateData['status'] = 'observado';
+                        } elseif ($isFailing) {
                             $updateData['status'] = 'reprobado';
                         }
                         $activity->participants()->updateExistingPivot($beneficiary->id, $updateData);
@@ -679,11 +824,13 @@ class BeneficiaryImportService
                     ->whereNull('revoked_at')
                     ->exists();
 
-                $participantStatus = $hasCert ? 'certificado' : ($isFailing ? 'reprobado' : 'inscrito');
+                $participantStatus = ! $isAllowedCareer ? 'observado' : ($hasCert ? 'certificado' : ($isFailing ? 'reprobado' : 'inscrito'));
 
                 $activity->participants()->attach($beneficiary->id, [
                     'role' => 'Participante',
                     'status' => $participantStatus,
+                    'career_eligible' => $isAllowedCareer,
+                    'ineligibility_reason' => $ineligibilityReason,
                     'score' => $scoreNum,
                     'score_label' => ! empty($data['score_label']) ? trim((string) $data['score_label']) : null,
                 ]);
@@ -702,6 +849,7 @@ class BeneficiaryImportService
                 'enrolled_count' => $enrolledCount,
                 'new_students_count' => $newStudentsCount,
                 'already_enrolled_count' => $alreadyEnrolledCount,
+                'locked_count' => $lockedCount,
                 'error_count' => $errorCount,
                 'total_processed' => count($rows),
             ];
@@ -721,6 +869,10 @@ class BeneficiaryImportService
         CertificateService $certificateService,
         ?array $selectedBeneficiaryIds = null
     ): array {
+        if (! $user->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
+            throw new AuthorizationException('No puede emitir certificados de otra carrera o unidad.');
+        }
+
         return DB::transaction(function () use ($activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService, $selectedBeneficiaryIds) {
             $query = $activity->participants();
             if (! empty($selectedBeneficiaryIds)) {
@@ -744,10 +896,26 @@ class BeneficiaryImportService
                 ->flip()
                 ->toArray();
 
+            $ineligibleCount = 0;
+
             foreach ($participants as $participant) {
                 if (isset($alreadyCertifiedBeneficiaryIds[$participant->id])) {
                     $skippedCount++;
                     $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
+
+                    continue;
+                }
+
+                // Validación de carrera autorizada según resolución
+                $isAllowedCareer = $activity->isCareerAllowed($participant->primary_organizational_unit_id);
+                if (! $isAllowedCareer) {
+                    $ineligibleCount++;
+                    $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
+                    $activity->participants()->updateExistingPivot($participant->id, [
+                        'status' => 'observado',
+                        'career_eligible' => false,
+                        'ineligibility_reason' => $participant->pivot->ineligibility_reason ?? "Carrera no autorizada ({$resText})",
+                    ]);
 
                     continue;
                 }
@@ -780,7 +948,7 @@ class BeneficiaryImportService
                     'score_label' => $participant->pivot->score_label ?? null,
                 ], $user);
 
-                $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
+                $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado', 'career_eligible' => true, 'ineligibility_reason' => null]);
                 $alreadyCertifiedBeneficiaryIds[$participant->id] = true;
                 $issuedCount++;
             }
@@ -794,6 +962,7 @@ class BeneficiaryImportService
             return [
                 'issued_count' => $issuedCount,
                 'skipped_count' => $skippedCount,
+                'ineligible_count' => $ineligibleCount,
                 'failing_count' => $failingCount,
                 'unscored_count' => $unscoredCount,
                 'total_candidates' => $participants->count(),
@@ -1182,6 +1351,36 @@ class BeneficiaryImportService
         $str = preg_replace('/[^a-z0-9]/', '', $str);
 
         return trim($str);
+    }
+
+    /**
+     * Resuelve una unidad organizacional (Carrera o Departamento) a partir de un texto o sigla.
+     */
+    public function resolveOrganizationalUnit(?string $nameOrCode): ?OrganizationalUnit
+    {
+        if (empty($nameOrCode)) {
+            return null;
+        }
+
+        $clean = $this->sanitizeString($nameOrCode);
+        $units = OrganizationalUnit::all();
+
+        $matches = [];
+        foreach ($units as $unit) {
+            $uName = $this->sanitizeString($unit->name);
+            $uCode = $this->sanitizeString($unit->code);
+
+            if ($clean === $uName || $clean === $uCode) {
+                return $unit;
+            }
+
+            if ((strlen($uCode) >= 3 && str_contains($clean, $uCode)) ||
+                (strlen($clean) >= 4 && (str_contains($clean, $uName) || str_contains($uName, $clean)))) {
+                $matches[] = $unit;
+            }
+        }
+
+        return count($matches) === 1 ? $matches[0] : null;
     }
 
     /**

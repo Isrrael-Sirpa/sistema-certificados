@@ -7,6 +7,7 @@
 <div class="max-w-4xl mx-auto" x-data="{
     typesData: {{ Js::from($types->keyBy('id')) }},
     selectedTypeId: '{{ old('certificate_type_id', $activity->certificate_type_id ?? $types->first()?->id) }}',
+    targetAudienceMode: '{{ old('target_audience_mode', $activity->target_audience_mode ?? 'own_unit') }}',
     validityMode: '{{ old('validity_mode', $config?->validity_mode ?? ($activity->certificateType?->validity_mode ?? 'permanent')) }}',
     validityYears: {{ old('validity_years', $config?->validity_years ?? ($activity->certificateType?->default_validity_years ?? 3)) }},
     showScorePdf: {{ old('show_score_on_pdf', $config?->show_score_on_pdf ?? true) ? 'true' : 'false' }},
@@ -151,12 +152,105 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN 2: TIPO DE CERTIFICADO Y POLÍTICA DE VIGENCIA/NOTAS -->
+            <!-- SECCIÓN 2: RESOLUCIÓN Y ALCANCE DE CARRERAS -->
+            <div class="space-y-5 pt-6 border-t border-slate-200">
+                <div class="border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-md bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">2</span>
+                        <span>Marco Normativo y Carreras Habilitadas</span>
+                    </h4>
+                    <p class="text-xs text-slate-500 mt-0.5">Defina el alcance de la resolución y las carreras que pueden certificar en esta actividad</p>
+                </div>
+
+                @if(auth()->user()->isAdmin())
+                    <div>
+                        <label for="organizational_unit_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Carrera o Departamento Organizador <span class="text-red-500">*</span>
+                        </label>
+                        <select name="organizational_unit_id" id="organizational_unit_id" required
+                                class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                            @foreach($units as $u)
+                                <option value="{{ $u->id }}" {{ old('organizational_unit_id', $activity->organizational_unit_id) == $u->id ? 'selected' : '' }}>
+                                    [{{ $u->code }}] {{ $u->name }} ({{ $u->type_label }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @else
+                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidad Organizadora</span>
+                            <div class="text-xs font-bold text-brand mt-0.5">{{ $activity->organizationalUnit->name ?? auth()->user()->organizationalUnit->name ?? 'Mi Carrera' }}</div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand">
+                            {{ $activity->organizationalUnit->code ?? auth()->user()->organizationalUnit->code ?? 'CARRERA' }}
+                        </span>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="resolution_number" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            N° de Resolución Facultativa / Honorable Consejo
+                        </label>
+                        <input type="text" name="resolution_number" id="resolution_number" value="{{ old('resolution_number', $activity->resolution_number) }}"
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"
+                               placeholder="Ej: Res. Facultativa N° 084/2026">
+                        <p class="text-[10px] text-slate-400 mt-1">Respaldo legal institucional de la actividad</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Alcance de Estudiantes Habilitados <span class="text-red-500">*</span>
+                        </label>
+                        <div class="space-y-2 mt-1">
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                                <input type="radio" name="target_audience_mode" value="own_unit" x-model="targetAudienceMode" class="text-brand focus:ring-brand">
+                                <span class="text-xs font-medium text-slate-800">Solo mi propia carrera / unidad</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                                <input type="radio" name="target_audience_mode" value="all_faculty" x-model="targetAudienceMode" class="text-brand focus:ring-brand">
+                                <span class="text-xs font-medium text-slate-800">Toda la Facultad de Tecnología (las 9 carreras)</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                                <input type="radio" name="target_audience_mode" value="specific_units" x-model="targetAudienceMode" class="text-brand focus:ring-brand">
+                                <span class="text-xs font-medium text-slate-800">Carreras específicas autorizadas por Resolución</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selección de Carreras Específicas Habilitadas -->
+                @php
+                    $allowedIds = old('allowed_unit_ids', $activity->allowedUnits->pluck('id')->toArray());
+                @endphp
+                <div x-show="targetAudienceMode === 'specific_units'" style="display: none;" class="p-4 bg-brand/5 border border-brand/20 rounded-xl space-y-3">
+                    <div class="text-xs font-bold text-brand">Seleccione las carreras autorizadas para participar en este evento:</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        @foreach($units->where('type', 'carrera') as $cu)
+                            <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 hover:border-brand cursor-pointer text-xs">
+                                <input type="checkbox" name="allowed_unit_ids[]" value="{{ $cu->id }}"
+                                       {{ in_array($cu->id, $allowedIds) ? 'checked' : '' }}
+                                       class="rounded border-slate-300 text-brand focus:ring-brand">
+                                <span class="font-bold text-slate-800">[{{ $cu->code }}]</span>
+                                <span class="truncate">{{ $cu->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="text-[10px] text-slate-500 italic">
+                        * Estudiantes inscritos de otras carreras no autorizadas serán observados automáticamente según la resolución y no se emitirá su certificado.
+                    </p>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 3: TIPO DE CERTIFICADO Y POLÍTICA DE VIGENCIA/NOTAS -->
             <div class="space-y-6 pt-6 border-t border-slate-200">
                 <div class="border-b border-slate-100 pb-2 flex items-center justify-between">
                     <div>
                         <h4 class="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">2</span>
+                            <span class="w-5 h-5 rounded-md bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">3</span>
                             <span>Tipo de Certificado Oficial y Políticas de Emisión</span>
                         </h4>
                         <p class="text-xs text-slate-500 mt-0.5">Defina o actualice el mérito que acreditará esta actividad</p>

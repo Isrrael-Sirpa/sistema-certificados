@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Activity;
 use App\Models\Beneficiary;
+use App\Models\Certificate;
 use App\Models\CertificateType;
+use App\Models\OrganizationalUnit;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
@@ -18,29 +20,51 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Roles
+        // 1. Unidades Organizacionales (9 Carreras + Departamentos)
+        $this->call(OrganizationalUnitSeeder::class);
+        $vicedecanatoUnit = OrganizationalUnit::where('code', 'vicedecanato')->first();
+        $computoUnit = OrganizationalUnit::where('code', 'computo')->first();
+
+        // 2. Roles del Sistema
         $adminRole = Role::firstOrCreate(
             ['name' => Role::ADMIN],
             [
-                'display_name' => 'Administrador',
-                'description' => 'Control total del sistema, plantillas, usuarios, revocaciones y configuración.',
+                'display_name' => 'Super Administrador',
+                'description' => 'Control total del sistema, departamentos, plantillas, usuarios, auditoría y configuración.',
+            ]
+        );
+
+        $jefeCarreraRole = Role::firstOrCreate(
+            ['name' => Role::JEFE_CARRERA],
+            [
+                'display_name' => 'Jefe de Carrera / Departamento',
+                'description' => 'Gestión completa de su propia carrera: eventos, certificados, estudiantes, reportes y plantillas.',
+            ]
+        );
+
+        $secretariaRole = Role::firstOrCreate(
+            ['name' => Role::SECRETARIA],
+            [
+                'display_name' => 'Secretaria de Carrera / Departamento',
+                'description' => 'Operación diaria de su propia carrera: eventos, nóminas, emisión de certificados y plantillas.',
             ]
         );
 
         $operatorRole = Role::firstOrCreate(
             ['name' => Role::OPERATOR],
             [
-                'display_name' => 'Operador',
-                'description' => 'Registro de beneficiarios, actividades y emisión/descarga de certificados.',
+                'display_name' => 'Operador General',
+                'description' => 'Registro de beneficiarios, actividades y emisión/descarga de certificados institucionales.',
             ]
         );
 
-        // 2. Usuarios Iniciales
+        // 3. Usuarios Iniciales
         $adminUser = User::updateOrCreate(
             ['email' => 'admin@universidad.edu'],
             [
-                'name' => 'Vicedecanato Administrador',
+                'name' => 'Dpto. Cómputo Administrador',
                 'role_id' => $adminRole->id,
+                'organizational_unit_id' => $computoUnit?->id,
                 'password' => Hash::make('Admin*2026'),
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -50,13 +74,20 @@ class DatabaseSeeder extends Seeder
         $operatorUser = User::updateOrCreate(
             ['email' => 'operador@universidad.edu'],
             [
-                'name' => 'Personal Administrativo',
+                'name' => 'Personal Vicedecanato',
                 'role_id' => $operatorRole->id,
+                'organizational_unit_id' => $vicedecanatoUnit?->id,
                 'password' => Hash::make('Operador*2026'),
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]
         );
+
+        // Asignar Vicedecanato como unidad por defecto a datos preexistentes sin unidad
+        if ($vicedecanatoUnit) {
+            Activity::whereNull('organizational_unit_id')->update(['organizational_unit_id' => $vicedecanatoUnit->id]);
+            Certificate::whereNull('organizational_unit_id')->update(['organizational_unit_id' => $vicedecanatoUnit->id]);
+        }
 
         // 3. Tipos de Certificado
         $certificateTypes = [

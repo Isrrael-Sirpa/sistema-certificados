@@ -16,6 +16,8 @@ class CertificateType extends Model
 
     public const VALIDITY_CUSTOM = 'custom';
 
+    public const MIN_PASSING_SCORE = 51.0;
+
     protected $fillable = [
         'code',
         'name',
@@ -48,6 +50,11 @@ class CertificateType extends Model
     public function supportsScore(): bool
     {
         return (bool) $this->has_score;
+    }
+
+    public function getMinPassingScoreAttribute(mixed $value): float
+    {
+        return max(self::MIN_PASSING_SCORE, (float) ($value ?? self::MIN_PASSING_SCORE));
     }
 
     public function certificates(): HasMany

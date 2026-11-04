@@ -32,6 +32,17 @@
                 <option value="cancelada" {{ request('status') === 'cancelada' ? 'selected' : '' }}>Canceladas</option>
             </select>
 
+            @if(auth()->user()->isAdmin())
+                <select name="unit_id" class="py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                    <option value="">Todas las Carreras / Unidades</option>
+                    @foreach($units as $u)
+                        <option value="{{ $u->id }}" {{ request('unit_id') == $u->id ? 'selected' : '' }}>
+                            [{{ $u->code }}] {{ $u->name }}
+                        </option>
+                    @endforeach
+                </select>
+            @endif
+
             <button type="submit" class="py-2 px-4 bg-brand text-white text-xs font-semibold rounded-xl hover:bg-brand-deep">
                 Filtrar
             </button>
@@ -49,9 +60,21 @@
             <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
                     <div class="flex items-center justify-between gap-2 mb-2">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/10 text-brand border border-brand/20">
-                            {{ $act->activity_type }}
-                        </span>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand/10 text-brand border border-brand/20">
+                                {{ $act->activity_type }}
+                            </span>
+                            @if($act->organizationalUnit)
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {{ $act->organizationalUnit->code }}
+                                </span>
+                            @endif
+                            @if($act->resolution_number)
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="{{ $act->resolution_number }}">
+                                    📜 Res.
+                                </span>
+                            @endif
+                        </div>
 
                         @if($act->status === 'activa')
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">

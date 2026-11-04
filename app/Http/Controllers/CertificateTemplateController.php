@@ -10,6 +10,7 @@ use App\Models\CertificateTemplate;
 use App\Models\CertificateTemplateVersion;
 use App\Models\CertificateType;
 use App\Models\InstitutionalAsset;
+use App\Models\OrganizationalUnit;
 use App\Services\CertificateLayoutService;
 use App\Services\CertificatePdfService;
 use App\Services\QRCodeService;
@@ -19,6 +20,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CertificateTemplateController extends Controller
@@ -31,7 +33,18 @@ class CertificateTemplateController extends Controller
 
     public function index(Request $request)
     {
-        $query = CertificateTemplate::with(['versions', 'createdBy'])->withCount('certificates');
+        $user = $request->user();
+        $query = CertificateTemplate::select([
+            'id', 'name', 'slug', 'category', 'organizational_unit_id', 'description',
+            'orientation', 'view_path', 'background_image', 'current_version',
+            'is_active', 'is_default', 'created_by_user_id',
+        ])->with(['createdBy', 'organizationalUnit'])->withCount('certificates');
+
+        if ($user->isUnitScoped()) {
+            $query->forUnit($user->organizational_unit_id);
+        } elseif ($request->filled('unit_id')) {
+            $query->where('organizational_unit_id', $request->input('unit_id'));
+        }
 
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
@@ -50,18 +63,27 @@ class CertificateTemplateController extends Controller
         }
 
         $templates = $query->orderBy('is_default', 'desc')->orderBy('name')->paginate(9)->withQueryString();
+        $designs = CertificateTemplate::whereKey($templates->getCollection()->modelKeys())
+            ->get(['id', 'configuration'])->keyBy('id');
+        foreach ($templates as $template) {
+            $template->setAttribute('configuration', $designs->get($template->id)?->configuration ?? []);
+        }
         $categories = ['institucional', 'seminario', 'capacitacion', 'reconocimiento', 'disertante', 'aprobacion', 'academica'];
+        $units = OrganizationalUnit::active()->orderBy('type')->orderBy('name')->get();
 
-        return view('templates.index', compact('templates', 'categories'));
+        return view('templates.index', compact('templates', 'categories', 'units'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $categories = ['institucional', 'seminario', 'capacitacion', 'reconocimiento', 'disertante', 'aprobacion', 'academica'];
         $initialTemplates = $this->templateEngine->getInitialTemplateDefinitions();
-        $existingTemplates = CertificateTemplate::active()->select('id', 'name', 'category', 'orientation', 'current_version')->get();
+        $existingTemplates = CertificateTemplate::active()->select('id', 'name', 'category', 'orientation', 'current_version', 'organizational_unit_id')
+            ->when($request->user()->isUnitScoped(), fn ($query) => $query->forUnit($request->user()->organizational_unit_id))
+            ->orderBy('name')->get();
+        $units = OrganizationalUnit::active()->orderBy('name')->get();
 
-        return view('templates.create', compact('categories', 'initialTemplates', 'existingTemplates'));
+        return view('templates.create', compact('categories', 'initialTemplates', 'existingTemplates', 'units'));
     }
 
     public function store(Request $request)
@@ -72,8 +94,9 @@ class CertificateTemplateController extends Controller
             'orientation' => ['required', 'string', 'in:landscape,portrait'],
             'description' => ['nullable', 'string', 'max:255'],
             'creation_mode' => ['nullable', 'string', 'in:predefined,blank,duplicate'],
-            'base_template_slug' => ['nullable', 'string'],
-            'source_template_id' => ['nullable', 'exists:certificate_templates,id'],
+            'base_template_slug' => ['required_if:creation_mode,predefined', 'nullable', Rule::in(collect($this->templateEngine->getInitialTemplateDefinitions())->pluck('slug')->all())],
+            'source_template_id' => ['required_if:creation_mode,duplicate', 'nullable', 'exists:certificate_templates,id'],
+            'organizational_unit_id' => ['nullable', 'exists:organizational_units,id'],
         ]);
 
         $slug = Str::slug($validated['name']).'-'.Str::lower(Str::random(5));
@@ -86,6 +109,7 @@ class CertificateTemplateController extends Controller
             $description = $description ?? 'Plantilla creada en lienzo en blanco';
         } elseif ($mode === 'duplicate' && ! empty($validated['source_template_id'])) {
             $source = CertificateTemplate::findOrFail($validated['source_template_id']);
+            abort_unless($source->is_active && ($source->organizational_unit_id === null || $request->user()->canAccessOrganizationalUnit($source->organizational_unit_id)), 403, 'No puede duplicar una plantilla privada de otra unidad.');
             $configuration = $source->configuration ?? [];
             $description = $description ?? "Duplicada a partir de {$source->name}";
         } else {
@@ -100,10 +124,15 @@ class CertificateTemplateController extends Controller
         // Always ensure normalized schema with elements
         $configuration = $this->layoutService->improve($this->templateEngine->normalizeSchema($configuration, $validated['orientation']), $validated['orientation']);
 
+        $unitId = $request->user()->isUnitScoped()
+            ? $request->user()->organizational_unit_id
+            : ($validated['organizational_unit_id'] ?? null);
+
         $template = CertificateTemplate::create([
             'name' => $validated['name'],
             'slug' => $slug,
             'category' => $validated['category'],
+            'organizational_unit_id' => $unitId,
             'orientation' => $validated['orientation'],
             'description' => $description,
             'view_path' => 'certificates.templates.engine',
@@ -131,9 +160,13 @@ class CertificateTemplateController extends Controller
     /**
      * Interfaz del Diseñador Visual de Certificados
      */
-    public function designer(CertificateTemplate $template): View
+    public function designer(Request $request, CertificateTemplate $template): View
     {
-        $template->load(['versions.createdBy']);
+        if ($request->user()->isUnitScoped() && $template->organizational_unit_id && $template->organizational_unit_id !== $request->user()->organizational_unit_id) {
+            abort(403, 'No tiene autorización para acceder al diseñador de una plantilla de otra carrera o unidad.');
+        }
+
+        $template->load('organizationalUnit');
         $logos = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_LOGO)->get();
         $signatures = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_SIGNATURE)->get();
         $stamps = InstitutionalAsset::active()->ofType(InstitutionalAsset::TYPE_STAMP)->get();
@@ -156,6 +189,15 @@ class CertificateTemplateController extends Controller
      */
     public function updateDesigner(Request $request, CertificateTemplate $template)
     {
+        if ($request->user()->isUnitScoped()) {
+            if ($template->organizational_unit_id === null) {
+                return back()->with('error', 'Las plantillas centrales de la Facultad solo pueden ser editadas por el Administrador Central. Por favor utilice la opción "Duplicar" para adaptar esta plantilla a su carrera.');
+            }
+            if ($template->organizational_unit_id !== $request->user()->organizational_unit_id) {
+                abort(403, 'No tiene autorización para modificar plantillas de otra carrera o unidad.');
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'category' => ['required', 'string', 'max:60'],
@@ -236,8 +278,12 @@ class CertificateTemplateController extends Controller
     /**
      * Alternar estado Activa/Inactiva
      */
-    public function toggleStatus(CertificateTemplate $template)
+    public function toggleStatus(Request $request, CertificateTemplate $template)
     {
+        if ($request->user()->isUnitScoped() && ($template->organizational_unit_id === null || $template->organizational_unit_id !== $request->user()->organizational_unit_id)) {
+            abort(403, 'No tiene autorización para modificar el estado de esta plantilla.');
+        }
+
         $template->is_active = ! $template->is_active;
         $template->save();
 
@@ -253,8 +299,12 @@ class CertificateTemplateController extends Controller
     /**
      * Establecer como predeterminada
      */
-    public function setDefault(CertificateTemplate $template)
+    public function setDefault(Request $request, CertificateTemplate $template)
     {
+        if (! $request->user()->isAdmin()) {
+            abort(403, 'Solo el Administrador Central puede definir la plantilla predeterminada institucional.');
+        }
+
         CertificateTemplate::where('id', '!=', $template->id)->update(['is_default' => false]);
         $template->is_default = true;
         $template->save();
@@ -271,8 +321,12 @@ class CertificateTemplateController extends Controller
     /**
      * Eliminar plantilla (Solo si no tiene certificados emitidos)
      */
-    public function destroy(CertificateTemplate $template)
+    public function destroy(Request $request, CertificateTemplate $template)
     {
+        if ($request->user()->isUnitScoped() && ($template->organizational_unit_id === null || $template->organizational_unit_id !== $request->user()->organizational_unit_id)) {
+            abort(403, 'No tiene autorización para eliminar esta plantilla.');
+        }
+
         if ($template->certificates()->count() > 0) {
             return back()->with('error', "No se puede eliminar la plantilla '{$template->name}' porque ya existen certificados institucionales emitidos con ella. Para no utilizarla en el futuro, puede desactivarla.");
         }

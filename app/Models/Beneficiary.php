@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,12 +22,18 @@ class Beneficiary extends Model
         'email',
         'phone',
         'institution_or_department',
+        'primary_organizational_unit_id',
         'notes',
     ];
 
     public function certificates(): HasMany
     {
         return $this->hasMany(Certificate::class);
+    }
+
+    public function primaryOrganizationalUnit(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'primary_organizational_unit_id');
     }
 
     public function activities(): BelongsToMany

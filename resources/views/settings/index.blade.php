@@ -4,56 +4,54 @@
 @section('page-subtitle', 'Personalización del portal público, parámetros institucionales y catálogo de tipos de certificado')
 
 @section('content')
-<div class="space-y-6" x-data="{
-    activeTab: '{{ request('tab', 'portal') }}',
-    newTypeModal: false,
-    editTypeModal: false,
-    editingType: {
-        id: null,
-        name: '',
-        code: '',
-        description: '',
-        validity_mode: 'years',
-        default_validity_years: 3,
-        has_score: false,
-        score_scale: 'Sobre 100 puntos',
-        min_passing_score: 51,
-        icon: '🎓',
-        badge_color: 'emerald',
-        is_active: true,
-        updateUrl: ''
+@php
+    $startTab = old('_settings_tab', $activeTab);
+    $startTab = in_array($startTab, ['portal', 'institutional', 'certificates'], true) ? $startTab : 'portal';
+    $restoreType = $types->firstWhere('id', (int) old('_editing_type_id'));
+    $editingState = [];
+    foreach (['id' => null, 'name' => '', 'code' => '', 'description' => '', 'validity_mode' => 'years', 'default_validity_years' => 3, 'has_score' => false, 'score_scale' => 'Sobre 100 puntos', 'min_passing_score' => 51, 'icon' => '🎓', 'badge_color' => 'emerald', 'is_active' => true] as $field => $fallback) {
+        $editingState[$field] = old('_type_form') === 'edit' ? old($field, $restoreType?->$field ?? $fallback) : $fallback;
     }
-}">
+    $editingState['has_score'] = (bool) $editingState['has_score'];
+    $editingState['is_active'] = (bool) $editingState['is_active'];
+    $editingState['updateUrl'] = $restoreType ? route('settings.certificate-types.update', $restoreType) : '';
+@endphp
+<div class="ft-form-page ft-settings-page space-y-6" x-data="{
+    activeTab: @js($startTab), newTypeModal: @js(old('_type_form') === 'create'), editTypeModal: @js(old('_type_form') === 'edit' && $restoreType !== null),
+    newValidityMode: @js(old('validity_mode', 'permanent')), newHasScore: @js((bool) old('has_score', false)),
+    editingType: @js($editingState), typeSearch: '', lastTrigger: null,
+    portalTitle: @js(old('portal_verify_title', $allSettings['portal_verify_title']->value ?? 'Verificación Oficial de Certificados')),
+    portalSubtitle: @js(old('portal_verify_subtitle', $allSettings['portal_verify_subtitle']->value ?? 'Consulta la autenticidad de un certificado institucional.')),
+    portalTagline: @js(old('portal_verify_tagline', $allSettings['portal_verify_tagline']->value ?? 'FACULTAD DE TECNOLOGÍA · UMSA')),
+    institutionName: @js(old('institution_name', $allSettings['institution_name']->value ?? 'Universidad Mayor de San Andrés')),
+    facultyName: @js(old('faculty_name', $allSettings['faculty_name']->value ?? 'Facultad de Tecnología')),
+    authorityName: @js(old('authority_name', $allSettings['authority_name']->value ?? '')),
+    setTab(tab) { this.activeTab = tab; const url = new URL(window.location.href); url.searchParams.set('tab', tab); window.history.replaceState({}, '', url); },
+    openNewType(trigger) { this.lastTrigger = trigger; this.newTypeModal = true; this.$nextTick(() => this.$refs.newTypeName.focus()); },
+    closeType() { this.newTypeModal = false; this.editTypeModal = false; this.lastTrigger?.focus(); },
+    trapDialog(event) {
+        const items = Array.from(event.currentTarget.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).filter(el => !el.disabled && el.offsetParent !== null && el.tabIndex >= 0);
+        const first = items[0], last = items[items.length - 1];
+        if (!first) return;
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+}" @keydown.escape.window="if (newTypeModal || editTypeModal) closeType()" x-effect="document.body.style.overflow = (newTypeModal || editTypeModal) ? 'hidden' : ''">
+    <header class="ft-form-hero">
+        <div><span class="ft-form-kicker">Administración central</span><h2>Una identidad, en todo el sistema.</h2><p>Personaliza el portal público, mantén actualizadas las autoridades y define las políticas de cada certificado.</p></div>
+        <a href="{{ route('verification.index') }}" target="_blank" rel="noopener noreferrer" class="ft-form-back">Abrir portal público ↗</a>
+    </header>
 
-    <!-- Tab Navigation Bar -->
-    <div class="bg-white p-2 rounded-2xl shadow-xs border border-slate-200/80 flex flex-wrap gap-2">
-        <button type="button"
-                @click="activeTab = 'portal'"
-                :class="activeTab === 'portal' ? 'bg-brand text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
-                class="flex w-full sm:w-auto items-center gap-2 px-4 py-2.5 rounded-xl text-left text-xs transition-all cursor-pointer">
-            <svg class="w-4 h-4" :class="activeTab === 'portal' ? 'text-indigo-200' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-            <span class="min-w-0 break-words">Portal Público de Verificación</span>
-            <span class="px-2 py-0.5 text-[10px] rounded-full" :class="activeTab === 'portal' ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'">Público</span>
-        </button>
+    <nav class="ft-settings-tabs" aria-label="Apartados de configuración">
+        @foreach(['portal' => ['01', 'Portal público', 'Textos, logos y verificación QR'], 'institutional' => ['02', 'Identidad institucional', 'Universidad, facultad y autoridades'], 'certificates' => ['03', 'Certificados', 'Tipos, vigencia y calificaciones']] as $tab => $item)
+            <button type="button" id="settings-tab-{{ $tab }}" @click="setTab('{{ $tab }}')" :aria-current="activeTab === '{{ $tab }}' ? 'page' : 'false'" :class="activeTab === '{{ $tab }}' ? 'bg-brand-soft text-brand border-brand/20' : 'text-muted hover:bg-surface-muted'">
+                <span class="block text-[10px] tracking-widest mb-1">{{ $item[0] }} / CONFIGURACIÓN</span><strong class="block">{{ $item[1] }}</strong><span class="block text-xs font-normal mt-1">{{ $item[2] }}</span>
+            </button>
+        @endforeach
+    </nav>
 
-        <button type="button"
-                @click="activeTab = 'institutional'"
-                :class="activeTab === 'institutional' ? 'bg-brand text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-            <svg class="w-4 h-4" :class="activeTab === 'institutional' ? 'text-indigo-200' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-            <span>Autoridades y Vicedecanato</span>
-        </button>
-
-        <button type="button"
-                @click="activeTab = 'certificates'"
-                :class="activeTab === 'certificates' ? 'bg-brand text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
-                class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-            <svg class="w-4 h-4" :class="activeTab === 'certificates' ? 'text-indigo-200' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span>Políticas y Tipos de Certificado</span>
-            <span class="px-2 py-0.5 text-[10px] rounded-full bg-blue-100 text-blue-800 font-bold">{{ $types->count() }}</span>
-        </button>
-    </div>
-
+    <div class="ft-form-grid">
+    <div class="min-w-0">
     <!-- TAB 1: PERSONALIZACIÓN DEL PORTAL PÚBLICO (/verificar) -->
     <div x-show="activeTab === 'portal'" x-cloak class="space-y-6">
         <div class="ft-panel bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
@@ -74,7 +72,7 @@
 
             <form method="POST" action="{{ route('settings.update') }}" class="p-6 sm:p-8 space-y-6">
                 @csrf
-                <input type="hidden" name="tab_verification_portal" value="1">
+                <input type="hidden" name="tab_verification_portal" value="1"><input type="hidden" name="_settings_tab" value="portal">
 
                 <!-- 1. Textos e Identidad del Encabezado -->
                 <div class="space-y-4">
@@ -87,7 +85,7 @@
                             <label for="portal_verify_title" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                 Título Principal del Portal <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" name="portal_verify_title" id="portal_verify_title"
+                            <input type="text" name="portal_verify_title" id="portal_verify_title" x-model="portalTitle"
                                    value="{{ old('portal_verify_title', $allSettings['portal_verify_title']->value ?? 'Verificación Oficial de Certificados') }}" required
                                    class="w-full py-2.5 px-3 text-sm font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                             <p class="text-[11px] text-slate-400 mt-1">Título central en letras grandes de la tarjeta de verificación.</p>
@@ -97,8 +95,8 @@
                             <label for="portal_verify_subtitle" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                 Subtítulo e Instrucciones de Consulta
                             </label>
-                            <textarea name="portal_verify_subtitle" id="portal_verify_subtitle" rows="2"
-                                      class="w-full py-2.5 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('portal_verify_subtitle', $allSettings['portal_verify_subtitle']->value ?? 'Consulte la autenticidad, mérito académico, calificaciones y vigencia oficial de certificados emitidos por el Vicedecanato.') }}</textarea>
+                            <textarea name="portal_verify_subtitle" id="portal_verify_subtitle" x-model="portalSubtitle" rows="2"
+                                      class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('portal_verify_subtitle', $allSettings['portal_verify_subtitle']->value ?? 'Consulte la autenticidad, mérito académico, calificaciones y vigencia oficial de certificados emitidos por el Vicedecanato.') }}</textarea>
                             <p class="text-[11px] text-slate-400 mt-1">Explicación breve mostrada debajo del título principal en el portal público.</p>
                         </div>
 
@@ -106,9 +104,9 @@
                             <label for="portal_verify_tagline" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                 Etiqueta Superior Institucional
                             </label>
-                            <input type="text" name="portal_verify_tagline" id="portal_verify_tagline"
+                            <input type="text" name="portal_verify_tagline" id="portal_verify_tagline" x-model="portalTagline"
                                    value="{{ old('portal_verify_tagline', $allSettings['portal_verify_tagline']->value ?? 'Universidad Mayor de San Andrés • Facultad de Tecnología') }}"
-                                   class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                                   class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                             <p class="text-[11px] text-slate-400 mt-1">Texto en mayúsculas pequeñas sobre el título.</p>
                         </div>
 
@@ -118,7 +116,7 @@
                             </label>
                             <input type="text" name="portal_verify_code_placeholder" id="portal_verify_code_placeholder"
                                    value="{{ old('portal_verify_code_placeholder', $allSettings['portal_verify_code_placeholder']->value ?? 'EJ: CERT-2026-000001') }}"
-                                   class="w-full py-2 px-3 text-xs font-mono uppercase border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                                   class="w-full py-2 px-3 text-sm font-mono uppercase border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                             <p class="text-[11px] text-slate-400 mt-1">Guía visual en el campo donde se digita el código.</p>
                         </div>
                     </div>
@@ -143,7 +141,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="portal_verify_show_umsa_logo" value="1" class="sr-only peer"
+                                <input type="hidden" name="portal_verify_show_umsa_logo" value="0">
+                                <input type="checkbox" aria-label="Mostrar escudo de la UMSA" name="portal_verify_show_umsa_logo" value="1" class="sr-only peer"
                                        {{ old('portal_verify_show_umsa_logo', $allSettings['portal_verify_show_umsa_logo']->value ?? '1') == '1' ? 'checked' : '' }}>
                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
                             </label>
@@ -161,7 +160,8 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="portal_verify_show_ft_logo" value="1" class="sr-only peer"
+                                <input type="hidden" name="portal_verify_show_ft_logo" value="0">
+                                <input type="checkbox" aria-label="Mostrar escudo de la Facultad de Tecnología" name="portal_verify_show_ft_logo" value="1" class="sr-only peer"
                                        {{ old('portal_verify_show_ft_logo', $allSettings['portal_verify_show_ft_logo']->value ?? '1') == '1' ? 'checked' : '' }}>
                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
                             </label>
@@ -175,7 +175,7 @@
                         3. Tarjetas Informativas del Pie de Página (En el Buscador /verificar)
                     </h4>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <!-- Tarjeta QR -->
                         <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                             <div class="flex items-center justify-between">
@@ -184,7 +184,8 @@
                                     <span>Escaneo QR</span>
                                 </span>
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="portal_verify_show_qr_card" value="1" class="sr-only peer"
+                                    <input type="hidden" name="portal_verify_show_qr_card" value="0">
+                                <input type="checkbox" aria-label="Mostrar tarjeta de escaneo QR" name="portal_verify_show_qr_card" value="1" class="sr-only peer"
                                            {{ old('portal_verify_show_qr_card', $allSettings['portal_verify_show_qr_card']->value ?? '1') == '1' ? 'checked' : '' }}>
                                     <div class="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
                                 </label>
@@ -193,12 +194,12 @@
                                 <label for="portal_verify_qr_card_title" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Título</label>
                                 <input type="text" name="portal_verify_qr_card_title" id="portal_verify_qr_card_title"
                                        value="{{ old('portal_verify_qr_card_title', $allSettings['portal_verify_qr_card_title']->value ?? 'Escaneo QR Instantáneo') }}"
-                                       class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">
+                                       class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">
                             </div>
                             <div>
                                 <label for="portal_verify_qr_card_desc" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Descripción</label>
                                 <textarea name="portal_verify_qr_card_desc" id="portal_verify_qr_card_desc" rows="2"
-                                          class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">{{ old('portal_verify_qr_card_desc', $allSettings['portal_verify_qr_card_desc']->value ?? 'Escanee con la cámara de su dispositivo móvil o computadora para validación directa e inmediata sin teclear.') }}</textarea>
+                                          class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">{{ old('portal_verify_qr_card_desc', $allSettings['portal_verify_qr_card_desc']->value ?? 'Escanee con la cámara de su dispositivo móvil o computadora para validación directa e inmediata sin teclear.') }}</textarea>
                             </div>
                         </div>
 
@@ -210,7 +211,8 @@
                                     <span>Vigencia Oficial</span>
                                 </span>
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="portal_verify_show_validity_card" value="1" class="sr-only peer"
+                                    <input type="hidden" name="portal_verify_show_validity_card" value="0">
+                                <input type="checkbox" aria-label="Mostrar tarjeta de vigencia" name="portal_verify_show_validity_card" value="1" class="sr-only peer"
                                            {{ old('portal_verify_show_validity_card', $allSettings['portal_verify_show_validity_card']->value ?? '1') == '1' ? 'checked' : '' }}>
                                     <div class="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
                                 </label>
@@ -219,12 +221,12 @@
                                 <label for="portal_verify_validity_card_title" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Título</label>
                                 <input type="text" name="portal_verify_validity_card_title" id="portal_verify_validity_card_title"
                                        value="{{ old('portal_verify_validity_card_title', $allSettings['portal_verify_validity_card_title']->value ?? 'Vigencia Institucional') }}"
-                                       class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">
+                                       class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">
                             </div>
                             <div>
                                 <label for="portal_verify_validity_card_desc" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Descripción</label>
                                 <textarea name="portal_verify_validity_card_desc" id="portal_verify_validity_card_desc" rows="2"
-                                          class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">{{ old('portal_verify_validity_card_desc', $allSettings['portal_verify_validity_card_desc']->value ?? 'Certificados con vigencia permanente o validez reglamentaria según el tipo de mérito académico acreditado.') }}</textarea>
+                                          class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">{{ old('portal_verify_validity_card_desc', $allSettings['portal_verify_validity_card_desc']->value ?? 'Certificados con vigencia permanente o validez reglamentaria según el tipo de mérito académico acreditado.') }}</textarea>
                             </div>
                         </div>
 
@@ -236,7 +238,8 @@
                                     <span>Tipos de Certificado</span>
                                 </span>
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="portal_verify_show_types_card" value="1" class="sr-only peer"
+                                    <input type="hidden" name="portal_verify_show_types_card" value="0">
+                                <input type="checkbox" aria-label="Mostrar tarjeta de tipos de certificado" name="portal_verify_show_types_card" value="1" class="sr-only peer"
                                            {{ old('portal_verify_show_types_card', $allSettings['portal_verify_show_types_card']->value ?? '1') == '1' ? 'checked' : '' }}>
                                     <div class="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
                                 </label>
@@ -245,12 +248,12 @@
                                 <label for="portal_verify_types_card_title" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Título</label>
                                 <input type="text" name="portal_verify_types_card_title" id="portal_verify_types_card_title"
                                        value="{{ old('portal_verify_types_card_title', $allSettings['portal_verify_types_card_title']->value ?? 'Tipos de Certificación Institucional') }}"
-                                       class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">
+                                       class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">
                             </div>
                             <div>
                                 <label for="portal_verify_types_card_desc" class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Descripción</label>
                                 <textarea name="portal_verify_types_card_desc" id="portal_verify_types_card_desc" rows="2"
-                                          class="w-full py-1.5 px-2.5 text-xs border border-slate-300 rounded-lg">{{ old('portal_verify_types_card_desc', $allSettings['portal_verify_types_card_desc']->value ?? 'Acreditaciones oficiales emitidas por la Facultad: Aprobación con evaluación, Asistencia, Disertante y Reconocimientos Vitalicios.') }}</textarea>
+                                          class="w-full py-1.5 px-2.5 text-sm border border-slate-300 rounded-lg">{{ old('portal_verify_types_card_desc', $allSettings['portal_verify_types_card_desc']->value ?? 'Acreditaciones oficiales emitidas por la Facultad: Aprobación con evaluación, Asistencia, Disertante y Reconocimientos Vitalicios.') }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -265,7 +268,7 @@
                         <p class="text-xs text-slate-500 mt-0.5">Controle la información y tarjetas que se muestran en la pantalla pública de verificación oficial</p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 gap-3">
                         <!-- Conmutador Calificaciones -->
                         <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
                             <div>
@@ -273,7 +276,8 @@
                                 <span class="text-[11px] text-slate-500">Mostrar notas y menciones acreditadas</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="portal_verify_show_score_badge" value="1" class="sr-only peer"
+                                <input type="hidden" name="portal_verify_show_score_badge" value="0">
+                                <input type="checkbox" aria-label="Mostrar calificación" name="portal_verify_show_score_badge" value="1" class="sr-only peer"
                                        {{ old('portal_verify_show_score_badge', $allSettings['portal_verify_show_score_badge']->value ?? '1') == '1' ? 'checked' : '' }}>
                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
                             </label>
@@ -286,7 +290,8 @@
                                 <span class="text-[11px] text-slate-500">Mostrar tipo de mérito e icono</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="portal_verify_show_type_badge" value="1" class="sr-only peer"
+                                <input type="hidden" name="portal_verify_show_type_badge" value="0">
+                                <input type="checkbox" aria-label="Mostrar tipo de certificado" name="portal_verify_show_type_badge" value="1" class="sr-only peer"
                                        {{ old('portal_verify_show_type_badge', $allSettings['portal_verify_show_type_badge']->value ?? '1') == '1' ? 'checked' : '' }}>
                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
                             </label>
@@ -299,7 +304,8 @@
                                 <span class="text-[11px] text-slate-500">Distintivo Vitalicio / Vencimiento</span>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="portal_verify_show_validity_badge" value="1" class="sr-only peer"
+                                <input type="hidden" name="portal_verify_show_validity_badge" value="0">
+                                <input type="checkbox" aria-label="Mostrar distintivo de vigencia" name="portal_verify_show_validity_badge" value="1" class="sr-only peer"
                                        {{ old('portal_verify_show_validity_badge', $allSettings['portal_verify_show_validity_badge']->value ?? '1') == '1' ? 'checked' : '' }}>
                                 <div class="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
                             </label>
@@ -311,7 +317,7 @@
                             Mensaje Institucional al Pie del Resultado Verificado
                         </label>
                         <textarea name="portal_verify_footer_note" id="portal_verify_footer_note" rows="2"
-                                  class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('portal_verify_footer_note', $allSettings['portal_verify_footer_note']->value ?? 'Documento oficial debidamente validado y registrado en la base de datos institucional del Vicedecanato de la Facultad de Tecnología - UMSA.') }}</textarea>
+                                  class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('portal_verify_footer_note', $allSettings['portal_verify_footer_note']->value ?? 'Documento oficial debidamente validado y registrado en la base de datos institucional del Vicedecanato de la Facultad de Tecnología - UMSA.') }}</textarea>
                         <p class="text-[11px] text-slate-400 mt-1">Texto de respaldo legal y facultativo mostrado al final de la pantalla de verificación.</p>
                     </div>
                 </div>
@@ -338,83 +344,84 @@
 
             <form method="POST" action="{{ route('settings.update') }}" class="p-6 sm:p-8 space-y-6">
                 @csrf
+                <input type="hidden" name="_settings_tab" value="institutional">
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
                         <label for="institution_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nombre de la Institución</label>
-                        <input type="text" name="institution_name" id="institution_name"
+                        <input type="text" name="institution_name" id="institution_name" x-model="institutionName"
                                value="{{ old('institution_name', $allSettings['institution_name']->value ?? 'UNIVERSIDAD MAYOR DE SAN ANDRÉS') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="faculty_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Facultad</label>
-                        <input type="text" name="faculty_name" id="faculty_name"
+                        <input type="text" name="faculty_name" id="faculty_name" x-model="facultyName"
                                value="{{ old('faculty_name', $allSettings['faculty_name']->value ?? 'FACULTAD DE TECNOLOGÍA') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="department_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Unidad Académica</label>
                         <input type="text" name="department_name" id="department_name"
                                value="{{ old('department_name', $allSettings['department_name']->value ?? 'VICEDECANATO') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="authority_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nombre de la Autoridad (Firma)</label>
-                        <input type="text" name="authority_name" id="authority_name"
+                        <input type="text" name="authority_name" id="authority_name" x-model="authorityName"
                                value="{{ old('authority_name', $allSettings['authority_name']->value ?? 'Ing. Aniceto Velarde Forest') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="authority_position" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Cargo de la Autoridad</label>
                         <input type="text" name="authority_position" id="authority_position"
                                value="{{ old('authority_position', $allSettings['authority_position']->value ?? 'Vicedecano') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="dean_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nombre del Decano (Firma Principal)</label>
                         <input type="text" name="dean_name" id="dean_name"
                                value="{{ old('dean_name', $allSettings['dean_name']->value ?? 'Lic. Jorge Velasco Orellanos') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="dean_position" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Cargo del Decano</label>
                         <input type="text" name="dean_position" id="dean_position"
                                value="{{ old('dean_position', $allSettings['dean_position']->value ?? 'Decano') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="faculty_motto" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Lema Facultativo</label>
                         <input type="text" name="faculty_motto" id="faculty_motto"
                                value="{{ old('faculty_motto', $allSettings['faculty_motto']->value ?? 'Ciencia, cálculo y jerarquía Adelante Tecnología') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="institution_city" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ciudad y País</label>
                         <input type="text" name="institution_city" id="institution_city"
                                value="{{ old('institution_city', $allSettings['institution_city']->value ?? 'La Paz - Bolivia') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="institution_address" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Dirección Institucional</label>
                         <input type="text" name="institution_address" id="institution_address"
                                value="{{ old('institution_address', $allSettings['institution_address']->value ?? 'Av. Arce No. 2295') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label for="system_email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Correo de Contacto</label>
                         <input type="email" name="system_email" id="system_email"
                                value="{{ old('system_email', $allSettings['system_email']->value ?? 'vicedecanato.tecnologia@umsa.bo') }}"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                               class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
                 </div>
 
@@ -441,7 +448,7 @@
                     <p class="text-xs text-slate-300 mt-0.5">Defina las políticas de validez (vitalicia o temporal), escalas de calificación y apariencia de cada mérito.</p>
                 </div>
                 <button type="button"
-                        @click="newTypeModal = true"
+                        @click="openNewType($event.currentTarget)"
                         class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0">
                     <span>+ Nuevo Tipo de Certificado</span>
                 </button>
@@ -449,9 +456,12 @@
 
             <!-- Grid de Tipos de Certificado -->
             <div class="p-6 sm:p-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     @foreach($types as $tp)
-                        <div class="p-5 bg-slate-50/80 hover:bg-white rounded-2xl border-2 border-slate-200/90 hover:border-brand/40 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between space-y-4 group">
+                        @if($loop->first)
+                            <div class="md:col-span-2"><label for="certificate-type-search" class="ft-field-label">Buscar un tipo de certificado</label><input type="search" id="certificate-type-search" x-model.debounce.150ms="typeSearch" placeholder="Nombre del certificado…" class="ft-input"></div>
+                        @endif
+                        <div x-show="(@js($tp->name)).toLocaleLowerCase('es').includes(typeSearch.toLocaleLowerCase('es').trim())" class="p-5 bg-slate-50/80 hover:bg-white rounded-2xl border-2 border-slate-200/90 hover:border-brand/40 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between space-y-4 group">
                             <div>
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="flex items-center gap-3">
@@ -497,21 +507,7 @@
                                 <!-- Botones de Gestión -->
                                 <div class="flex items-center justify-between pt-2 border-t border-slate-200/60">
                                     <button type="button"
-                                            @click="editingType = {
-                                                id: {{ $tp->id }},
-                                                name: '{{ addslashes($tp->name) }}',
-                                                code: '{{ $tp->code }}',
-                                                description: '{{ addslashes($tp->description ?? '') }}',
-                                                validity_mode: '{{ $tp->validity_mode ?? 'years' }}',
-                                                default_validity_years: {{ $tp->default_validity_years ?? 3 }},
-                                                has_score: {{ $tp->has_score ? 'true' : 'false' }},
-                                                score_scale: '{{ addslashes($tp->score_scale ?? 'Sobre 100 puntos') }}',
-                                                min_passing_score: {{ $tp->min_passing_score ?? 51 }},
-                                                icon: '{{ $tp->icon ?? '📜' }}',
-                                                badge_color: '{{ $tp->badge_color ?? 'slate' }}',
-                                                is_active: {{ $tp->is_active ? 'true' : 'false' }},
-                                                updateUrl: '{{ route('settings.certificate-types.update', $tp) }}'
-                                            }; editTypeModal = true;"
+                                            @click="lastTrigger = $event.currentTarget; editingType = @js(array_merge($tp->only(['id', 'name', 'code', 'description', 'validity_mode', 'default_validity_years', 'has_score', 'score_scale', 'min_passing_score', 'icon', 'badge_color', 'is_active']), ['updateUrl' => route('settings.certificate-types.update', $tp)])); editTypeModal = true; $nextTick(() => $refs.editTypeName.focus());"
                                             class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 hover:text-brand border border-slate-200 text-xs font-semibold rounded-xl shadow-2xs transition-all flex items-center gap-1">
                                         <span>✏️ Editar Políticas</span>
                                     </button>
@@ -532,22 +528,23 @@
         </div>
 
         <!-- Parámetros Secundarios: Vigencia Estándar y Plantillas -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-6">
             <!-- Políticas de Certificación -->
-            <div class="lg:col-span-2 ft-panel bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
+            <div class="ft-panel bg-white rounded-3xl shadow-xs border border-slate-200/80 overflow-hidden">
                 <div class="p-6 bg-slate-900 text-white">
-                    <h3 class="text-base font-bold">Vigencia Temporal de Respaldo (Fallback Global)</h3>
-                    <p class="text-xs text-slate-300 mt-0.5">Años reglamentarios asignados por defecto a certificados temporales cuando una actividad no defina una duración específica.</p>
+                    <h3 class="text-base font-bold">Vigencia temporal de respaldo</h3>
+                    <p class="text-xs text-slate-300 mt-0.5">Se utiliza cuando ni la actividad ni el tipo de certificado tienen una duración definida.</p>
                 </div>
 
                 <form method="POST" action="{{ route('settings.update') }}" class="p-6 sm:p-8 space-y-4">
                     @csrf
+                    <input type="hidden" name="_settings_tab" value="certificates">
                     <div>
                         <label for="certificate_validity_years" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                             Años de Vigencia Reglamentaria Estándar <span class="text-red-500">*</span>
                         </label>
                         <div class="flex items-center gap-3">
-                            <input type="number" name="certificate_validity_years" id="certificate_validity_years" min="1" max="10"
+                            <input type="number" name="certificate_validity_years" id="certificate_validity_years" min="1" max="50"
                                    value="{{ old('certificate_validity_years', $allSettings['certificate_validity_years']->value ?? '3') }}" required
                                    class="w-32 py-2 px-3 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                             <span class="text-xs text-slate-500">años calendario a partir de la fecha de emisión</span>
@@ -587,55 +584,98 @@
         </div>
     </div>
 
+
+    </div>
+    <aside class="ft-form-aside">
+        <span class="ft-form-kicker" style="color:var(--color-action)">Vista de referencia</span>
+        <div x-show="activeTab === 'portal'">
+            <h3 class="mt-2">Así se presentan tus textos</h3>
+            <div class="mt-5 rounded-2xl overflow-hidden border border-border">
+                <div class="bg-brand-deep p-5 text-white">
+                    <p class="text-[10px] uppercase tracking-widest text-accent" x-text="portalTagline"></p>
+                    <h4 class="mt-3 font-bold leading-snug" x-text="portalTitle"></h4>
+                    <p class="mt-3 text-xs leading-relaxed text-slate-200" x-text="portalSubtitle"></p>
+                </div>
+                <div class="p-4 bg-surface-muted text-xs text-muted">CERT-2026-000001 <span aria-hidden="true" class="float-right text-brand">⌕</span></div>
+            </div>
+            <p class="ft-field-help mt-4">Esta muestra actualiza los textos mientras escribes. Guarda el apartado para publicarlos en el portal.</p>
+        </div>
+        <div x-show="activeTab === 'institutional'" x-cloak>
+            <h3 class="mt-2">Identidad de referencia</h3>
+            <dl class="mt-3">
+                <div class="ft-summary-row"><dt>Universidad</dt><dd x-text="institutionName"></dd></div>
+                <div class="ft-summary-row"><dt>Facultad</dt><dd x-text="facultyName"></dd></div>
+                <div class="ft-summary-row"><dt>Autoridad</dt><dd x-text="authorityName || 'Por completar'"></dd></div>
+            </dl>
+            <p class="ft-field-help mt-4">Los cambios institucionales se utilizarán en futuras emisiones. Los certificados ya emitidos conservan sus datos originales.</p>
+        </div>
+        <div x-show="activeTab === 'certificates'" x-cloak>
+            <h3 class="mt-2">Políticas claras</h3>
+            <dl class="mt-3">
+                <div class="ft-summary-row"><dt>Tipos registrados</dt><dd>{{ $types->count() }}</dd></div>
+                <div class="ft-summary-row"><dt>Tipos activos</dt><dd>{{ $types->where('is_active', true)->count() }}</dd></div>
+                <div class="ft-summary-row"><dt>Calificación mínima base</dt><dd>51 puntos</dd></div>
+            </dl>
+            <p class="ft-field-help mt-4">Puedes definir un mínimo superior por tipo. Los estudiantes reprobados permanecen en la nómina sin recibir un certificado.</p>
+        </div>
+        <div class="ft-form-note mt-5">Cada botón guarda únicamente el apartado de su formulario.</div>
+    </aside>
+    </div>
+
     <!-- MODAL 1: NUEVO TIPO DE CERTIFICADO -->
-    <div x-show="newTypeModal"
+    <div x-show="newTypeModal" role="dialog" aria-modal="true" aria-labelledby="new-type-title" @keydown.tab="trapDialog($event)"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
-        <div class="ft-panel bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto" @click.away="newTypeModal = false">
+        <div class="ft-panel bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto" @click.away="closeType()">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-bold">
                         ✨
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Registrar Nuevo Tipo de Certificado</h3>
+                        <h3 id="new-type-title" class="text-base font-bold text-slate-800">Registrar Nuevo Tipo de Certificado</h3>
                         <p class="text-xs text-slate-500">Defina el mérito, esquema de validez y políticas de evaluación</p>
                     </div>
                 </div>
-                <button @click="newTypeModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" aria-label="Cerrar diálogo" @click="closeType()" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
             </div>
 
-            <form method="POST" action="{{ route('settings.certificate-types.store') }}" class="space-y-4"
-                  x-data="{ newValidityMode: 'permanent', newHasScore: false }">
+            <form method="POST" action="{{ route('settings.certificate-types.store') }}" class="space-y-4">
                 @csrf
+                <input type="hidden" name="_settings_tab" value="certificates"><input type="hidden" name="_type_form" value="create">
+
+                @if(old('_type_form') === 'create' && $errors->any())
+                    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        <p class="font-semibold">Revisa los siguientes datos:</p>
+                        <ul class="list-disc pl-5 mt-2 space-y-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                    </div>
+                @endif
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Oficial del Certificado <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" required placeholder="Ej: Certificado de Tutoría de Grado"
-                               class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                        <input type="text" name="name" required id="new-type-name" x-ref="newTypeName" value="{{ old('name') }}" maxlength="100" placeholder="Ej: Certificado de Tutoría de Grado"
+                               class="w-full text-sm py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Código / Identificador (Opcional)</label>
-                        <input type="text" name="code" placeholder="Ej: tutoria"
-                               class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand font-mono">
+                        <input type="text" name="code" value="{{ old('code') }}" maxlength="50" placeholder="Ej: tutoria"
+                               class="w-full text-sm py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand font-mono">
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Icono</label>
-                            <input type="text" name="icon" value="🎓" maxlength="5"
+                            <input type="text" name="icon" value="{{ old('icon', '🎓') }}" maxlength="10"
                                    class="w-full text-center text-lg py-1 border border-slate-300 rounded-xl">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Color</label>
-                            <select name="badge_color" class="w-full text-xs py-2 px-2 border border-slate-300 rounded-xl bg-white">
-                                <option value="emerald">Verde</option>
-                                <option value="blue">Azul</option>
-                                <option value="purple">Morado</option>
-                                <option value="amber">Dorado</option>
-                                <option value="slate">Gris</option>
+                            <select name="badge_color" class="w-full text-sm py-2 px-2 border border-slate-300 rounded-xl bg-white">
+                                @foreach(['emerald' => 'Verde', 'blue' => 'Azul', 'purple' => 'Morado', 'amber' => 'Dorado', 'slate' => 'Gris'] as $color => $colorName)
+                                    <option value="{{ $color }}" @selected(old('badge_color', 'emerald') === $color)>{{ $colorName }}</option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
@@ -643,7 +683,7 @@
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Descripción del Mérito</label>
                         <textarea name="description" rows="2" placeholder="Explicación del mérito que acredita este tipo de certificado..."
-                                  class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"></textarea>
+                                  class="w-full text-sm py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">{{ old('description') }}</textarea>
                     </div>
                 </div>
 
@@ -663,34 +703,34 @@
 
                     <div x-show="newValidityMode === 'years'" class="pt-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Años de Vigencia por Defecto</label>
-                        <input type="number" name="default_validity_years" value="3" min="1" max="50"
-                               class="w-24 text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                        <input type="number" name="default_validity_years" value="{{ old('default_validity_years', 3) }}" min="1" max="50" :disabled="newValidityMode !== 'years'" :required="newValidityMode === 'years'"
+                               class="w-24 text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                     </div>
                 </div>
 
                 <!-- Políticas de Calificación -->
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" name="has_score" value="1" x-model="newHasScore" class="rounded text-brand focus:ring-brand">
+                        <input type="hidden" name="has_score" value="0"><input type="checkbox" name="has_score" value="1" x-model="newHasScore" class="rounded text-brand focus:ring-brand">
                         <span class="text-xs font-bold text-slate-800">📊 Admite Calificaciones y Notas Académicas</span>
                     </label>
 
                     <div x-show="newHasScore" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-700 mb-1">Escala de Evaluación</label>
-                            <input type="text" name="score_scale" value="Sobre 100 puntos"
-                                   class="w-full text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                            <input type="text" name="score_scale" value="{{ old('score_scale', 'Sobre 100 puntos') }}" maxlength="100" :disabled="!newHasScore"
+                                   class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-700 mb-1">Nota Mínima de Aprobación</label>
-                            <input type="number" step="0.5" name="min_passing_score" value="51"
-                                   class="w-full text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                            <input type="number" step="0.5" min="51" max="1000" name="min_passing_score" value="{{ old('min_passing_score', 51) }}" :disabled="!newHasScore"
+                                   class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                     </div>
                 </div>
 
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="newTypeModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                    <button type="button" @click="closeType()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
                         Cancelar
                     </button>
                     <button type="submit" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all">
@@ -702,43 +742,51 @@
     </div>
 
     <!-- MODAL 2: EDITAR POLÍTICAS DE TIPO DE CERTIFICADO -->
-    <div x-show="editTypeModal"
+    <div x-show="editTypeModal" role="dialog" aria-modal="true" aria-labelledby="edit-type-title" @keydown.tab="trapDialog($event)"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
-        <div class="ft-panel bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto" @click.away="editTypeModal = false">
+        <div class="ft-panel bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto" @click.away="closeType()">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center text-xl font-bold">
                         ⚙️
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Modificar Políticas del Certificado</h3>
+                        <h3 id="edit-type-title" class="text-base font-bold text-slate-800">Modificar Políticas del Certificado</h3>
                         <p class="text-xs text-slate-500" x-text="'Tipo: ' + editingType.name"></p>
                     </div>
                 </div>
-                <button @click="editTypeModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" aria-label="Cerrar diálogo" @click="closeType()" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
             </div>
 
             <form method="POST" :action="editingType.updateUrl" class="space-y-4">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="_settings_tab" value="certificates"><input type="hidden" name="_type_form" value="edit"><input type="hidden" name="_editing_type_id" :value="editingType.id">
+
+                @if(old('_type_form') === 'edit' && $errors->any())
+                    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        <p class="font-semibold">Revisa los siguientes datos:</p>
+                        <ul class="list-disc pl-5 mt-2 space-y-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                    </div>
+                @endif
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Oficial del Certificado <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" x-model="editingType.name" required
-                               class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
+                        <input type="text" name="name" id="edit-type-name" x-ref="editTypeName" x-model="editingType.name" required maxlength="100"
+                               class="w-full text-sm py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Icono</label>
-                            <input type="text" name="icon" x-model="editingType.icon" maxlength="5"
+                            <input type="text" name="icon" x-model="editingType.icon" maxlength="10"
                                    class="w-full text-center text-lg py-1 border border-slate-300 rounded-xl">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Color</label>
-                            <select name="badge_color" x-model="editingType.badge_color" class="w-full text-xs py-2 px-2 border border-slate-300 rounded-xl bg-white">
+                            <select name="badge_color" x-model="editingType.badge_color" class="w-full text-sm py-2 px-2 border border-slate-300 rounded-xl bg-white">
                                 <option value="emerald">Verde</option>
                                 <option value="blue">Azul</option>
                                 <option value="purple">Morado</option>
@@ -751,7 +799,7 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">Estado</label>
                         <label class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-                            <input type="checkbox" name="is_active" value="1" x-model="editingType.is_active" class="rounded text-brand focus:ring-brand">
+                            <input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" x-model="editingType.is_active" class="rounded text-brand focus:ring-brand">
                             <span class="text-xs font-bold text-slate-800">Tipo Activo en el Sistema</span>
                         </label>
                     </div>
@@ -759,7 +807,7 @@
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Descripción del Mérito</label>
                         <textarea name="description" x-model="editingType.description" rows="2"
-                                  class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"></textarea>
+                                  class="w-full text-sm py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand"></textarea>
                     </div>
                 </div>
 
@@ -781,34 +829,34 @@
 
                     <div x-show="editingType.validity_mode === 'years'" class="pt-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1">Años de Vigencia por Defecto</label>
-                        <input type="number" name="default_validity_years" x-model.number="editingType.default_validity_years" min="1" max="50"
-                               class="w-24 text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                        <input type="number" name="default_validity_years" x-model.number="editingType.default_validity_years" min="1" max="50" :disabled="editingType.validity_mode !== 'years'" :required="editingType.validity_mode === 'years'"
+                               class="w-24 text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                     </div>
                 </div>
 
                 <!-- Políticas de Calificación -->
                 <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
                     <label class="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" name="has_score" value="1" x-model="editingType.has_score" class="rounded text-brand focus:ring-brand">
+                        <input type="hidden" name="has_score" value="0"><input type="checkbox" name="has_score" value="1" x-model="editingType.has_score" class="rounded text-brand focus:ring-brand">
                         <span class="text-xs font-bold text-slate-800">📊 Admite Calificaciones y Notas Académicas</span>
                     </label>
 
                     <div x-show="editingType.has_score" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-700 mb-1">Escala de Evaluación</label>
-                            <input type="text" name="score_scale" x-model="editingType.score_scale"
-                                   class="w-full text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                            <input type="text" name="score_scale" x-model="editingType.score_scale" maxlength="100" :disabled="!editingType.has_score"
+                                   class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-700 mb-1">Nota Mínima de Aprobación</label>
-                            <input type="number" step="0.5" name="min_passing_score" x-model="editingType.min_passing_score"
-                                   class="w-full text-xs py-1.5 px-3 border border-slate-300 rounded-xl">
+                            <input type="number" step="0.5" min="51" max="1000" name="min_passing_score" x-model="editingType.min_passing_score" :disabled="!editingType.has_score"
+                                   class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                     </div>
                 </div>
 
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="editTypeModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                    <button type="button" @click="closeType()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
                         Cancelar
                     </button>
                     <button type="submit" class="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-xs transition-all">

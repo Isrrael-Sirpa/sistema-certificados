@@ -39,9 +39,20 @@
                     <option value="portrait" {{ request('orientation') === 'portrait' ? 'selected' : '' }}>A4 vertical</option>
                 </select>
             </div>
+            @if(auth()->user()->isAdmin())
+                <div>
+                    <label for="template-unit" class="block mb-2 text-xs font-semibold text-ink">Carrera / Unidad</label>
+                    <select id="template-unit" name="unit_id" onchange="this.form.submit()" class="w-full px-3 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand/15">
+                        <option value="">Todas las Unidades</option>
+                        @foreach($units as $u)
+                            <option value="{{ $u->id }}" {{ request('unit_id') == $u->id ? 'selected' : '' }}>[{{ $u->code }}] {{ $u->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div class="flex flex-wrap items-center gap-3">
                 <button type="submit" class="min-h-11 px-4 py-2 bg-brand hover:bg-brand-deep text-white text-sm font-semibold rounded-xl">Aplicar filtros</button>
-                @if(request()->hasAny(['search', 'category', 'orientation']))
+                @if(request()->hasAny(['search', 'category', 'orientation', 'unit_id']))
                     <a href="{{ route('templates.index') }}" class="inline-flex min-h-11 items-center text-xs font-semibold text-muted hover:text-action">Limpiar</a>
                 @endif
             </div>
@@ -57,15 +68,22 @@
         @forelse($templates as $tpl)
             @php
                 $templateHasScoreFields = preg_match('/certificado\.(?:puntaje|calificacion|mencion)\s*\}\}/', json_encode($tpl->configuration ?? [])) === 1;
+                $canManageTemplate = auth()->user()->isAdmin() || ($tpl->organizational_unit_id !== null && auth()->user()->canAccessOrganizationalUnit($tpl->organizational_unit_id));
+                $templateUrl = route($canManageTemplate ? 'templates.designer' : 'templates.preview', $tpl);
             @endphp
             <article class="ft-panel bg-white border border-border overflow-hidden flex flex-col group">
-                <a href="{{ route('templates.designer', $tpl) }}" class="ft-template-preview relative flex min-h-64 items-center justify-center p-6 bg-surface-muted focus-visible:outline-offset-[-4px]" data-orientation="{{ $tpl->orientation }}" aria-label="Abrir diseñador de {{ $tpl->name }}">
+                <a href="{{ $templateUrl }}" class="ft-template-preview relative flex min-h-64 items-center justify-center p-6 bg-surface-muted focus-visible:outline-offset-[-4px]" data-orientation="{{ $tpl->orientation }}" aria-label="{{ $canManageTemplate ? 'Abrir diseñador de' : 'Previsualizar' }} {{ $tpl->name }}">
                     @include('templates.thumbnail', ['tpl' => $tpl])
                 </a>
                 <div class="p-5 flex flex-1 flex-col gap-4">
                     <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold">
                         @if($tpl->is_default)
                             <span class="px-2.5 py-1 rounded-full bg-accent-soft text-[#946000] border border-accent/40">PREDETERMINADA</span>
+                        @endif
+                        @if($tpl->organizationalUnit)
+                            <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">[{{ $tpl->organizationalUnit->code }}]</span>
+                        @else
+                            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">GLOBAL FACULTAD</span>
                         @endif
                         <span class="px-2.5 py-1 rounded-full {{ $tpl->is_active ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-600' }}">{{ $tpl->is_active ? 'ACTIVA' : 'INACTIVA' }}</span>
                         @if($templateHasScoreFields)
@@ -94,9 +112,10 @@
                         <span>{{ $tpl->certificates_count }} emitidos</span>
                     </div>
                     <div class="mt-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <a href="{{ route('templates.designer', $tpl) }}" class="inline-flex min-h-11 items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-brand hover:bg-brand-deep text-white text-xs font-semibold transition-colors">Abrir diseñador <span aria-hidden="true">↗</span></a>
+                        <a href="{{ $templateUrl }}" class="inline-flex min-h-11 items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-brand hover:bg-brand-deep text-white text-xs font-semibold transition-colors">{{ $canManageTemplate ? 'Abrir diseñador' : 'Ver PDF de ejemplo' }} <span aria-hidden="true">↗</span></a>
                         <button type="button" @click="targetTemplateId = {{ $tpl->id }}; targetTemplateName = @js($tpl->name); newTemplateName = 'Copia de ' + targetTemplateName; duplicateModalOpen = true; $nextTick(() => $refs.duplicateName.focus());" class="min-h-11 px-3 py-2.5 rounded-xl border border-border hover:bg-surface-muted text-brand text-xs font-semibold transition-colors">Duplicar plantilla</button>
                     </div>
+                    @if($canManageTemplate)
                     <details class="border-t border-border pt-3">
                         <summary class="flex min-h-11 items-center justify-between gap-2 text-xs font-semibold text-muted cursor-pointer">Administrar plantilla <span aria-hidden="true">＋</span></summary>
                         <div class="flex flex-wrap items-center gap-2 pt-2">
@@ -104,7 +123,7 @@
                                 @csrf
                                 <button type="submit" class="min-h-11 px-3 py-2 text-xs font-medium text-ink rounded-lg hover:bg-surface-muted">{{ $tpl->is_active ? 'Desactivar' : 'Activar' }}</button>
                             </form>
-                            @if(!$tpl->is_default)
+                            @if(auth()->user()->isAdmin() && !$tpl->is_default)
                                 <form method="POST" action="{{ route('templates.set-default', $tpl) }}">
                                     @csrf
                                     <button type="submit" class="min-h-11 px-3 py-2 text-xs font-semibold text-brand rounded-lg hover:bg-brand-soft">Hacer predeterminada</button>
@@ -121,6 +140,9 @@
                             @endif
                         </div>
                     </details>
+                    @else
+                        <p class="text-xs text-muted">Plantilla institucional. Duplícala para personalizarla en tu carrera.</p>
+                    @endif
                 </div>
             </article>
         @empty
