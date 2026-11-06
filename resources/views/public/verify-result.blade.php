@@ -125,7 +125,7 @@
                 <div>
                     <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Beneficiario / Titular</span>
                     <p class="text-lg font-bold text-slate-900">{{ $certificate->beneficiary->full_title_name }}</p>
-                    <p class="text-xs text-slate-500 mt-0.5">{{ $certificate->beneficiary->formatted_document }}</p>
+                    <!--<p class="text-xs text-slate-500 mt-0.5">{{ $certificate->beneficiary->formatted_document }}</p>-->
                 </div>
 
                 @if(($settings['portal_verify_show_type_badge'] ?? '1') == '1')

@@ -85,7 +85,7 @@
 
                 <div>
                     <label for="certificate_code" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                        Código Único de Certificado
+                        Código o nombre del titular
                     </label>
                     <div class="relative rounded-2xl shadow-xs">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
@@ -98,7 +98,7 @@
                     </div>
                     <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-sky-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Encuentre este código al pie de su certificado impreso o bajo el código QR institucional.</span>
+                        <span>Ingrese el código del certificado o el nombre y/o apellido de su titular.</span>
                     </p>
                 </div>
 
@@ -110,6 +110,49 @@
                     </button>
                 </div>
             </form>
+
+            @if(isset($searchResults) && $searchResults->isNotEmpty())
+    <div class="mt-6 space-y-3">
+        <div>
+            <h3 class="text-sm font-bold text-slate-800">
+                Certificados encontrados
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">
+                Se encontraron {{ $searchResults->count() }} coincidencias.
+                Seleccione el certificado que desea verificar.
+            </p>
+        </div>
+
+        @foreach($searchResults as $result)
+            <a href="{{ route('verification.show', [
+                'token' => $result->verification_token,
+                'method' => 'manual_search'
+            ]) }}"
+               class="block p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl transition-colors">
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-slate-800">
+                            {{ $result->beneficiary?->full_name ?? 'Titular no disponible' }}
+                        </p>
+
+                        <p class="text-xs text-slate-500 mt-1">
+                            Código: {{ $result->certificate_code }}
+                        </p>
+                    </div>
+
+                    <span class="inline-flex items-center justify-center gap-2 text-xs font-bold text-brand">
+                        Ver certificado
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </span>
+                </div>
+            </a>
+        @endforeach
+    </div>
+@endif
 
             <!-- Tarjetas Informativas Inferiores (Configurables) -->
             @php

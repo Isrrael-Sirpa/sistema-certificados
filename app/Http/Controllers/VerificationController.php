@@ -25,17 +25,65 @@ class VerificationController extends Controller
     public function search(Request $request)
     {
         $request->validate([
-            'certificate_code' => ['required', 'string'],
+        'certificate_code' => ['required', 'string', 'max:255'],
+    ]);
+
+    $search = trim($request->input('certificate_code'));
+
+    // 1. Primero se intenta buscar por código de certificado
+    $code = strtoupper($search);
+
+    $certificate = Certificate::where('certificate_code', $code)->first();
+
+    if ($certificate) {
+        return redirect()->route('verification.show', [
+            'token' => $certificate->verification_token,
+            'method' => 'manual_code',
         ]);
+    }
 
-        $code = strtoupper(trim($request->input('certificate_code')));
-        $certificate = Certificate::where('certificate_code', $code)->first();
+    // 2. Si no es un código, se busca por nombre o apellido
+    $terms = preg_split('/\s+/', mb_strtolower($search), -1, PREG_SPLIT_NO_EMPTY);
 
-        if (! $certificate) {
-            return back()->withInput()->with('error', "No se encontró ningún certificado registrado con el código '{$code}'. Verifique que esté escrito exactamente como figura en el documento.");
+    $searchResults = Certificate::with([
+        'beneficiary',
+        'activity',
+        'certificateType',
+    ])
+    ->whereHas('beneficiary', function ($query) use ($terms) {
+        foreach ($terms as $term) {
+            $like = '%' . $term . '%';
+
+            $query->where(function ($subQuery) use ($like) {
+                $subQuery->whereRaw('LOWER(first_name) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$like]);
+            });
         }
+    })
+    ->limit(30)
+    ->get();
 
-        return redirect()->route('verification.show', ['token' => $certificate->verification_token, 'method' => 'manual_code']);
+    // 3. Si no hay coincidencias
+    if ($searchResults->isEmpty()) {
+        return back()
+            ->withInput()
+            ->with('error', "No se encontraron certificados para '{$search}'. Verifique los datos ingresados.");
+    }
+
+    // 4. Si solo existe un resultado, abrirlo directamente
+    if ($searchResults->count() === 1) {
+        $certificate = $searchResults->first();
+
+        return redirect()->route('verification.show', [
+            'token' => $certificate->verification_token,
+            'method' => 'manual_search',
+        ]);
+    }
+
+    // 5. Si hay varios resultados, mostrarlos para que el usuario elija
+    $settings = $this->getMergedSettings();
+
+    return view('public.verify-search', compact('settings', 'searchResults'));
     }
 
     /**
