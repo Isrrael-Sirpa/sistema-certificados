@@ -495,7 +495,7 @@
 
                                     @if($tp->has_score)
                                         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                            📊 Con Notas (Mín: {{ $tp->min_passing_score ?? 51 }})
+                                            📊 Con calificación
                                         </span>
                                     @else
                                         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/80 text-slate-700">
@@ -614,7 +614,7 @@
             <dl class="mt-3">
                 <div class="ft-summary-row"><dt>Tipos registrados</dt><dd>{{ $types->count() }}</dd></div>
                 <div class="ft-summary-row"><dt>Tipos activos</dt><dd>{{ $types->where('is_active', true)->count() }}</dd></div>
-                <div class="ft-summary-row"><dt>Calificación mínima base</dt><dd>51 puntos</dd></div>
+                <div class="ft-summary-row"><dt>Calificación mínima</dt><dd>Se define en cada actividad evaluada.</dd></div>
             </dl>
             <p class="ft-field-help mt-4">Puedes definir un mínimo superior por tipo. Los estudiantes reprobados permanecen en la nómina sin recibir un certificado.</p>
         </div>
@@ -722,7 +722,7 @@
                                    class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Nota Mínima de Aprobación</label>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Referencia para muestras de plantilla</label>
                             <input type="number" step="0.5" min="51" max="1000" name="min_passing_score" value="{{ old('min_passing_score', 51) }}" :disabled="!newHasScore"
                                    class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
@@ -848,7 +848,7 @@
                                    class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Nota Mínima de Aprobación</label>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Referencia para muestras de plantilla</label>
                             <input type="number" step="0.5" min="51" max="1000" name="min_passing_score" x-model="editingType.min_passing_score" :disabled="!editingType.has_score"
                                    class="w-full text-sm py-1.5 px-3 border border-slate-300 rounded-xl">
                         </div>

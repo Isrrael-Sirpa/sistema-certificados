@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Activity;
 use App\Models\Beneficiary;
-use App\Models\Certificate;
 use App\Models\CertificateType;
 use App\Models\OrganizationalUnit;
 use App\Models\Role;
@@ -22,8 +21,6 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Unidades Organizacionales (9 Carreras + Departamentos)
         $this->call(OrganizationalUnitSeeder::class);
-        $vicedecanatoUnit = OrganizationalUnit::where('code', 'vicedecanato')->first();
-        $computoUnit = OrganizationalUnit::where('code', 'computo')->first();
 
         // 2. Roles del Sistema
         $adminRole = Role::firstOrCreate(
@@ -34,7 +31,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $jefeCarreraRole = Role::firstOrCreate(
+        Role::firstOrCreate(
             ['name' => Role::JEFE_CARRERA],
             [
                 'display_name' => 'Jefe de Carrera / Departamento',
@@ -42,7 +39,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $secretariaRole = Role::firstOrCreate(
+        Role::firstOrCreate(
             ['name' => Role::SECRETARIA],
             [
                 'display_name' => 'Secretaria de Carrera / Departamento',
@@ -58,8 +55,36 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 3. Usuarios Iniciales
-        $adminUser = User::updateOrCreate(
+        if (app()->environment(['local', 'testing'])) {
+            $this->seedDemoAccounts($adminRole, $operatorRole);
+        }
+
+        // 3. Tipos de Certificado
+        $certificateTypes = [
+            ['code' => 'aprobacion', 'name' => 'Certificado de Aprobación', 'description' => 'Para participantes que aprobaron las evaluaciones académicas.', 'has_score' => true, 'validity_mode' => CertificateType::VALIDITY_YEARS, 'default_validity_years' => 3, 'min_passing_score' => CertificateType::MIN_PASSING_SCORE],
+            ['code' => 'asistencia', 'name' => 'Certificado de Asistencia', 'description' => 'Para participantes con cumplimiento de asistencia regular.'],
+            ['code' => 'disertante', 'name' => 'Certificado de Disertante / Ponente', 'description' => 'Para expositores, docentes invitados o conferencistas.'],
+            ['code' => 'organizador', 'name' => 'Certificado de Organizador', 'description' => 'Para personal de comisión organizadora o soporte técnico.'],
+            ['code' => 'reconocimiento', 'name' => 'Certificado de Reconocimiento / Honorífico', 'description' => 'Por méritos destacados, trayectoria o colaboración especial.'],
+        ];
+
+        foreach ($certificateTypes as $type) {
+            CertificateType::firstOrCreate(['code' => $type['code']], $type);
+        }
+
+        $this->seedInstitutionalDefaults();
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->seedDemoRecords();
+        }
+    }
+
+    private function seedDemoAccounts(Role $adminRole, Role $operatorRole): void
+    {
+        $vicedecanatoUnit = OrganizationalUnit::where('code', 'vicedecanato')->firstOrFail();
+        $computoUnit = OrganizationalUnit::where('code', 'computo')->firstOrFail();
+
+        User::firstOrCreate(
             ['email' => 'admin@universidad.edu'],
             [
                 'name' => 'Dpto. Cómputo Administrador',
@@ -71,7 +96,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $operatorUser = User::updateOrCreate(
+        User::firstOrCreate(
             ['email' => 'operador@universidad.edu'],
             [
                 'name' => 'Personal Vicedecanato',
@@ -83,25 +108,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Asignar Vicedecanato como unidad por defecto a datos preexistentes sin unidad
-        if ($vicedecanatoUnit) {
-            Activity::whereNull('organizational_unit_id')->update(['organizational_unit_id' => $vicedecanatoUnit->id]);
-            Certificate::whereNull('organizational_unit_id')->update(['organizational_unit_id' => $vicedecanatoUnit->id]);
-        }
+    }
 
-        // 3. Tipos de Certificado
-        $certificateTypes = [
-            ['code' => 'aprobacion', 'name' => 'Certificado de Aprobación', 'description' => 'Para participantes que aprobaron las evaluaciones académicas.'],
-            ['code' => 'asistencia', 'name' => 'Certificado de Asistencia', 'description' => 'Para participantes con cumplimiento de asistencia regular.'],
-            ['code' => 'disertante', 'name' => 'Certificado de Disertante / Ponente', 'description' => 'Para expositores, docentes invitados o conferencistas.'],
-            ['code' => 'organizador', 'name' => 'Certificado de Organizador', 'description' => 'Para personal de comisión organizadora o soporte técnico.'],
-            ['code' => 'reconocimiento', 'name' => 'Certificado de Reconocimiento / Honorífico', 'description' => 'Por méritos destacados, trayectoria o colaboración especial.'],
-        ];
-
-        foreach ($certificateTypes as $type) {
-            CertificateType::firstOrCreate(['code' => $type['code']], $type);
-        }
-
+    private function seedInstitutionalDefaults(): void
+    {
         // 4. Recursos Institucionales Oficiales y Plantillas Profesionales
         $this->call([
             InstitutionalAssetsSeeder::class,
@@ -128,8 +138,15 @@ class DatabaseSeeder extends Seeder
             Setting::updateOrCreate(['key' => $stg['key']], $stg);
         }
 
-        // 6. Beneficiarios de Prueba
-        $beneficiary1 = Beneficiary::firstOrCreate(
+    }
+
+    private function seedDemoRecords(): void
+    {
+        $vicedecanato = OrganizationalUnit::where('code', 'vicedecanato')->firstOrFail();
+        $quimica = OrganizationalUnit::where('code', 'quimica_industrial')->firstOrFail();
+        $mecanica = OrganizationalUnit::where('code', 'mecanica_industrial')->firstOrFail();
+
+        Beneficiary::firstOrCreate(
             ['document_number' => '8493021'],
             [
                 'document_type' => 'CI',
@@ -138,11 +155,12 @@ class DatabaseSeeder extends Seeder
                 'academic_title' => 'Univ.',
                 'email' => 'rodrigo.quispe@estudiante.edu',
                 'phone' => '+591 71234567',
-                'institution_or_department' => 'Carrera de Informática',
+                'institution_or_department' => $quimica->name,
+                'primary_organizational_unit_id' => $quimica->id,
             ]
         );
 
-        $beneficiary2 = Beneficiary::firstOrCreate(
+        Beneficiary::firstOrCreate(
             ['document_number' => '6192834'],
             [
                 'document_type' => 'CI',
@@ -151,12 +169,13 @@ class DatabaseSeeder extends Seeder
                 'academic_title' => 'Lic.',
                 'email' => 'maria.flores@profesional.edu',
                 'phone' => '+591 79876543',
-                'institution_or_department' => 'Carrera de Estadística',
+                'institution_or_department' => $mecanica->name,
+                'primary_organizational_unit_id' => $mecanica->id,
             ]
         );
 
         // 7. Actividades de Prueba
-        $activity1 = Activity::firstOrCreate(
+        Activity::firstOrCreate(
             ['name' => 'Seminario Internacional de Inteligencia Artificial y Ciencia de Datos'],
             [
                 'description' => 'Capacitación intensiva sobre arquitecturas de Machine Learning, Deep Learning y despliegue de modelos en la nube.',
@@ -168,10 +187,12 @@ class DatabaseSeeder extends Seeder
                 'organizer' => 'Vicedecanato en coordinación con el Instituto de Investigaciones',
                 'responsible_authority' => 'Dr. Carlos Mendoza Fernández - Vicedecano',
                 'status' => 'finalizada',
+                'organizational_unit_id' => $vicedecanato->id,
+                'target_audience_mode' => Activity::AUDIENCE_ALL_FACULTY,
             ]
         );
 
-        $activity2 = Activity::firstOrCreate(
+        Activity::firstOrCreate(
             ['name' => 'Taller de Ciberseguridad y Protección de Datos Institucionales'],
             [
                 'description' => 'Buenas prácticas de seguridad informática, mitigación de vulnerabilidades y normativas universitarias.',
@@ -183,6 +204,8 @@ class DatabaseSeeder extends Seeder
                 'organizer' => 'Vicedecanato',
                 'responsible_authority' => 'Dr. Carlos Mendoza Fernández - Vicedecano',
                 'status' => 'activa',
+                'organizational_unit_id' => $vicedecanato->id,
+                'target_audience_mode' => Activity::AUDIENCE_ALL_FACULTY,
             ]
         );
     }

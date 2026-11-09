@@ -86,20 +86,23 @@
             <!-- Placa Oficial de Calificación Académica (Si Aplica y está activado en Configuración) -->
             @if($certificate->hasScore() && ($settings['portal_verify_show_score_badge'] ?? '1') == '1')
                 @php
-                    $minPassing = (float) ($certificate->certificateType?->min_passing_score ?? 51.0);
-                    $isPassed = $certificate->score === null || (float) $certificate->score >= $minPassing;
+                    $snapshot = $certificate->snapshot_data ?? [];
+                    $minPassing = array_key_exists('min_passing_score', $snapshot)
+                        ? $snapshot['min_passing_score']
+                        : ($certificate->certificateType?->min_passing_score ?? \App\Models\CertificateType::MIN_PASSING_SCORE);
+                    $isInsufficient = $minPassing !== null && $certificate->score !== null && (float) $certificate->score < $minPassing;
                 @endphp
-                <div class="p-5 sm:p-6 {{ $isPassed ? 'bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border-blue-200/80' : 'bg-gradient-to-r from-amber-50/90 via-red-50/70 to-slate-50 border-red-200/80' }} rounded-2xl border-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
+                <div class="p-5 sm:p-6 {{ $isInsufficient ? 'bg-gradient-to-r from-amber-50/90 via-red-50/70 to-slate-50 border-red-200/80' : 'bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 border-blue-200/80' }} rounded-2xl border-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-2xl {{ $isPassed ? 'bg-brand' : 'bg-amber-600' }} text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
-                            {{ $isPassed ? '🏆' : '⚠️' }}
+                        <div class="w-12 h-12 rounded-2xl {{ $isInsufficient ? 'bg-amber-600' : 'bg-brand' }} text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+                            {{ $isInsufficient ? '⚠️' : '🏆' }}
                         </div>
                         <div>
-                            <span class="text-[11px] font-extrabold uppercase tracking-wider {{ $isPassed ? 'text-blue-900' : 'text-amber-900' }} block">
-                                {{ $isPassed ? 'Calificación Académica Acreditada' : 'Calificación Registrada (Insuficiente)' }}
+                            <span class="text-[11px] font-extrabold uppercase tracking-wider {{ $isInsufficient ? 'text-amber-900' : 'text-blue-900' }} block">
+                                {{ $isInsufficient ? 'Calificación Registrada (Insuficiente)' : 'Calificación Académica Acreditada' }}
                             </span>
                             <div class="flex items-baseline gap-2 mt-0.5">
-                                <span class="text-2xl font-black {{ $isPassed ? 'text-brand' : 'text-amber-800' }} tracking-tight">{{ $certificate->formatted_score }}</span>
+                                <span class="text-2xl font-black {{ $isInsufficient ? 'text-amber-800' : 'text-brand' }} tracking-tight">{{ $certificate->formatted_score }}</span>
                                 @if($certificate->score !== null && !empty($certificate->certificateType?->score_scale))
                                     <span class="text-xs text-slate-500 font-medium">({{ $certificate->certificateType->score_scale }})</span>
                                 @endif
@@ -107,13 +110,13 @@
                         </div>
                     </div>
                     <div>
-                        @if($isPassed)
-                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                ✓ Evaluación Oficial Aprobada
-                            </span>
-                        @else
+                        @if($isInsufficient)
                             <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                                 ⚠️ Nota Menor a la Mínima ({{ $minPassing }} pts)
+                            </span>
+                        @elseif($minPassing !== null)
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                ✓ Evaluación Oficial Aprobada
                             </span>
                         @endif
                     </div>

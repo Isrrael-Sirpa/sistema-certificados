@@ -109,7 +109,7 @@ class CertificateTemplateDesignerTest extends TestCase
         $template = CertificateTemplate::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $service->issueCertificate([
@@ -152,7 +152,7 @@ class CertificateTemplateDesignerTest extends TestCase
     {
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $template = CertificateTemplate::first();
 
         $response = $this->actingAs($this->adminUser)->post(route('certificates.preview-draft'), [
@@ -180,7 +180,7 @@ class CertificateTemplateDesignerTest extends TestCase
     {
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $template = CertificateTemplate::first();
         $logo = InstitutionalAsset::where('type', InstitutionalAsset::TYPE_LOGO)->first();
         $watermark = InstitutionalAsset::where('type', InstitutionalAsset::TYPE_WATERMARK)->first();
@@ -407,7 +407,7 @@ class CertificateTemplateDesignerTest extends TestCase
         $issued = app(CertificateService::class)->issueCertificate([
             'beneficiary_id' => Beneficiary::first()->id,
             'activity_id' => Activity::first()->id,
-            'certificate_type_id' => CertificateType::first()->id,
+            'certificate_type_id' => CertificateType::where('code', 'asistencia')->firstOrFail()->id,
             'certificate_template_id' => $template->id,
         ], $this->adminUser);
         $snapshot = $issued->snapshot_data;

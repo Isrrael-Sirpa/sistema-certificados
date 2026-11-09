@@ -48,7 +48,7 @@ class PendingSystemFixesTest extends TestCase
         $this->admin = User::factory()->create(['role_id' => $adminRole->id]);
         $this->type = CertificateType::create(['name' => 'Aprobación', 'code' => 'APROB', 'slug' => 'aprobacion', 'has_score' => true, 'min_passing_score' => 75, 'validity_mode' => 'permanent', 'is_active' => true]);
         $this->template = CertificateTemplate::create(['name' => 'Plantilla Institucional', 'slug' => 'institucional', 'category' => 'institucional', 'orientation' => 'landscape', 'current_version' => 1, 'is_active' => true, 'is_default' => true]);
-        $this->activity = Activity::create(['name' => 'Evento de Química', 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $this->ownUnit->id, 'certificate_type_id' => $this->type->id, 'target_audience_mode' => Activity::AUDIENCE_OWN_UNIT]);
+        $this->activity = Activity::create(['name' => 'Evento de Química', 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $this->ownUnit->id, 'certificate_type_id' => $this->type->id, 'min_passing_score' => 75, 'target_audience_mode' => Activity::AUDIENCE_OWN_UNIT]);
     }
 
     public function test_general_import_assigns_known_career_and_keeps_scoped_records_visible(): void
@@ -192,7 +192,7 @@ class PendingSystemFixesTest extends TestCase
     private function issue(string $document, ?OrganizationalUnit $unit = null): Certificate
     {
         $unit ??= $this->ownUnit;
-        $activity = $unit->is($this->ownUnit) ? $this->activity : Activity::create(['name' => 'Otro evento', 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'organizational_unit_id' => $unit->id, 'certificate_type_id' => $this->type->id, 'status' => 'activa']);
+        $activity = $unit->is($this->ownUnit) ? $this->activity : Activity::create(['name' => 'Otro evento', 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'organizational_unit_id' => $unit->id, 'certificate_type_id' => $this->type->id, 'min_passing_score' => 75, 'status' => 'activa']);
 
         return app(CertificateService::class)->issueCertificate(['activity_id' => $activity->id, 'beneficiary_id' => $this->student($document, $unit)->id, 'certificate_type_id' => $this->type->id, 'certificate_template_id' => $this->template->id, 'issue_date' => now()->toDateString(), 'score' => 85], $this->admin);
 

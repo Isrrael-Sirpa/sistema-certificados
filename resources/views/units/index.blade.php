@@ -77,7 +77,7 @@
 
     <!-- Filtros de Búsqueda -->
     <div class="bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('carreras-departamentos.index') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <form method="GET" action="{{ route('carreras-departamentos.index') }}" class="ft-form-filter grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div class="sm:col-span-2">
                 <input type="text" name="search" value="{{ request('search') }}"
                        placeholder="Buscar por nombre, sigla o responsable..."
@@ -210,7 +210,7 @@
     </div>
 
     <!-- Modal: Nueva Carrera o Departamento -->
-    <div x-show="createModalOpen" style="display: none;"
+    <div x-show="createModalOpen" role="dialog" aria-modal="true" aria-labelledby="create-unit-title" @keydown.escape.window="createModalOpen = false" style="display: none;"
          class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -219,17 +219,17 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
 
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" @click.away="createModalOpen = false">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-brand">Registrar Nueva Unidad Organizacional</h3>
-                <button type="button" @click="createModalOpen = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+        <div class="ft-form-dialog w-full max-w-xl space-y-5 p-4 sm:p-6" @click.away="createModalOpen = false">
+            <div class="ft-dialog-heading">
+                <h3 id="create-unit-title">Registrar Nueva Unidad Organizacional</h3>
+                <button type="button" @click="createModalOpen = false" class="ft-dialog-close" aria-label="Cerrar">✕</button>
             </div>
 
             <form method="POST" action="{{ route('carreras-departamentos.store') }}" class="space-y-4 text-xs">
                 @csrf
 
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-2">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="sm:col-span-2">
                         <label class="block font-semibold text-slate-700 mb-1">Nombre Oficial de la Carrera / Departamento *</label>
                         <input type="text" name="name" required placeholder="Ej: Carrera de Química Industrial"
                                class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand/20">
@@ -241,7 +241,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Tipo de Unidad *</label>
                         <select name="type" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand/20">
@@ -258,7 +258,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Cargo de la Autoridad</label>
                         <input type="text" name="responsible_title" placeholder="Ej: Director de Carrera"
@@ -282,16 +282,16 @@
                     <label for="create_is_active" class="text-xs text-slate-700 font-medium">Activar inmediatamente para la emisión de certificados</label>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button type="button" @click="createModalOpen = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-brand hover:bg-brand-deep text-white font-semibold rounded-xl">Guardar Unidad</button>
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="createModalOpen = false" class="ft-form-secondary">Cancelar</button>
+                    <button type="submit" class="ft-form-primary">Guardar Unidad</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Modal: Editar Carrera o Departamento -->
-    <div x-show="editModalOpen" style="display: none;"
+    <div x-show="editModalOpen" role="dialog" aria-modal="true" aria-labelledby="edit-unit-title" @keydown.escape.window="editModalOpen = false" style="display: none;"
          class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
@@ -300,18 +300,18 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
 
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4" @click.away="editModalOpen = false">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-brand">Editar Carrera o Departamento</h3>
-                <button type="button" @click="editModalOpen = false" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+        <div class="ft-form-dialog w-full max-w-xl space-y-5 p-4 sm:p-6" @click.away="editModalOpen = false">
+            <div class="ft-dialog-heading">
+                <h3 id="edit-unit-title">Editar Carrera o Departamento</h3>
+                <button type="button" @click="editModalOpen = false" class="ft-dialog-close" aria-label="Cerrar">✕</button>
             </div>
 
             <form method="POST" :action="'{{ url('carreras-departamentos') }}/' + editUnit.id" class="space-y-4 text-xs">
                 @csrf
                 @method('PUT')
 
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-2">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="sm:col-span-2">
                         <label class="block font-semibold text-slate-700 mb-1">Nombre Oficial *</label>
                         <input type="text" name="name" x-model="editUnit.name" required
                                class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand/20">
@@ -323,7 +323,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Tipo de Unidad *</label>
                         <select name="type" x-model="editUnit.type" required class="w-full px-3 py-2 border border-slate-200 rounded-xl">
@@ -340,7 +340,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Cargo de la Autoridad</label>
                         <input type="text" name="responsible_title" x-model="editUnit.responsible_title"
@@ -359,9 +359,9 @@
                               class="w-full px-3 py-2 border border-slate-200 rounded-xl"></textarea>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button type="button" @click="editModalOpen = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-brand hover:bg-brand-deep text-white font-semibold rounded-xl">Actualizar Datos</button>
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="editModalOpen = false" class="ft-form-secondary">Cancelar</button>
+                    <button type="submit" class="ft-form-primary">Actualizar Datos</button>
                 </div>
             </form>
         </div>

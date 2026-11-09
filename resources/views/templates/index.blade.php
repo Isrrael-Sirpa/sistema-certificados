@@ -17,7 +17,7 @@
     </section>
 
     <section class="ft-panel bg-white p-5 border border-border" aria-label="Buscar y filtrar plantillas">
-        <form method="GET" action="{{ route('templates.index') }}" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-end gap-4">
+        <form method="GET" action="{{ route('templates.index') }}" class="ft-form-filter grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 items-end gap-4">
             <div>
                 <label for="template-search" class="block mb-2 text-xs font-semibold text-ink">Buscar plantilla</label>
                 <input id="template-search" type="search" name="search" value="{{ request('search') }}" placeholder="Nombre o descripción" class="w-full min-w-0 px-3 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand/15">

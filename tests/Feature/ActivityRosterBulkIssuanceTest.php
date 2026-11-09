@@ -36,7 +36,7 @@ class ActivityRosterBulkIssuanceTest extends TestCase
             'academic_hours' => 20,
             'status' => 'activa',
         ]);
-        $this->certType = CertificateType::first();
+        $this->certType = CertificateType::where('code', 'asistencia')->firstOrFail();
     }
 
     public function test_activity_roster_preview_identifies_new_existing_and_already_certified_participants(): void

@@ -28,6 +28,19 @@
     .ft-form-primary { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 22px; border-radius: 12px; background: var(--color-action); color: white; font-size: 13px; font-weight: 700; }
     .ft-form-primary:hover { background: var(--color-action-hover); }
     .ft-form-primary:disabled { opacity: .55; cursor: wait; }
+    .ft-form-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-border); border-radius: 12px; background: white; color: var(--color-brand); font-size: 13px; font-weight: 650; }
+    .ft-form-secondary:hover { background: var(--color-brand-soft); }
+    .ft-form-filter { padding: 14px; border-radius: 14px; background: linear-gradient(145deg, var(--color-brand-soft), white 78%); }
+    .ft-form-filter :where(input, select, button[type='submit']) { min-height: 44px; font-size: 13px; }
+    .ft-form-filter :where(label) { color: var(--color-brand); }
+    .ft-form-dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--color-border); border-radius: 22px; background: white; box-shadow: 0 24px 64px rgb(11 6 63 / 24%); }
+    .ft-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 16px; border: 1px solid var(--color-border); border-radius: 14px; background: linear-gradient(135deg, var(--color-brand-soft), white); }
+    .ft-dialog-heading :where(h3) { color: var(--color-brand); font-size: 16px; font-weight: 750; }
+    .ft-dialog-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; border: 1px solid var(--color-border); border-radius: 11px; background: white; color: var(--color-brand); font-size: 20px; }
+    .ft-dialog-close:hover { background: var(--color-brand-soft); }
+    .ft-form-dialog :where(form label) { font-size: 13px; line-height: 1.35; }
+    .ft-form-dialog :where(input:not([type='hidden'], [type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']), select, button[type='submit']) { min-height: 44px; font-size: 14px; }
+    .ft-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--color-border); }
     .ft-template-choice { position: relative; display: block; padding: 14px; border: 1px solid var(--color-border); border-radius: 16px; background: white; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
     .ft-template-choice:hover { border-color: var(--color-brand); }
     .ft-template-choice.is-selected { border-color: var(--color-brand); box-shadow: 0 0 0 2px rgb(17 11 81 / 12%); background: #faf9fd; }
@@ -48,6 +61,7 @@
         .ft-form-section { padding: 20px 16px; }
         .ft-form-actions { padding: 16px; }
         .ft-form-primary { width: 100%; }
+        .ft-dialog-actions > :where(button, a) { flex: 1 1 auto; }
         .ft-settings-tabs { grid-template-columns: 1fr; }
         .ft-settings-tabs > button { min-height: 52px; }
         .ft-form-aside { position: static; }

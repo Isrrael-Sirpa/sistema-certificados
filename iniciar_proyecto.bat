@@ -1,80 +1,84 @@
 @echo off
-title Sistema de Certificados UMSA - Lanzador Oficial
-color 0F
-cls
+setlocal
+cd /d "%~dp0"
+if errorlevel 1 exit /b 1
+title Certificacion Digital FT-UMSA
 
-echo ===============================================================================
-echo        SISTEMA DE CERTIFICADOS ACADEMICOS - VICEDECANATO FCPN UMSA
-echo ===============================================================================
+:MENU
+cls
+echo ================================================================
+echo             CERTIFICACION DIGITAL - FT UMSA
+echo ================================================================
 echo.
-echo  Seleccione como desea iniciar el proyecto:
+echo  Abre dos terminales en la carpeta del proyecto.
+echo  Usa la opcion 1 en una y la opcion 2 en la otra.
 echo.
-echo  [1] Modo Autonomo (Recomendado para Laragon)
-echo      - Elimina archivos residuales de Vite
-echo      - Asegura que los estilos carguen al 100%% con solo php artisan serve
-echo.
-echo  [2] Modo Desarrollo (Recarga rapida en vivo)
-echo      - Inicia php artisan serve (puerto 8000)
-echo      - Inicia npm run dev (Vite en paralelo en una nueva ventana)
-echo.
-echo  [3] Recompilar estilos de produccion (npm run build)
-echo.
+echo  [1] Backend Laravel - puerto 8000
+echo  [2] Frontend Vite - puerto 5173
+echo  [3] Compilar frontend para el servidor
 echo  [4] Salir
 echo.
-echo ===============================================================================
-
-set /p opcion=" Ingrese su opcion [1-4]: "
-
-if "%opcion%"=="1" goto MODO_AUTONOMO
-if "%opcion%"=="2" goto MODO_DEV
-if "%opcion%"=="3" goto COMPILAR
-if "%opcion%"=="4" goto FIN
-
-:MODO_AUTONOMO
-cls
-echo ===============================================================================
-echo  Iniciando en Modo Autonomo...
-echo ===============================================================================
-if exist public\hot (
-    echo  Limpiando archivo temporal public\hot...
-    del /f /q public\hot
-)
-echo.
-echo  Iniciando servidor Laravel en http://127.0.0.1:8000 ...
-echo  Presione Ctrl + C para detener el servidor.
-echo.
-php artisan serve --port=8000
+choice /c 1234 /n /m "Selecciona una opcion [1-4]: "
+if errorlevel 4 goto FIN
+if errorlevel 3 goto COMPILAR
+if errorlevel 2 goto FRONTEND
+if errorlevel 1 goto BACKEND
 goto FIN
 
-:MODO_DEV
-cls
-echo ===============================================================================
-echo  Iniciando en Modo Desarrollo (Laravel + Vite)...
-echo ===============================================================================
+:BACKEND
+if not exist vendor\autoload.php (
+    echo Instala las dependencias con composer install.
+    goto ERROR
+)
+if not exist .env (
+    echo Configura .env y ejecuta las migraciones segun el README.
+    goto ERROR
+)
 echo.
-echo  1. Abriendo Vite dev server (npm run dev) en ventana secundaria...
-start "Vite Dev Server (Tailwind)" cmd /k "npm run dev"
+echo Backend Laravel en http://127.0.0.1:8000
+echo Inicia el frontend desde otra terminal con la opcion 2.
+echo Presiona Ctrl+C para detener este proceso.
+php artisan serve --host=127.0.0.1 --port=8000 --tries=1
+if errorlevel 1 goto ERROR
+goto FIN
+
+:FRONTEND
+if not exist node_modules\vite\bin\vite.js (
+    echo Instala las dependencias con npm ci.
+    goto ERROR
+)
 echo.
-echo  2. Iniciando servidor Laravel en http://127.0.0.1:8000 ...
-echo  Presione Ctrl + C para detener el servidor.
-echo.
-php artisan serve --port=8000
+echo Frontend Vite en http://127.0.0.1:5173
+echo Abre la aplicacion en http://127.0.0.1:8000
+echo Presiona Ctrl+C para detener este proceso.
+call npm.cmd run dev -- --host 127.0.0.1 --port 5173 --strictPort
+if errorlevel 1 goto ERROR
 goto FIN
 
 :COMPILAR
-cls
-echo ===============================================================================
-echo  Compilando estilos y componentes (npm run build)...
-echo ===============================================================================
-if exist public\hot (
-    del /f /q public\hot
+if not exist node_modules\vite\bin\vite.js (
+    echo Instala las dependencias con npm ci.
+    goto ERROR
 )
-call npm run build
+if exist public\hot (
+    echo Deten Vite antes de compilar. Revisa public\hot segun el README.
+    goto ERROR
+)
+call npm.cmd run build
+if errorlevel 1 goto ERROR
 echo.
-echo  Compilacion exitosa. Ahora puede usar la opcion [1] o Laragon directamente.
-echo.
+echo Frontend compilado en public\build.
+echo Sigue la seccion de instalacion en servidor del README.
 pause
 goto FIN
 
+:ERROR
+echo.
+echo El proceso no finalizo correctamente. Revisa el mensaje anterior.
+pause
+endlocal
+exit /b 1
+
 :FIN
-exit
+endlocal
+exit /b 0

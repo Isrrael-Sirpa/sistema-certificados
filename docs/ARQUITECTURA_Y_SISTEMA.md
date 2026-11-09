@@ -14,7 +14,7 @@
 4. [Capa de Servicios y Lógica de Negocio](#4-capa-de-servicios-y-lógica-de-negocio)
 5. [Arquitectura Multirrol y Multitenancy Facultativo](#5-arquitectura-multirrol-y-multitenancy-facultativo)
 6. [Motor de Resoluciones Facultativas y Reglas de Audiencia](#6-motor-de-resoluciones-facultativas-y-reglas-de-audiencia)
-7. [Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)](#7-regla-ética-de-calificaciones-y-aprobación-obligatoria--51-pts)
+7. [Nota de aprobación por actividad](#7-nota-de-aprobación-por-actividad)
 8. [Padrón Único y Portafolio Académico 360° del Estudiante](#8-padrón-único-y-portafolio-académico-360-del-estudiante)
 9. [Motor de Diseño, Variables Dinámicas y Plantillas](#9-motor-de-diseño-variables-dinámicas-y-plantillas)
 10. [Seguridad, Criptografía e Inmutabilidad Documental](#10-seguridad-criptografía-e-inmutabilidad-documental)
@@ -52,7 +52,7 @@ El sistema está construido bajo una arquitectura desacoplada en capas basada en
 │                        CAPA DE SERVICIOS (SERVICES)                     │
 │  - CertificateService: Emisión criptográfica, vigencias y hashes SHA-256│
 │  - BeneficiaryImportService: Nóminas Excel/CSV, detección de aprobados, │
-│    exclusión de reprobados (<51 pts) y validación de resoluciones       │
+│    mínimo por actividad y validación de resoluciones                   │
 │  - TemplateEngineService: Esquemas JSON, Variables dinámicas, Firmas    │
 │  - CertificateSnapshotService: Congelación documental inmutable         │
 │  - CertificatePdfService: Compilación DomPDF A4 Horizontal/Vertical     │
@@ -136,7 +136,7 @@ El sistema centraliza su lógica en servicios especializados ubicados en `app/Se
 2. **`BeneficiaryImportService`**:
    - Procesa archivos `.xlsx` y `.csv` de beneficiarios o nóminas de eventos.
    - Realiza mapeo heurístico inteligente de columnas (`ci`, `nombres`, `apellidos`, `nota`, `carrera`, etc.).
-   - Aplica la regla ética de notas: detecta reprobados (< 51 pts) o estudiantes sin calificación, excluyéndolos de la emisión.
+   - Excluye de la emisión con calificación a quienes quedan por debajo del mínimo de la actividad o carecen de nota.
    - Comprueba la elegibilidad de carrera según la resolución del evento, marcando a los no permitidos como `observados` (`career_eligible = false`).
 
 3. **`TemplateEngineService`**:
@@ -239,13 +239,13 @@ Si se intenta inscribir o importar a un estudiante de una carrera no habilitada 
 
 ---
 
-## 7. Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)
+## 7. Nota de aprobación por actividad
 
 Para los tipos de certificado que conllevan evaluación académica (`has_score = true`, ej.: *Certificado de Aprobación*):
-1. La nota mínima reglamentaria es de **51.0 puntos** (o la configurada en `min_passing_score`).
+1. El organizador define el mínimo de cada evento evaluado. La aplicación lo guarda en `activities.min_passing_score` y registra el valor aplicado en los certificados nuevos.
 2. En la importación masiva de nóminas o inscripción de participantes:
-   - Calificación $\ge 51.0$ $\rightarrow$ Clasificado como `inscrito` o `aprobado` (Habilitado para certificado).
-   - Calificación $< 51.0$ $\rightarrow$ Clasificado como `reprobado` (No se le emite certificado).
+   - Una calificación igual o superior al mínimo permite emitir si se cumplen los demás requisitos.
+   - Una calificación inferior al mínimo deja al participante como `reprobado` y bloquea la emisión.
    - Sin calificación registrada $\rightarrow$ Clasificado como `observado` (No se le emite certificado).
 3. Tanto en la emisión por nómina (`issueToRoster`) como en lote (`batchIssue`), el sistema **filtra y omite automáticamente a estudiantes reprobados y sin nota**, emitiendo un reporte con el desglose exacto de certificados emitidos y estudiantes omitidos.
 
@@ -355,7 +355,7 @@ sistema-certificado/
 ├── routes/web.php                                 # Definición de rutas protegidas por middleware
 └── tests/Feature/
     ├── MultiCareerTenancyAndRolesTest.php         # Suite de pruebas multitenant y roles
-    └── MultiTypeActivityAndScoreCertificateTest.php # Suite de certificados y notas >= 51 pts
+    └── MultiTypeActivityAndScoreCertificateTest.php # Suite de certificados y notas por actividad
 ```
 
 ---
@@ -376,7 +376,7 @@ El sistema cuenta con una exhaustiva batería de pruebas de integración con PHP
 - [`MultiTypeActivityAndScoreCertificateTest`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/MultiTypeActivityAndScoreCertificateTest.php):
   - Creación de actividades con tipo de certificado y esquema de vigencia (*permanente* vs *temporal*).
   - Detección de notas en nóminas Excel/CSV.
-  - Exclusión automática de reprobados (< 51 pts) y participantes no calificados.
+  - Exclusión de participantes con nota inferior al mínimo del evento o sin nota registrada.
   - Inyección de notas individuales (`{{certificado.puntaje}}`, `{{certificado.mencion}}`) en el PDF.
   - Comprobación pública de certificados con puntaje en el portal QR.
   - **Resultado:** **16 pruebas superadas (168 aserciones, 100% éxito)**.
@@ -387,7 +387,7 @@ El sistema cuenta con una exhaustiva batería de pruebas de integración con PHP
 
 ### 13.1 Requisitos Previos
 1. **Laragon** con PHP 8.3 o superior y MySQL 8.0+.
-2. Node.js (v18+) instalado en el sistema operativo.
+2. Node.js 22.12 o posterior instalado en el sistema operativo.
 
 ### 13.2 Puesta en Marcha
 
@@ -402,10 +402,11 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
-# 4. Ejecutar las migraciones y sembrar las 9 carreras y usuarios:
-php artisan migrate:fresh --seed
+# 4. Ejecutar las migraciones y cargar los datos iniciales:
+php artisan migrate --seed
 
 # 5. Compilar los assets del frontend con Vite:
+npm.cmd ci
 npm.cmd run build
 
 # 6. Crear el enlace simbólico del almacenamiento público:

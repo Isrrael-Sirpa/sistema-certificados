@@ -99,10 +99,74 @@ class FormExperienceTest extends TestCase
     public function test_activity_saves_unit_template_and_disabled_score_visibility(): void
     {
         $this->actingAs($this->makeUser(Role::JEFE_CARRERA))->get(route('activities.create'))->assertOk()->assertSee('Química Privada')->assertDontSee('Mecánica Privada');
-        $this->post(route('activities.store'), ['name' => 'Actividad de prueba', 'activity_type' => 'Taller', 'start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'academic_hours' => 20, 'status' => 'activa', 'certificate_type_id' => $this->type->id, 'certificate_template_id' => $this->ownTemplate->id, 'validity_mode' => 'temporal', 'validity_years' => 3, 'show_score_on_pdf' => '0', 'show_score_on_portal' => '0', 'organizational_unit_id' => $this->otherUnit->id])->assertSessionHas('success');
+        $this->post(route('activities.store'), ['name' => 'Actividad de prueba', 'requires_payment' => '0', 'activity_type' => 'Taller', 'start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'academic_hours' => 20, 'status' => 'activa', 'certificate_type_id' => $this->type->id, 'min_passing_score' => 65, 'certificate_template_id' => $this->ownTemplate->id, 'validity_mode' => 'temporal', 'validity_years' => 3, 'show_score_on_pdf' => '0', 'show_score_on_portal' => '0', 'organizational_unit_id' => $this->otherUnit->id])->assertSessionHas('success');
         $activity = Activity::where('name', 'Actividad de prueba')->firstOrFail();
         $this->assertSame($this->unit->id, $activity->organizational_unit_id);
         $this->assertDatabaseHas('activity_certificate_configs', ['activity_id' => $activity->id, 'certificate_template_id' => $this->ownTemplate->id, 'show_score_on_pdf' => false, 'show_score_on_portal' => false]);
+    }
+
+    public function test_administrator_can_search_organizers_and_change_unit_in_both_forms(): void
+    {
+        $department = OrganizationalUnit::create(['name' => 'Cómputo y Sistemas', 'code' => 'computo_sistemas', 'type' => 'departamento']);
+        $inactive = OrganizationalUnit::create(['name' => 'Unidad de archivo', 'code' => 'ARCHIVO', 'type' => 'administrativo', 'is_active' => false]);
+        $this->actingAs($this->makeUser(Role::ADMIN));
+
+        $page = $this->get(route('activities.create'))->assertOk()
+            ->assertSee('data-organizer-picker', false)->assertSee('Carreras')->assertSee('Departamentos')
+            ->assertSee('Cómputo y Sistemas')->assertDontSee('[computo_sistemas]')->assertDontSee('Unidad de archivo');
+        $state = $this->checkClientExpressions($page->getContent(), 'activities.create');
+        $this->assertSame(['Química Industrial'], $state['organizerMatches']);
+        $this->assertSame(['Cómputo y Sistemas'], $state['organizerCodeMatches']);
+
+        $this->post(route('activities.store'), [...$this->activityFormData(), 'organizational_unit_id' => $inactive->id])->assertSessionHasErrors('organizational_unit_id');
+        $this->post(route('activities.store'), [...$this->activityFormData(), 'organizational_unit_id' => $department->id])->assertSessionHas('success');
+        $activity = Activity::where('name', 'Actividad del formulario')->firstOrFail();
+        $this->assertSame($department->id, $activity->organizational_unit_id);
+
+        $department->update(['is_active' => false]);
+        $page = $this->get(route('activities.edit', $activity))->assertOk()->assertSee('Inactiva · asignación actual');
+        $state = $this->checkClientExpressions($page->getContent(), 'activities.edit');
+        $this->assertSame((string) $department->id, $state['organizerUnitId']);
+        $this->put(route('activities.update', $activity), [...$this->activityFormData(), 'organizational_unit_id' => $department->id])->assertSessionHas('success');
+        $this->put(route('activities.update', $activity), [...$this->activityFormData(), 'organizational_unit_id' => $inactive->id])->assertSessionHasErrors('organizational_unit_id');
+        $this->put(route('activities.update', $activity), [...$this->activityFormData(), 'organizational_unit_id' => $this->otherUnit->id])->assertSessionHas('success');
+        $this->assertSame($this->otherUnit->id, $activity->fresh()->organizational_unit_id);
+    }
+
+    public function test_unit_roles_see_their_organizer_and_cannot_reassign_it(): void
+    {
+        $activity = Activity::create([...$this->activityFormData(), 'organizational_unit_id' => $this->unit->id]);
+
+        foreach ([Role::JEFE_CARRERA => 'Jefatura de unidad', Role::SECRETARIA => 'Secretaría de unidad', Role::OPERATOR => 'Operación de unidad'] as $role => $label) {
+            $this->actingAs($this->makeUser($role));
+            foreach ([route('activities.create'), route('activities.edit', $activity)] as $url) {
+                $this->get($url)->assertOk()->assertSee($label)->assertSee('Química Industrial')->assertDontSee('data-organizer-picker', false);
+            }
+
+            $this->put(route('activities.update', $activity), [...$this->activityFormData(), 'organizational_unit_id' => $this->otherUnit->id])->assertSessionHas('success');
+            $this->assertSame($this->unit->id, $activity->fresh()->organizational_unit_id);
+        }
+    }
+
+    public function test_general_operator_cannot_assign_organizer_and_specific_career_scope_still_applies(): void
+    {
+        $operator = $this->makeUser(Role::OPERATOR);
+        $operator->update(['organizational_unit_id' => null]);
+        $this->actingAs($operator)->get(route('activities.create'))->assertOk()
+            ->assertSee('Operación general')->assertSee('Sin unidad organizadora')->assertDontSee('data-organizer-picker', false);
+
+        $this->post(route('activities.store'), [
+            ...$this->activityFormData(),
+            'organizational_unit_id' => $this->otherUnit->id,
+            'target_audience_mode' => Activity::AUDIENCE_SPECIFIC_UNITS,
+            'allowed_unit_ids' => [$this->unit->id],
+        ])->assertSessionHas('success');
+
+        $activity = Activity::where('name', 'Actividad del formulario')->firstOrFail();
+        $this->assertNull($activity->organizational_unit_id);
+        $this->assertTrue($activity->isCareerAllowed($this->unit->id));
+        $this->assertFalse($activity->isCareerAllowed($this->otherUnit->id));
+        $this->assertFalse($activity->isCareerAllowed(null));
     }
 
     public function test_settings_validate_values_and_do_not_persist_form_controls(): void
@@ -156,7 +220,7 @@ class FormExperienceTest extends TestCase
         $this->foreignTemplate->update(['is_default' => true]);
         $this->type->update(['default_validity_years' => null]);
         $this->actingAs($this->makeUser(Role::ADMIN))->post(route('settings.update'), ['certificate_validity_years' => 7])->assertSessionHas('success');
-        $activity = Activity::create(['name' => 'Evento de Química', 'activity_type' => 'Taller', 'start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $this->unit->id, 'target_audience_mode' => 'own_unit']);
+        $activity = Activity::create(['name' => 'Evento de Química', 'activity_type' => 'Taller', 'start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $this->unit->id, 'target_audience_mode' => 'own_unit', 'min_passing_score' => 65]);
         $student = Beneficiary::create(['first_name' => 'Ana', 'last_name' => 'Quispe', 'document_number' => '900010', 'document_type' => 'CI', 'primary_organizational_unit_id' => $this->unit->id]);
         $certificate = app(CertificateService::class)->issueCertificate(['beneficiary_id' => $student->id, 'activity_id' => $activity->id, 'certificate_type_id' => $this->type->id, 'score' => 85, 'issue_date' => '2026-11-03'], $user);
         $this->assertSame($this->globalTemplate->id, $certificate->certificate_template_id);
@@ -176,8 +240,11 @@ class FormExperienceTest extends TestCase
         foreach ($xpath->query('//*[@x-data]') as $element) {
             $expressions[] = $element->getAttribute('x-data');
         }
-        $root = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " ft-form-page ")]')->item(0);
+        $root = $route === 'activities.edit'
+            ? $xpath->query('//*[contains(@x-data, "organizerUnitId:")]')->item(0)
+            : $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " ft-form-page ")]')->item(0);
         $this->assertNotNull($root);
+        $organizer = $xpath->query('//*[@data-organizer-picker]')->item(0)?->getAttribute('x-data');
         $script = <<<'JS'
 let input = '';
 process.stdin.on('data', chunk => input += chunk);
@@ -185,7 +252,15 @@ process.stdin.on('end', () => {
     const payload = JSON.parse(input);
     for (const expression of payload.expressions) new Function('return (' + expression + ')');
     const state = new Function('return (' + payload.root + ')')();
-    const result = {activeTab: state.activeTab, newTypeModal: state.newTypeModal, editTypeModal: state.editTypeModal, editingType: state.editingType, validityMode: state.validityMode};
+    const result = {activeTab: state.activeTab, newTypeModal: state.newTypeModal, editTypeModal: state.editTypeModal, editingType: state.editingType, validityMode: state.validityMode, organizerUnitId: state.organizerUnitId};
+    if (payload.organizer) {
+        const picker = new Function('return (' + payload.organizer + ')')();
+        const matches = () => Object.keys(picker.choices).filter(id => picker.matches(id)).map(id => picker.choices[id].name);
+        picker.query = 'quimica';
+        result.organizerMatches = matches();
+        picker.query = 'computo_sistemas';
+        result.organizerCodeMatches = matches();
+    }
     if (payload.route === 'users.create') {
         const unitRole = Object.entries(state.roles).find(([, value]) => value.name === 'secretaria' || value.name === 'jefe_carrera');
         if (unitRole) { state.roleId = unitRole[0]; if (!state.requiresUnit) throw new Error('La unidad debe ser obligatoria'); }
@@ -205,10 +280,19 @@ process.stdin.on('end', () => {
         state.templateSearch = 'sin coincidencias para esta búsqueda';
         if (state.matchingTemplateCount !== 0) throw new Error('El filtro de nombres no se aplica');
     }
+    if (payload.route === 'activities.edit') {
+        const [[originalTemplate, originalUnit], [nextTemplate, nextUnit]] = Object.entries(state.templateUnits).filter(([, unit]) => unit);
+        state.organizerUnitId = String(originalUnit);
+        state.selectedTemplateId = originalTemplate;
+        if (state.templateAvailable(nextTemplate)) throw new Error('Se ofreció una plantilla de otra unidad');
+        state.organizerUnitId = String(nextUnit);
+        state.onOrganizerChange();
+        if (!state.templateAvailable(nextTemplate) || state.selectedTemplateId !== '') throw new Error('No se actualizaron las plantillas tras cambiar de unidad');
+    }
     process.stdout.write(JSON.stringify(result));
 });
 JS;
-        $process = new Process(['node', '-e', $script], base_path(), null, json_encode(['expressions' => $expressions, 'root' => $root->getAttribute('x-data'), 'route' => $route], JSON_THROW_ON_ERROR));
+        $process = new Process(['node', '-e', $script], base_path(), null, json_encode(['expressions' => $expressions, 'root' => $root->getAttribute('x-data'), 'route' => $route, 'organizer' => $organizer], JSON_THROW_ON_ERROR));
         $process->mustRun();
 
         return json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
@@ -219,6 +303,12 @@ JS;
         $role = Role::firstOrCreate(['name' => $name], ['display_name' => $name, 'description' => 'Descripción del rol']);
 
         return User::factory()->create(['role_id' => $role->id, 'organizational_unit_id' => $this->unit->id, 'is_active' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function activityFormData(): array
+    {
+        return ['name' => 'Actividad del formulario', 'activity_type' => 'Taller', 'start_date' => '2026-11-03', 'end_date' => '2026-11-04', 'academic_hours' => 20, 'status' => 'activa', 'requires_payment' => '0'];
     }
 
     private function makeTemplate(string $name, ?int $unitId): CertificateTemplate

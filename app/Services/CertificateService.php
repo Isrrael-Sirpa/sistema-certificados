@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Activity;
+use App\Models\ActivityParticipant;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
@@ -12,6 +13,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -28,11 +30,16 @@ class CertificateService
      */
     public function issueCertificate(array $data, User $generatedBy): Certificate
     {
+        return DB::transaction(fn (): Certificate => $this->createCertificate($data, $generatedBy), attempts: 3);
+    }
+
+    private function createCertificate(array $data, User $generatedBy): Certificate
+    {
         $issueDate = $data['issue_date'] ?? now()->toDateString();
         $issueCarbon = Carbon::parse($issueDate);
 
         $beneficiary = Beneficiary::findOrFail($data['beneficiary_id']);
-        $activity = Activity::findOrFail($data['activity_id']);
+        $activity = Activity::query()->lockForUpdate()->findOrFail($data['activity_id']);
         $certificateType = CertificateType::findOrFail($data['certificate_type_id']);
 
         if (! $generatedBy->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
@@ -48,6 +55,20 @@ class CertificateService
         if (! $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id)) {
             $resMsg = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricciones de la actividad';
             throw new \InvalidArgumentException("El estudiante {$beneficiary->full_name} no pertenece a una carrera autorizada ({$resMsg}).");
+        }
+
+        $participant = ActivityParticipant::where('activity_id', $activity->id)
+            ->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->first();
+
+        if ($activity->requires_payment) {
+            if (! $participant?->payment_confirmed) {
+                throw ValidationException::withMessages(['payment_confirmed' => 'Confirmación de pago pendiente. El encargado debe marcar Completado en la nómina antes de emitir el certificado.']);
+            }
+        }
+
+        if ($activity->certificates()->where('beneficiary_id', $beneficiary->id)
+            ->where('certificate_type_id', $certificateType->id)->notRevoked()->lockForUpdate()->value('id')) {
+            throw ValidationException::withMessages(['beneficiary_id' => 'Este participante ya tiene un certificado activo de este tipo en la actividad.']);
         }
 
         // 1. Resolver modo de vigencia y fecha de vencimiento
@@ -70,13 +91,18 @@ class CertificateService
         // 2. Resolver calificación y puntaje
         $score = isset($data['score']) && $data['score'] !== '' ? (float) $data['score'] : null;
         $scoreLabel = ! empty($data['score_label']) ? trim((string) $data['score_label']) : null;
+        $issuedCertificate = $activity->certificates()->notRevoked()
+            ->where('beneficiary_id', $beneficiary->id)->latest('id')->first(['id', 'score', 'score_label']);
+        if ($issuedCertificate) {
+            $score = $participant ? $participant->score : $issuedCertificate->score;
+            $scoreLabel = $participant ? $participant->score_label : $issuedCertificate->score_label;
+        }
         if (! empty($score) && empty($scoreLabel)) {
             $scoreLabel = $score.' pts';
         }
 
-        // Validación de aprobación institucional: si el tipo de certificado evalúa notas, no se emite a reprobados
-        if ($certificateType->supportsScore()) {
-            $minScore = (float) ($certificateType->min_passing_score ?? 51.0);
+        $minScore = $activity->passingScoreForIssuance($certificateType);
+        if ($minScore !== null) {
             if ($score === null) {
                 throw new \InvalidArgumentException('Debe registrar una calificación antes de emitir este certificado.');
             }
@@ -170,18 +196,30 @@ class CertificateService
      */
     public function revokeCertificate(Certificate $certificate, User $revokedBy, string $reason): Certificate
     {
-        $oldValues = ['status' => $certificate->status, 'revoked_at' => $certificate->revoked_at];
+        if (! $revokedBy->isAdmin()) {
+            throw new AuthorizationException('Solo el superadministrador puede anular certificados.');
+        }
 
-        $certificate->revoke($revokedBy, $reason);
+        return DB::transaction(function () use ($certificate, $revokedBy, $reason): Certificate {
+            $activity = Activity::withTrashed()->lockForUpdate()->findOrFail($certificate->activity_id);
+            $certificate->refresh();
+            if ($certificate->isRevoked()) {
+                return $certificate;
+            }
 
-        AuditLog::log(
-            'certificate_revoked',
-            "Certificado {$certificate->certificate_code} revocado. Motivo: {$reason}",
-            $certificate,
-            $oldValues,
-            $certificate->toArray()
-        );
+            $oldValues = ['status' => $certificate->status, 'revoked_at' => $certificate->revoked_at];
+            $certificate->revoke($revokedBy, $reason);
+            $activity->refreshParticipantEligibility($certificate->beneficiary_id);
 
-        return $certificate;
+            AuditLog::log(
+                'certificate_revoked',
+                "Certificado {$certificate->certificate_code} revocado. Motivo: {$reason}",
+                $certificate,
+                $oldValues,
+                $certificate->toArray()
+            );
+
+            return $certificate;
+        }, attempts: 3);
     }
 }

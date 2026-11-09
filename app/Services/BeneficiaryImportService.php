@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Activity;
+use App\Models\ActivityParticipant;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
@@ -317,7 +318,7 @@ class BeneficiaryImportService
 
         // 3. Beneficiarios que YA tienen certificado activo en ESTA actividad
         $certQuery = Certificate::where('activity_id', $activity->id)
-            ->whereNull('revoked_at');
+            ->notRevoked();
         if ($certificateTypeId) {
             $certQuery->where('certificate_type_id', $certificateTypeId);
         }
@@ -325,9 +326,18 @@ class BeneficiaryImportService
             ->flip()
             ->toArray();
 
+        $lockedGrades = $activity->certificates()->notRevoked()
+            ->orderBy('id')->get(['beneficiary_id', 'score', 'score_label'])->keyBy('beneficiary_id');
+        $storedGrades = ActivityParticipant::where('activity_id', $activity->id)
+            ->get(['beneficiary_id', 'score', 'score_label'])->keyBy('beneficiary_id');
+
+        $confirmedParticipantIds = $activity->requires_payment
+            ? ActivityParticipant::where('activity_id', $activity->id)->where('payment_confirmed', true)->pluck('beneficiary_id')->flip()
+            : collect();
+        $paymentPendingCount = 0;
+
         $certType = $certificateTypeId ? CertificateType::find($certificateTypeId) : $activity->certificateType;
-        $hasScoreRule = $certType && $certType->supportsScore();
-        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+        $minScore = $activity->passingScoreForIssuance($certType);
 
         $processedRows = [];
         $newStudentsCount = 0;
@@ -371,6 +381,12 @@ class BeneficiaryImportService
                 $existingBenId = $existingBen->id;
                 $studentUnitId = $existingBen->primary_organizational_unit_id;
 
+                if ($lockedGrades->has($existingBenId)) {
+                    $grade = $storedGrades->get($existingBenId) ?? $lockedGrades->get($existingBenId);
+                    $extracted['score'] = $grade->score;
+                    $extracted['score_label'] = $grade->score_label;
+                }
+
                 if (isset($alreadyCertifiedBeneficiaryIds[$existingBenId])) {
                     // Ya tiene certificado en este evento
                     $rowStatus = 'already_certified';
@@ -400,7 +416,7 @@ class BeneficiaryImportService
             }
 
             // Validación de aprobación si el tipo de certificado evalúa notas
-            if ($hasScoreRule && ($rowStatus === 'new_student' || $rowStatus === 'existing_student')) {
+            if ($minScore !== null && ($rowStatus === 'new_student' || $rowStatus === 'existing_student')) {
                 $rawScore = $extracted['score'] ?? null;
                 $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
 
@@ -434,16 +450,23 @@ class BeneficiaryImportService
                 $errorCount++;
             }
 
+            $paymentConfirmed = ! $activity->requires_payment || ($existingBenId !== null && $confirmedParticipantIds->has($existingBenId));
+            if ($activity->requires_payment && ! $paymentConfirmed && in_array($rowStatus, ['new_student', 'existing_student'], true)) {
+                $paymentPendingCount++;
+                $errorMsg = 'Se registrará en la nómina con confirmación de pago pendiente.';
+            }
+
             $processedRows[] = [
                 'row_number' => $index + 2,
                 'data' => $extracted,
                 'status' => $rowStatus,
                 'beneficiary_id' => $existingBenId,
+                'payment_confirmed' => $paymentConfirmed,
                 'message' => $errorMsg,
             ];
         }
 
-        $readyToCertify = $newStudentsCount + $existingStudentsCount;
+        $readyToCertify = $newStudentsCount + $existingStudentsCount - $paymentPendingCount;
 
         return [
             'headers' => $rawHeaders,
@@ -459,8 +482,10 @@ class BeneficiaryImportService
                 'unscored_students' => $unscoredStudentsCount,
                 'errors' => $errorCount,
                 'ready_to_certify' => $readyToCertify,
+                'payment_pending' => $paymentPendingCount,
             ],
-            'can_import' => $readyToCertify > 0,
+            'can_import' => $newStudentsCount + $existingStudentsCount > 0,
+            'payment_confirmation_required' => $activity->requires_payment,
         ];
     }
 
@@ -484,6 +509,7 @@ class BeneficiaryImportService
         }
 
         return DB::transaction(function () use ($rows, $activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService) {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
             $issuedCount = 0;
             $newStudentsCount = 0;
             $existingStudentsCount = 0;
@@ -493,10 +519,10 @@ class BeneficiaryImportService
             $ineligibleCount = 0;
             $duplicateCount = 0;
             $invalidCount = 0;
+            $paymentPendingCount = 0;
 
             $certType = CertificateType::find($certificateTypeId);
-            $hasScoreRule = $certType && $certType->supportsScore();
-            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+            $minScore = $activity->passingScoreForIssuance($certType);
 
             // Cache de beneficiarios existentes
             $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
@@ -506,27 +532,19 @@ class BeneficiaryImportService
             // Certificados existentes en la actividad
             $alreadyCertifiedBeneficiaryIds = Certificate::where('activity_id', $activity->id)
                 ->where('certificate_type_id', $certificateTypeId)
-                ->whereNull('revoked_at')
+                ->notRevoked()
                 ->pluck('beneficiary_id')
                 ->flip()
                 ->toArray();
 
+            $lockedGrades = $activity->certificates()->notRevoked()
+                ->orderBy('id')->get(['beneficiary_id', 'score', 'score_label'])->keyBy('beneficiary_id');
+            $enrolledParticipants = ActivityParticipant::where('activity_id', $activity->id)->get()->keyBy('beneficiary_id');
+            $processedDocuments = [];
+
             foreach ($rows as $item) {
                 $status = $item['status'] ?? '';
-                if (in_array($status, ['ineligible_career', 'failing_student', 'unscored_student'], true)) {
-                    $this->enrollParticipantsFromRows([$item], $activity, $user);
-                    $skippedCount++;
-                    if ($status === 'ineligible_career') {
-                        $ineligibleCount++;
-                    } elseif ($status === 'failing_student') {
-                        $failingCount++;
-                    } else {
-                        $unscoredCount++;
-                    }
-
-                    continue;
-                }
-                if ($status !== 'new_student' && $status !== 'existing_student') {
+                if (! in_array($status, ['new_student', 'existing_student', 'ineligible_career', 'failing_student', 'unscored_student', 'already_certified'], true)) {
                     $skippedCount++;
                     if ($status === 'already_certified') {
                         $duplicateCount++;
@@ -548,6 +566,14 @@ class BeneficiaryImportService
                 }
 
                 // 1. Obtener o crear el Beneficiario
+                if (isset($processedDocuments[$docNumber])) {
+                    $skippedCount++;
+                    $duplicateCount++;
+
+                    continue;
+                }
+                $processedDocuments[$docNumber] = true;
+
                 $beneficiary = null;
                 $resolvedUnit = ! empty($data['institution_or_department']) ? $this->resolveOrganizationalUnit($data['institution_or_department']) : null;
                 $defaultUnitId = $resolvedUnit?->id;
@@ -591,6 +617,12 @@ class BeneficiaryImportService
                     $existingStudentsCount++;
                 }
 
+                if ($lockedGrades->has($beneficiary->id)) {
+                    $grade = $enrolledParticipants->get($beneficiary->id) ?? $lockedGrades->get($beneficiary->id);
+                    $data['score'] = $grade->score;
+                    $data['score_label'] = $grade->score_label;
+                }
+
                 // 2. Verificar que la carrera esté autorizada en este evento según resolución
                 $isAllowedCareer = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
                 if (! $isAllowedCareer) {
@@ -623,7 +655,7 @@ class BeneficiaryImportService
                 $rawScore = $data['score'] ?? null;
                 $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
 
-                if ($hasScoreRule) {
+                if ($minScore !== null) {
                     if ($scoreNum === null) {
                         $unscoredCount++;
                         $skippedCount++;
@@ -653,6 +685,25 @@ class BeneficiaryImportService
                                 'score_label' => $data['score_label'] ?? null,
                             ],
                         ]);
+
+                        continue;
+                    }
+                }
+
+                if ($activity->requires_payment) {
+                    $this->enrollParticipantsFromRows([$item], $activity, $user);
+                    $confirmed = ActivityParticipant::where('activity_id', $activity->id)
+                        ->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->value('payment_confirmed');
+                    if (! $confirmed) {
+                        $paymentPendingCount++;
+                        $skippedCount++;
+
+                        continue;
+                    }
+                    if ($activity->certificates()->where('beneficiary_id', $beneficiary->id)
+                        ->where('certificate_type_id', $certificateTypeId)->notRevoked()->lockForUpdate()->value('id')) {
+                        $duplicateCount++;
+                        $skippedCount++;
 
                         continue;
                     }
@@ -709,13 +760,15 @@ class BeneficiaryImportService
                 'existing_students_count' => $existingStudentsCount,
                 'skipped_count' => $skippedCount,
                 'failing_count' => $failingCount,
+                'min_passing_score' => $minScore,
                 'unscored_count' => $unscoredCount,
                 'ineligible_count' => $ineligibleCount,
                 'duplicate_count' => $duplicateCount,
                 'invalid_count' => $invalidCount,
+                'payment_pending_count' => $paymentPendingCount,
                 'total_processed' => count($rows),
             ];
-        });
+        }, attempts: 3);
     }
 
     /**
@@ -728,7 +781,11 @@ class BeneficiaryImportService
             throw new AuthorizationException('No puede gestionar la nómina de otra carrera o unidad.');
         }
 
-        return DB::transaction(function () use ($rows, $activity) {
+        return DB::transaction(function () use ($rows, $activity, $user) {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
+            if (! $user->canAccessOrganizationalUnit($activity->organizational_unit_id)) {
+                throw new AuthorizationException('No puede gestionar la nómina de otra carrera o unidad.');
+            }
             $enrolledCount = 0;
             $newStudentsCount = 0;
             $alreadyEnrolledCount = 0;
@@ -736,15 +793,14 @@ class BeneficiaryImportService
             $errorCount = 0;
 
             $certType = $activity->certificateType;
-            $hasScoreRule = $certType && $certType->supportsScore();
-            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+            $minScore = $certType?->supportsScore() ? $activity->min_passing_score : null;
 
             $existingBeneficiariesByCi = Beneficiary::all()->mapWithKeys(function ($ben) {
                 return [$this->normalizeDocumentNumber($ben->document_number) => $ben];
             })->all();
 
             $currentlyEnrolledIds = $activity->participants()->pluck('beneficiaries.id')->flip()->toArray();
-            $issuedCertificates = $activity->certificates()->pluck('beneficiary_id')->flip();
+            $issuedCertificates = $activity->certificates()->notRevoked()->pluck('beneficiary_id')->flip();
 
             foreach ($rows as $item) {
                 $data = $item['data'] ?? [];
@@ -791,7 +847,7 @@ class BeneficiaryImportService
 
                 $rawScore = $data['score'] ?? null;
                 $scoreNum = ($rawScore !== null && $rawScore !== '') ? (float) $rawScore : null;
-                $isFailing = $hasScoreRule && ($scoreNum !== null && $scoreNum < $minScore);
+                $isFailing = $minScore !== null && $scoreNum !== null && $scoreNum < $minScore;
 
                 $isAllowedCareer = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
                 $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
@@ -810,6 +866,8 @@ class BeneficiaryImportService
                             $updateData['status'] = 'observado';
                         } elseif ($isFailing) {
                             $updateData['status'] = 'reprobado';
+                        } elseif ($scoreNum !== null) {
+                            $updateData['status'] = 'inscrito';
                         }
                         $activity->participants()->updateExistingPivot($beneficiary->id, $updateData);
                     }
@@ -821,7 +879,7 @@ class BeneficiaryImportService
                 // Verificar si ya cuenta con certificado emitido previamente en esta actividad
                 $hasCert = Certificate::where('activity_id', $activity->id)
                     ->where('beneficiary_id', $beneficiary->id)
-                    ->whereNull('revoked_at')
+                    ->notRevoked()
                     ->exists();
 
                 $participantStatus = ! $isAllowedCareer ? 'observado' : ($hasCert ? 'certificado' : ($isFailing ? 'reprobado' : 'inscrito'));
@@ -853,7 +911,7 @@ class BeneficiaryImportService
                 'error_count' => $errorCount,
                 'total_processed' => count($rows),
             ];
-        });
+        }, attempts: 3);
     }
 
     /**
@@ -874,6 +932,7 @@ class BeneficiaryImportService
         }
 
         return DB::transaction(function () use ($activity, $certificateTypeId, $templateId, $issueDate, $user, $certificateService, $selectedBeneficiaryIds) {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
             $query = $activity->participants();
             if (! empty($selectedBeneficiaryIds)) {
                 $query->whereIn('beneficiaries.id', $selectedBeneficiaryIds);
@@ -881,17 +940,18 @@ class BeneficiaryImportService
             $participants = $query->get();
 
             $certType = CertificateType::find($certificateTypeId);
-            $hasScoreRule = $certType && $certType->supportsScore();
-            $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+            $minScore = $activity->passingScoreForIssuance($certType);
 
             $issuedCount = 0;
             $skippedCount = 0;
             $failingCount = 0;
             $unscoredCount = 0;
+            $paymentPendingCount = 0;
+            $duplicateCount = 0;
 
             $alreadyCertifiedBeneficiaryIds = Certificate::where('activity_id', $activity->id)
                 ->where('certificate_type_id', $certificateTypeId)
-                ->whereNull('revoked_at')
+                ->notRevoked()
                 ->pluck('beneficiary_id')
                 ->flip()
                 ->toArray();
@@ -901,6 +961,7 @@ class BeneficiaryImportService
             foreach ($participants as $participant) {
                 if (isset($alreadyCertifiedBeneficiaryIds[$participant->id])) {
                     $skippedCount++;
+                    $duplicateCount++;
                     $activity->participants()->updateExistingPivot($participant->id, ['status' => 'certificado']);
 
                     continue;
@@ -923,7 +984,7 @@ class BeneficiaryImportService
                 $score = $participant->pivot->score !== null ? (float) $participant->pivot->score : null;
 
                 // Validación de aprobación reglamentaria: si el tipo exige puntaje, omitir reprobados o sin nota
-                if ($hasScoreRule) {
+                if ($minScore !== null) {
                     if ($score === null) {
                         $unscoredCount++;
                         $activity->participants()->updateExistingPivot($participant->id, ['status' => 'observado']);
@@ -933,6 +994,24 @@ class BeneficiaryImportService
                     if ($score < $minScore) {
                         $failingCount++;
                         $activity->participants()->updateExistingPivot($participant->id, ['status' => 'reprobado']);
+
+                        continue;
+                    }
+                }
+
+                if ($activity->requires_payment) {
+                    $confirmed = ActivityParticipant::where('activity_id', $activity->id)
+                        ->where('beneficiary_id', $participant->id)->lockForUpdate()->value('payment_confirmed');
+                    if (! $confirmed) {
+                        $paymentPendingCount++;
+                        $skippedCount++;
+
+                        continue;
+                    }
+                    if ($activity->certificates()->where('beneficiary_id', $participant->id)
+                        ->where('certificate_type_id', $certificateTypeId)->notRevoked()->lockForUpdate()->value('id')) {
+                        $duplicateCount++;
+                        $skippedCount++;
 
                         continue;
                     }
@@ -955,19 +1034,24 @@ class BeneficiaryImportService
 
             AuditLog::log(
                 'activity_bulk_certified',
-                "Emisión masiva a la nómina de '{$activity->name}': {$issuedCount} certificados emitidos ({$failingCount} reprobados omitidos, {$skippedCount} ya contaban con certificado).",
-                $activity
+                "Emisión masiva a la nómina de '{$activity->name}': {$issuedCount} certificados emitidos, {$skippedCount} omitidos por duplicados o requisitos.",
+                $activity,
+                null,
+                ['issued_count' => $issuedCount, 'payment_pending_count' => $paymentPendingCount, 'failing_count' => $failingCount, 'unscored_count' => $unscoredCount, 'ineligible_count' => $ineligibleCount, 'duplicate_count' => $duplicateCount]
             );
 
             return [
                 'issued_count' => $issuedCount,
+                'payment_pending_count' => $paymentPendingCount,
+                'duplicate_count' => $duplicateCount,
                 'skipped_count' => $skippedCount,
                 'ineligible_count' => $ineligibleCount,
                 'failing_count' => $failingCount,
+                'min_passing_score' => $minScore,
                 'unscored_count' => $unscoredCount,
                 'total_candidates' => $participants->count(),
             ];
-        });
+        }, attempts: 3);
     }
 
     /**

@@ -124,7 +124,7 @@ class ActivityManagementTest extends TestCase
     {
         $activity = Activity::first();
         $template = CertificateTemplate::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $beneficiary = Beneficiary::first();
 
         // Eliminar certificados previos de esta combinación para probar emisión limpia
@@ -213,7 +213,7 @@ class ActivityManagementTest extends TestCase
     {
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $template = CertificateTemplate::first();
 
         $response = $this->actingAs($this->adminUser)->post(route('certificates.preview-draft'), [

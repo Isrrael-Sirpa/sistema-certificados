@@ -3,16 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ActivityParticipant;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\OrganizationalUnit;
+use App\Models\User;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CertificateController extends Controller
 {
@@ -98,7 +102,7 @@ class CertificateController extends Controller
         );
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'beneficiary_id' => ['required', 'exists:beneficiaries,id'],
@@ -117,11 +121,19 @@ class CertificateController extends Controller
             'watermark_asset_id' => ['nullable', 'exists:institutional_assets,id'],
         ]);
 
+        return DB::transaction(fn (): RedirectResponse => $this->issueRequestedCertificate($validated, $request->user()), attempts: 3);
+    }
+
+    private function issueRequestedCertificate(array $validated, User $user): RedirectResponse
+    {
+        $activity = Activity::query()->lockForUpdate()->findOrFail($validated['activity_id']);
+        abort_unless($user->canAccessOrganizationalUnit($activity->organizational_unit_id), 403);
+
         // Evitar duplicado de mismo beneficiario + actividad + tipo de certificado
         $exists = Certificate::where('beneficiary_id', $validated['beneficiary_id'])
             ->where('activity_id', $validated['activity_id'])
             ->where('certificate_type_id', $validated['certificate_type_id'])
-            ->whereNull('revoked_at')
+            ->notRevoked()
             ->exists();
 
         if ($exists) {
@@ -129,14 +141,19 @@ class CertificateController extends Controller
         }
 
         $certType = CertificateType::find($validated['certificate_type_id']);
-        if ($certType && $certType->supportsScore()) {
-            $minScore = (float) ($certType->min_passing_score ?? 51.0);
+        $minScore = $activity->passingScoreForIssuance($certType);
+        if ($minScore !== null) {
+            $participant = ActivityParticipant::query()->where('activity_id', $activity->id)
+                ->where('beneficiary_id', $validated['beneficiary_id'])->first();
+            if ($participant) {
+                $validated['score'] = $participant->score;
+                $validated['score_label'] = $participant->score_label;
+            }
             $score = isset($validated['score']) ? (float) $validated['score'] : null;
             if ($score === null || $score < $minScore) {
-                $activity = Activity::findOrFail($validated['activity_id']);
                 $beneficiary = Beneficiary::findOrFail($validated['beneficiary_id']);
                 $allowed = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
-                if (! $activity->certificates()->where('beneficiary_id', $beneficiary->id)->exists()) {
+                if (! $activity->certificates()->notRevoked()->where('beneficiary_id', $beneficiary->id)->exists()) {
                     $activity->participants()->syncWithoutDetaching([$beneficiary->id => [
                         'score' => $score,
                         'score_label' => $validated['score_label'] ?? null,
@@ -170,7 +187,7 @@ class CertificateController extends Controller
             $validated['custom_fields_data'] = $customFields;
         }
 
-        $certificate = $this->certificateService->issueCertificate($validated, $request->user());
+        $certificate = $this->certificateService->issueCertificate($validated, $user);
 
         return redirect()->route('certificates.show', $certificate)->with('success', "Certificado {$certificate->certificate_code} generado exitosamente.");
     }

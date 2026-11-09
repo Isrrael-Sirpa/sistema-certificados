@@ -8,7 +8,7 @@
 
     <!-- Actions & Search Bar -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('beneficiaries.index') }}" class="w-full min-w-0 sm:flex-1 sm:min-w-64 max-w-lg flex items-center gap-2">
+        <form method="GET" action="{{ route('beneficiaries.index') }}" class="ft-form-filter w-full min-w-0 sm:flex-1 sm:min-w-64 max-w-lg flex items-center gap-2">
             <div class="relative flex-1">
                 <input type="text" name="search" value="{{ request('search') }}"
                        placeholder="Buscar por nombre, apellido, CI o correo..."

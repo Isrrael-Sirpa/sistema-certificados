@@ -8,7 +8,7 @@
 
     <!-- Filters -->
     <div class="ft-panel bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('audit.index') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <form method="GET" action="{{ route('audit.index') }}" class="ft-form-filter grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Acción</label>
                 <select name="action" class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg">

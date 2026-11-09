@@ -36,7 +36,7 @@ class ActivityRosterParticipantEnrollmentTest extends TestCase
             'academic_hours' => 30,
             'status' => 'activa',
         ]);
-        $this->certType = CertificateType::first();
+        $this->certType = CertificateType::where('code', 'asistencia')->firstOrFail();
     }
 
     public function test_can_enroll_participants_from_excel_csv_file_into_activity_roster(): void

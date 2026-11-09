@@ -52,4 +52,26 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/login');
     }
+
+    public function test_login_blocks_repeated_failures_for_the_same_account(): void
+    {
+        $credentials = ['email' => 'admin@universidad.edu', 'password' => 'WrongPassword'];
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post('/login', $credentials)->assertSessionHasErrors('email');
+        }
+
+        $this->post('/login', [...$credentials, 'password' => 'Admin*2026'])
+            ->assertSessionHasErrors(['email' => 'Demasiados intentos de inicio de sesión. Vuelva a intentarlo en un minuto.']);
+        $this->assertGuest();
+    }
+
+    public function test_an_inactive_account_loses_access_with_an_existing_session(): void
+    {
+        $user = User::firstOrFail();
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $user->update(['is_active' => false]);
+
+        $this->get(route('dashboard'))->assertRedirect(route('login'));
+        $this->assertGuest();
+    }
 }

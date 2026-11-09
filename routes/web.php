@@ -29,8 +29,8 @@ Route::get('/', function () {
 // ==========================================
 Route::prefix('verificar')->group(function () {
     Route::get('/', [VerificationController::class, 'index'])->name('verification.index');
-    Route::post('/buscar', [VerificationController::class, 'search'])->name('verification.search');
-    Route::get('/{token}', [VerificationController::class, 'show'])->name('verification.show');
+    Route::post('/buscar', [VerificationController::class, 'search'])->middleware('throttle:30,1,verification-search:')->name('verification.search');
+    Route::get('/{token}', [VerificationController::class, 'show'])->middleware('throttle:60,1,verification-qr:')->name('verification.show');
 });
 
 // ==========================================
@@ -38,7 +38,7 @@ Route::prefix('verificar')->group(function () {
 // ==========================================
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:30,1,login-ip:');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
@@ -83,6 +83,7 @@ Route::middleware(['auth', EnsureOrganizationalUnitAccess::class])->group(functi
     Route::post('/actividades/{activity}/nomina/cargar', [ActivityController::class, 'enrollRoster'])->name('activities.roster.enroll');
     Route::post('/actividades/{activity}/participantes/agregar-manual', [ActivityController::class, 'addParticipantManual'])->name('activities.participants.add-manual');
     Route::patch('/actividades/{activity}/participantes/{beneficiary}', [ActivityController::class, 'updateParticipant'])->name('activities.participants.update');
+    Route::patch('/actividades/{activity}/participantes/{beneficiary}/confirmacion-pago', [ActivityController::class, 'updatePaymentConfirmation'])->name('activities.participants.payment');
     Route::delete('/actividades/{activity}/participantes/{beneficiary}', [ActivityController::class, 'removeParticipant'])->name('activities.participants.remove');
     Route::post('/actividades/{activity}/participantes/emitir-certificados', [ActivityController::class, 'issueToRoster'])->name('activities.participants.issue-certificates');
     Route::get('/actividades/{activity}/descargar-zip', [ActivityController::class, 'downloadZip'])->name('activities.download-zip');

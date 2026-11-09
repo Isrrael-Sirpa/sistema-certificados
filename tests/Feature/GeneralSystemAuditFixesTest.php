@@ -125,7 +125,7 @@ class GeneralSystemAuditFixesTest extends TestCase
 
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $certType = CertificateType::first();
+        $certType = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         // Crear certificado emitido por este usuario
         Certificate::create([
@@ -177,7 +177,7 @@ class GeneralSystemAuditFixesTest extends TestCase
     {
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $certType = CertificateType::first();
+        $certType = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         // Configurar plantilla con elemento dinámico de texto
         $this->defaultTemplate->configuration = [

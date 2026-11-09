@@ -177,6 +177,7 @@ class CertificateSnapshotService
             'is_permanent' => $isPermanent,
             'expiration_date' => $expirationDate,
             'score' => $score,
+            'min_passing_score' => $certificateType->supportsScore() ? $activity->min_passing_score : null,
             'score_label' => $scoreLabel,
             'formatted_score' => $formattedScore,
             'frozen_at' => now()->toIso8601String(),

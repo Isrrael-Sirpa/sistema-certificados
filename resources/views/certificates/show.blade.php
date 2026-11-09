@@ -278,36 +278,36 @@
     </div>
 
     <!-- Revocation Modal -->
-    <div x-show="revokeModal"
+    <div x-show="revokeModal" role="dialog" aria-modal="true" aria-labelledby="revoke-certificate-title" @keydown.escape.window="revokeModal = false"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 space-y-4" @click.away="revokeModal = false">
-            <div class="flex items-center gap-3 text-red-600">
-                <span class="text-2xl">🚫</span>
-                <h3 class="text-base font-bold text-slate-900">Anular / Revocar Certificado</h3>
+        <div class="ft-form-dialog max-w-lg w-full p-4 sm:p-6 space-y-5" @click.away="revokeModal = false">
+            <div class="ft-dialog-heading">
+                <div><h3 id="revoke-certificate-title">Revocar certificado</h3><p class="ft-field-help">Acción sobre el certificado {{ $certificate->certificate_code }}.</p></div>
+                <button type="button" @click="revokeModal = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
-            <p class="text-xs text-slate-600 leading-relaxed">
+            <p class="rounded-xl border border-action/15 bg-action-soft p-4 text-sm leading-relaxed text-ink">
                 Está a punto de anular el certificado <strong class="font-mono text-slate-900">{{ $certificate->certificate_code }}</strong>. Una vez revocado, la página pública de verificación mostrará inmediatamente el estado <strong>REVOCADO</strong>.
             </p>
 
             <form method="POST" action="{{ route('certificates.revoke', $certificate) }}" class="space-y-4">
                 @csrf
                 <div>
-                    <label for="revocation_reason" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label for="revocation_reason" class="ft-field-label">
                         Motivo de la revocación <span class="text-red-500">*</span>
                     </label>
                     <textarea name="revocation_reason" id="revocation_reason" rows="3" required
-                              class="w-full text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              class="ft-input"
                               placeholder="Indique claramente la justificación institucional..."></textarea>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button type="button" @click="revokeModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="revokeModal = false" class="ft-form-secondary">
                         Cancelar
                     </button>
-                    <button type="submit" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-all">
+                    <button type="submit" class="ft-form-primary">
                         Confirmar Revocación
                     </button>
                 </div>

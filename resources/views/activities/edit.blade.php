@@ -4,7 +4,7 @@
 @section('page-subtitle', 'Modificación de fechas, carga horaria y parámetros de certificación')
 
 @section('content')
-<div class="max-w-4xl mx-auto" x-data="{
+<div class="ft-form-page max-w-4xl" x-data="{
     typesData: {{ Js::from($types->keyBy('id')) }},
     selectedTypeId: '{{ old('certificate_type_id', $activity->certificate_type_id ?? $types->first()?->id) }}',
     targetAudienceMode: '{{ old('target_audience_mode', $activity->target_audience_mode ?? 'own_unit') }}',
@@ -12,7 +12,16 @@
     validityYears: {{ old('validity_years', $config?->validity_years ?? ($activity->certificateType?->default_validity_years ?? 3)) }},
     showScorePdf: {{ old('show_score_on_pdf', $config?->show_score_on_pdf ?? true) ? 'true' : 'false' }},
     showScorePortal: {{ old('show_score_on_portal', $config?->show_score_on_portal ?? true) ? 'true' : 'false' }},
-    selectedTemplateId: '{{ old('certificate_template_id', $config?->certificate_template_id ?? '') }}',
+    selectedTemplateId: @js((string) old('certificate_template_id', $config?->certificate_template_id ?? '')),
+    organizerUnitId: @js((string) $organizerUnit?->id),
+    templateUnits: @js($templates->pluck('organizational_unit_id', 'id')),
+    templateAvailable(id) {
+        const unitId = this.templateUnits[id];
+        return !this.organizerUnitId || !unitId || String(unitId) === this.organizerUnitId;
+    },
+    onOrganizerChange() {
+        if (!this.templateAvailable(this.selectedTemplateId)) this.selectedTemplateId = '';
+    },
 
     get currentType() {
         return this.typesData[this.selectedTypeId] || null;
@@ -31,14 +40,17 @@
         }
     }
 }">
-    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
-
-        <div class="p-6 bg-brand text-white flex items-center justify-between">
-            <h3 class="text-base font-bold truncate">Editar: {{ $activity->name }}</h3>
-            <a href="{{ route('activities.show', $activity) }}" class="text-xs text-slate-300 hover:text-white">&larr; Volver</a>
+    <header class="ft-form-hero">
+        <div class="min-w-0">
+            <span class="ft-form-kicker">Gestión académica</span>
+            <h2 class="wrap-break-word">{{ $activity->name }}</h2>
+            <p>Actualiza los datos del evento, las carreras autorizadas y las condiciones de certificación.</p>
         </div>
+        <a href="{{ route('activities.show', $activity) }}" class="ft-form-back">← Volver a la actividad</a>
+    </header>
 
-        <form method="POST" action="{{ route('activities.update', $activity) }}" class="p-6 sm:p-8 space-y-8">
+    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-border overflow-hidden">
+        <form method="POST" action="{{ route('activities.update', $activity) }}" class="p-4 sm:p-8 space-y-8">
             @csrf
             @method('PUT')
 
@@ -159,34 +171,10 @@
                         <span class="w-5 h-5 rounded-md bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">2</span>
                         <span>Marco Normativo y Carreras Habilitadas</span>
                     </h4>
-                    <p class="text-xs text-slate-500 mt-0.5">Defina el alcance de la resolución y las carreras que pueden certificar en esta actividad</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Revisa quién organiza, qué estudiantes pueden participar y las condiciones de la actividad.</p>
                 </div>
 
-                @if(auth()->user()->isAdmin())
-                    <div>
-                        <label for="organizational_unit_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Carrera o Departamento Organizador <span class="text-red-500">*</span>
-                        </label>
-                        <select name="organizational_unit_id" id="organizational_unit_id" required
-                                class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                            @foreach($units as $u)
-                                <option value="{{ $u->id }}" {{ old('organizational_unit_id', $activity->organizational_unit_id) == $u->id ? 'selected' : '' }}>
-                                    [{{ $u->code }}] {{ $u->name }} ({{ $u->type_label }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                @else
-                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidad Organizadora</span>
-                            <div class="text-xs font-bold text-brand mt-0.5">{{ $activity->organizationalUnit->name ?? auth()->user()->organizationalUnit->name ?? 'Mi Carrera' }}</div>
-                        </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand">
-                            {{ $activity->organizationalUnit->code ?? auth()->user()->organizationalUnit->code ?? 'CARRERA' }}
-                        </span>
-                    </div>
-                @endif
+                @include('activities.organizer-field')
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -206,7 +194,7 @@
                         <div class="space-y-2 mt-1">
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
                                 <input type="radio" name="target_audience_mode" value="own_unit" x-model="targetAudienceMode" class="text-brand focus:ring-brand">
-                                <span class="text-xs font-medium text-slate-800">Solo mi propia carrera / unidad</span>
+                                <span class="text-xs font-medium text-slate-800">Solo estudiantes de la unidad organizadora</span>
                             </label>
 
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
@@ -243,6 +231,8 @@
                         * Estudiantes inscritos de otras carreras no autorizadas serán observados automáticamente según la resolución y no se emitirá su certificado.
                     </p>
                 </div>
+
+                @include('activities.cost-fields', ['activity' => $activity])
             </div>
 
             <!-- SECCIÓN 3: TIPO DE CERTIFICADO Y POLÍTICA DE VIGENCIA/NOTAS -->
@@ -347,7 +337,7 @@
                     </div>
 
                     <!-- Score and Evaluation Options -->
-                    <div x-show="currentType && currentType.has_score" class="pt-4 border-t border-slate-200 space-y-3">
+                    <div x-show="currentType && currentType.has_score" x-cloak class="pt-4 border-t border-slate-200 space-y-3">
                         <div class="flex items-center gap-2">
                             <span class="text-base">📊</span>
                             <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Configuración de Calificación y Puntajes</h5>
@@ -355,6 +345,8 @@
                         <p class="text-xs text-slate-500">
                             Esta actividad admite notas individuales detectadas desde la nómina Excel/CSV o asignadas manualmente.
                         </p>
+
+                        @include('activities.passing-score-field', ['minimum' => $activity->min_passing_score])
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <label class="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer">
@@ -378,7 +370,8 @@
                                 class="w-full py-2 px-3 text-xs border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-brand">
                             <option value="">-- Usar plantilla predeterminada del sistema --</option>
                             @foreach($templates as $tpl)
-                                <option value="{{ $tpl->id }}" {{ ($config?->certificate_template_id == $tpl->id) ? 'selected' : '' }}>
+                                <option value="{{ $tpl->id }}" @selected(old('certificate_template_id', $config?->certificate_template_id) == $tpl->id)
+                                        :hidden="!templateAvailable({{ $tpl->id }})" :disabled="!templateAvailable({{ $tpl->id }})">
                                     {{ $tpl->name }} ({{ $tpl->orientation === 'landscape' ? 'Horizontal' : 'Vertical' }})
                                 </option>
                             @endforeach
@@ -387,11 +380,11 @@
                 </div>
             </div>
 
-            <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <a href="{{ route('activities.show', $activity) }}" class="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+            <div class="ft-dialog-actions">
+                <a href="{{ route('activities.show', $activity) }}" class="ft-form-secondary">
                     Cancelar
                 </a>
-                <button type="submit" class="px-6 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all">
+                <button type="submit" class="ft-form-primary">
                     Guardar Cambios
                 </button>
             </div>

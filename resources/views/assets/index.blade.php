@@ -128,7 +128,7 @@
     </div>
 
     <!-- Upload Modal -->
-    <div x-show="uploadModalOpen"
+    <div x-show="uploadModalOpen" role="dialog" aria-modal="true" aria-labelledby="asset-upload-title" @keydown.escape.window="uploadModalOpen = false"
          class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -138,25 +138,25 @@
          x-transition:leave-end="opacity-0"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        <div class="ft-form-dialog w-full max-w-xl space-y-5 p-4 sm:p-6"
              @click.away="uploadModalOpen = false">
 
-            <div class="bg-brand text-white p-5 flex items-center justify-between">
+            <div class="ft-dialog-heading">
                 <div>
-                    <h3 class="text-base font-bold">Subir Recurso Institucional</h3>
-                    <p class="text-xs text-slate-200 mt-0.5">Compatible con formatos vectoriales SVG y rasterizados PNG de alta fidelidad</p>
+                    <h3 id="asset-upload-title">Subir recurso institucional</h3>
+                    <p class="ft-field-help">Añade un logotipo, una firma, un sello u otro recurso para las plantillas.</p>
                 </div>
-                <button @click="uploadModalOpen = false" class="text-slate-300 hover:text-white text-xl font-bold">&times;</button>
+                <button type="button" @click="uploadModalOpen = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
-            <form method="POST" action="{{ route('assets.store') }}" enctype="multipart/form-data" class="p-6 space-y-4">
+            <form method="POST" action="{{ route('assets.store') }}" enctype="multipart/form-data" class="space-y-5">
                 @csrf
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label for="asset-upload-type" class="ft-field-label">
                         Tipo de Recurso <span class="text-red-500">*</span>
                     </label>
-                    <select name="type" x-model="currentType" required
+                    <select id="asset-upload-type" name="type" x-model="currentType" required
                             class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                         <option value="logo">🛡️ Logo / Escudo Institucional</option>
                         <option value="signature">✍️ Firma Digitalizada de Autoridad</option>
@@ -168,10 +168,10 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label for="asset-upload-name" class="ft-field-label">
                         Nombre Descriptivo <span class="text-red-500">*</span>
                     </label>
-                    <input type="text" name="name" required placeholder="Ej: Logo Carrera de Informática"
+                    <input id="asset-upload-name" type="text" name="name" required placeholder="Ej. Logo de la carrera de Informática"
                            class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
@@ -183,7 +183,7 @@
                         <input type="text" name="authority_name" placeholder="Ej: Ing. Aniceto Velarde Forest"
                                class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg bg-white">
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Cargo</label>
                             <input type="text" name="authority_title" placeholder="Ej: Vicedecano"
@@ -198,11 +198,11 @@
                 </div>
 
                 <!-- File Upload -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                <div class="rounded-2xl border border-dashed border-brand/30 bg-brand-soft/35 p-4">
+                    <label for="asset-upload-file" class="ft-field-label">
                         Archivo de Imagen / Vector <span class="text-red-500">*</span>
                     </label>
-                    <input type="file" name="file" accept=".png,.jpg,.jpeg,.svg,.webp" required
+                    <input id="asset-upload-file" type="file" name="file" accept=".png,.jpg,.jpeg,.svg,.webp" required
                            class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand file:text-white hover:file:bg-brand-deep cursor-pointer">
                     <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
                         Formatos: <strong class="text-slate-700">PNG, JPG/JPEG, SVG, WebP</strong> (Máx. 4MB).<br>
@@ -219,13 +219,13 @@
                     </label>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <div class="ft-dialog-actions">
                     <button type="button" @click="uploadModalOpen = false"
-                            class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50">
+                            class="ft-form-secondary">
                         Cancelar
                     </button>
                     <button type="submit"
-                            class="px-5 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs">
+                            class="ft-form-primary">
                         Guardar Recurso
                     </button>
                 </div>

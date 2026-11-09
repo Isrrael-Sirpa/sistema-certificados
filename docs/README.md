@@ -17,8 +17,7 @@ Documento dirigido a **Autoridades Facultativas, Jefes de Carrera, Secretarías 
 - **Cumplimiento Reglamentario por Resolución Facultativa**:
   - Configuración de eventos por alcance: *Propia Carrera*, *Toda la Facultad* o *Carreras Específicas Autorizadas por Resolución*.
   - Detección de estudiantes no autorizados (`observados`) y omisión automática de emisión.
-- **Regla Ética de Aprobación Obligatoria (>= 51 pts)**:
-  - Exclusión automática de estudiantes reprobados (< 51 pts) o sin nota en certificados con evaluación.
+- **Nota de aprobación por actividad**. Cada organizador define el mínimo para sus certificados con evaluación.
 - **Padrón Único y Portafolio Académico 360° del Estudiante**:
   - Historial consolidado por C.I. que reúne todos los certificados obtenidos por el alumno en la Facultad con insignias de carrera emisora.
 - **Gestor y Diseñador Visual de Plantillas (WYSIWYG)**:

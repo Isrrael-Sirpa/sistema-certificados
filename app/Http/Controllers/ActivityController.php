@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\ActivityCertificateConfig;
+use App\Models\ActivityParticipant;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
+use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
 use App\Models\InstitutionalAsset;
@@ -13,8 +15,12 @@ use App\Models\OrganizationalUnit;
 use App\Services\BeneficiaryImportService;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use ZipArchive;
 
 class ActivityController extends Controller
@@ -55,27 +61,34 @@ class ActivityController extends Controller
 
     public function create(Request $request)
     {
-        if (! $request->user()->isUnitActive()) {
+        $user = $request->user();
+        if (! $user->isUnitActive()) {
             abort(403, 'Su carrera o departamento se encuentra desactivado temporalmente. No es posible crear nuevas actividades.');
         }
 
         $types = CertificateType::where('is_active', true)->get();
         $templates = CertificateTemplate::select(['id', 'name', 'category', 'orientation', 'organizational_unit_id', 'current_version', 'is_default'])
             ->where('is_active', true)
-            ->when($request->user()->isUnitScoped(), fn ($query) => $query->forUnit($request->user()->organizational_unit_id))
+            ->when($user->isUnitScoped(), fn ($query) => $query->forUnit($user->organizational_unit_id))
             ->with('organizationalUnit:id,name')->orderBy('id')->get();
         $designs = CertificateTemplate::whereKey($templates->modelKeys())->get(['id', 'configuration'])->keyBy('id');
         foreach ($templates as $template) {
             $template->setAttribute('configuration', $designs->get($template->id)?->configuration ?? []);
         }
         $units = OrganizationalUnit::active()->orderBy('type')->orderBy('name')->get();
+        $organizerOptions = $user->isAdmin() ? $units : collect();
+        $assignedUnit = $units->find($user->organizational_unit_id);
+        $organizerUnit = $user->isAdmin()
+            ? $organizerOptions->find(filter_var(old('organizational_unit_id', ($assignedUnit ?? $units->first())?->id), FILTER_VALIDATE_INT))
+            : $assignedUnit;
 
-        return view('activities.create', compact('types', 'templates', 'units'));
+        return view('activities.create', compact('types', 'templates', 'units', 'organizerOptions', 'organizerUnit'));
     }
 
     public function store(Request $request)
     {
-        if (! $request->user()->isUnitActive()) {
+        $user = $request->user();
+        if (! $user->isUnitActive()) {
             abort(403, 'Su carrera o departamento se encuentra desactivado temporalmente. No es posible registrar nuevas actividades.');
         }
 
@@ -84,14 +97,17 @@ class ActivityController extends Controller
             'description' => ['nullable', 'string'],
             'activity_type' => ['required', 'string', 'max:80'],
             'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
+            'min_passing_score' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,999.99'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'academic_hours' => ['required', 'integer', 'min:0', 'max:1000'],
+            'requires_payment' => ['required', 'boolean'],
+            'cost_amount' => [Rule::excludeIf(fn (): bool => ! $request->boolean('requires_payment')), Rule::requiredIf(fn (): bool => $request->boolean('requires_payment')), 'numeric', 'decimal:0,2', 'gt:0', 'max:99999999.99'],
             'resolution_number' => ['nullable', 'string', 'max:100'],
             'target_audience_mode' => ['nullable', 'string', 'in:own_unit,all_faculty,specific_units'],
             'allowed_unit_ids' => ['nullable', 'array'],
             'allowed_unit_ids.*' => ['exists:organizational_units,id'],
-            'organizational_unit_id' => ['nullable', 'exists:organizational_units,id'],
+            'organizational_unit_id' => [Rule::excludeIf(! $user->isAdmin()), 'nullable', 'integer', Rule::exists('organizational_units', 'id')->where('is_active', true)],
             'location' => ['nullable', 'string', 'max:255'],
             'organizer' => ['nullable', 'string', 'max:255'],
             'responsible_authority' => ['nullable', 'string', 'max:255'],
@@ -104,21 +120,21 @@ class ActivityController extends Controller
             'show_score_on_portal' => ['nullable', 'boolean'],
         ]);
 
+        $this->validateActivityPassingScore($validated);
+
         $activityData = collect($validated)->only([
-            'name', 'description', 'activity_type', 'certificate_type_id',
+            'name', 'description', 'activity_type', 'certificate_type_id', 'min_passing_score',
             'start_date', 'end_date', 'academic_hours', 'resolution_number',
             'location', 'organizer', 'responsible_authority', 'status',
         ])->toArray();
 
-        if ($request->user()->isUnitScoped()) {
-            $activityData['organizational_unit_id'] = $request->user()->organizational_unit_id;
-            $activityData['target_audience_mode'] = $validated['target_audience_mode'] ?? Activity::AUDIENCE_OWN_UNIT;
-        } else {
-            $activityData['organizational_unit_id'] = $validated['organizational_unit_id'] ?? $request->user()->organizational_unit_id;
-            $activityData['target_audience_mode'] = $validated['target_audience_mode'] ?? (
-                ! empty($activityData['organizational_unit_id']) ? Activity::AUDIENCE_OWN_UNIT : Activity::AUDIENCE_ALL_FACULTY
-            );
-        }
+        $activityData['requires_payment'] = $request->boolean('requires_payment');
+        $activityData['cost_amount'] = $activityData['requires_payment'] ? $validated['cost_amount'] : '0.00';
+
+        $activityData['organizational_unit_id'] = $validated['organizational_unit_id']
+            ?? ($user->organizationalUnit?->is_active ? $user->organizational_unit_id : null);
+        $activityData['target_audience_mode'] = $validated['target_audience_mode']
+            ?? ($activityData['organizational_unit_id'] ? Activity::AUDIENCE_OWN_UNIT : Activity::AUDIENCE_ALL_FACULTY);
 
         $activity = Activity::create($activityData);
 
@@ -168,7 +184,7 @@ class ActivityController extends Controller
 
         $participants = $activity->participants;
         $issuedCertificatesByBenId = $activity->certificates
-            ->whereNull('revoked_at')
+            ->reject(fn (Certificate $certificate): bool => $certificate->isRevoked())
             ->keyBy('beneficiary_id');
 
         $beneficiaries = Beneficiary::with('primaryOrganizationalUnit')->orderBy('last_name')->orderBy('first_name')->get();
@@ -185,21 +201,37 @@ class ActivityController extends Controller
 
     public function edit(Request $request, Activity $activity)
     {
-        if ($request->user()->isUnitScoped() && $activity->organizational_unit_id !== $request->user()->organizational_unit_id) {
+        $user = $request->user();
+        if ($user->isUnitScoped() && $activity->organizational_unit_id !== $user->organizational_unit_id) {
             abort(403, 'No tiene autorización para editar actividades de otra carrera o unidad.');
         }
 
         $types = CertificateType::where('is_active', true)->get();
         $templates = CertificateTemplate::where('is_active', true)
-            ->forUnit($activity->organizational_unit_id)
-            ->get();
+            ->when(! $user->isAdmin(), fn ($query) => $query->forUnit($activity->organizational_unit_id))
+            ->orderBy('name')->get(['id', 'name', 'orientation', 'organizational_unit_id']);
         $config = $activity->certificateConfig;
         $units = OrganizationalUnit::active()->orderBy('type')->orderBy('name')->get();
+        $organizerUnit = $activity->organizationalUnit;
+        $organizerOptions = $user->isAdmin() ? $units : collect();
+        if ($user->isAdmin()) {
+            if ($organizerUnit && ! $organizerUnit->is_active) {
+                $organizerOptions = $organizerOptions->concat([$organizerUnit]);
+            }
+            $organizerUnit = $organizerOptions->firstWhere('id', filter_var(old('organizational_unit_id', $organizerUnit?->id), FILTER_VALIDATE_INT));
+        }
 
-        return view('activities.edit', compact('activity', 'types', 'templates', 'config', 'units'));
+        return view('activities.edit', compact('activity', 'types', 'templates', 'config', 'units', 'organizerOptions', 'organizerUnit'));
     }
 
-    public function update(Request $request, Activity $activity)
+    public function update(Request $request, Activity $activity): RedirectResponse
+    {
+        return DB::transaction(fn (): RedirectResponse => $this->updateActivity(
+            $request, Activity::query()->lockForUpdate()->findOrFail($activity->id)
+        ), attempts: 3);
+    }
+
+    private function updateActivity(Request $request, Activity $activity): RedirectResponse
     {
         if ($request->user()->isUnitScoped() && $activity->organizational_unit_id !== $request->user()->organizational_unit_id) {
             abort(403, 'No tiene autorización para modificar actividades de otra carrera o unidad.');
@@ -210,6 +242,7 @@ class ActivityController extends Controller
             'description' => ['nullable', 'string'],
             'activity_type' => ['required', 'string', 'max:80'],
             'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
+            'min_passing_score' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,999.99'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'academic_hours' => ['required', 'integer', 'min:0', 'max:1000'],
@@ -217,7 +250,8 @@ class ActivityController extends Controller
             'target_audience_mode' => ['nullable', 'string', 'in:own_unit,all_faculty,specific_units'],
             'allowed_unit_ids' => ['nullable', 'array'],
             'allowed_unit_ids.*' => ['exists:organizational_units,id'],
-            'organizational_unit_id' => ['nullable', 'exists:organizational_units,id'],
+            'organizational_unit_id' => [Rule::excludeIf(! $request->user()->isAdmin()), 'nullable', 'integer', Rule::exists('organizational_units', 'id')
+                ->where(fn ($query) => $query->where(fn ($units) => $units->where('is_active', true)->orWhere('id', $activity->organizational_unit_id)))],
             'location' => ['nullable', 'string', 'max:255'],
             'organizer' => ['nullable', 'string', 'max:255'],
             'responsible_authority' => ['nullable', 'string', 'max:255'],
@@ -230,9 +264,14 @@ class ActivityController extends Controller
             'show_score_on_portal' => ['nullable', 'boolean'],
         ]);
 
+        $this->validateActivityPassingScore($validated, $activity);
         $old = $activity->toArray();
+        $pricing = $request->validate([
+            'requires_payment' => ['sometimes', 'boolean'],
+            'cost_amount' => ['sometimes', 'required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
+        ]);
         $activityData = collect($validated)->only([
-            'name', 'description', 'activity_type', 'certificate_type_id',
+            'name', 'description', 'activity_type', 'certificate_type_id', 'min_passing_score',
             'start_date', 'end_date', 'academic_hours', 'resolution_number',
             'target_audience_mode', 'location', 'organizer', 'responsible_authority', 'status',
         ])->toArray();
@@ -241,7 +280,7 @@ class ActivityController extends Controller
             $activityData['organizational_unit_id'] = $validated['organizational_unit_id'];
         }
 
-        $activity->update($activityData);
+        $activity->update(array_merge($activityData, $pricing));
 
         if (array_key_exists('resolution_number', $validated) && $activity->certificateConfig) {
             $customFields = $activity->certificateConfig->custom_fields_schema ?? [];
@@ -294,10 +333,20 @@ class ActivityController extends Controller
     /**
      * Guarda la personalización de certificado exclusiva para esta actividad.
      */
-    public function updateCertificateConfig(Request $request, Activity $activity)
+    public function updateCertificateConfig(Request $request, Activity $activity): RedirectResponse
     {
+        return DB::transaction(fn (): RedirectResponse => $this->saveCertificateConfig(
+            $request, Activity::query()->lockForUpdate()->findOrFail($activity->id)
+        ), attempts: 3);
+    }
+
+    private function saveCertificateConfig(Request $request, Activity $activity): RedirectResponse
+    {
+        abort_unless($request->user()->canAccessOrganizationalUnit($activity->organizational_unit_id), 403);
+
         $validated = $request->validate([
             'certificate_type_id' => ['nullable', 'exists:certificate_types,id'],
+            'min_passing_score' => ['nullable', 'numeric', 'decimal:0,2', 'between:0,999.99'],
             'certificate_template_id' => ['nullable', 'exists:certificate_templates,id'],
             'validity_mode' => ['nullable', 'string', 'in:permanent,temporal,custom'],
             'validity_years' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -311,8 +360,13 @@ class ActivityController extends Controller
             'modality' => ['nullable', 'string', 'max:100'],
         ]);
 
-        if (array_key_exists('certificate_type_id', $validated)) {
-            $activity->update(['certificate_type_id' => $validated['certificate_type_id']]);
+        $this->validateActivityPassingScore($validated, $activity);
+        $grading = collect($validated)->only(['certificate_type_id', 'min_passing_score'])->all();
+        if ($grading !== []) {
+            $activity->update($grading);
+            if ($activity->wasChanged(['certificate_type_id', 'min_passing_score'])) {
+                $activity->refreshParticipantEligibility();
+            }
         }
 
         $customFields = $activity->certificateConfig?->custom_fields_schema ?? [];
@@ -355,11 +409,30 @@ class ActivityController extends Controller
         return redirect()->route('activities.show', $activity)->with('success', "Configuración de certificado para '{$activity->name}' guardada exitosamente.");
     }
 
+    private function validateActivityPassingScore(array $validated, ?Activity $activity = null): void
+    {
+        $typeId = array_key_exists('certificate_type_id', $validated) ? $validated['certificate_type_id'] : $activity?->certificate_type_id;
+        $minimum = array_key_exists('min_passing_score', $validated) ? $validated['min_passing_score'] : $activity?->min_passing_score;
+
+        if ($minimum === null && $typeId && CertificateType::whereKey($typeId)->where('has_score', true)->exists()) {
+            throw ValidationException::withMessages(['min_passing_score' => 'Indica la nota mínima de aprobación para esta actividad.']);
+        }
+    }
+
     /**
      * Emisión masiva de certificados para múltiples beneficiarios seleccionados
      */
-    public function batchIssue(Request $request, Activity $activity, CertificateService $certificateService)
+    public function batchIssue(Request $request, Activity $activity, CertificateService $certificateService, BeneficiaryImportService $importService): RedirectResponse
     {
+        return DB::transaction(fn (): RedirectResponse => $this->issueSelectedParticipants(
+            $request, Activity::query()->lockForUpdate()->findOrFail($activity->id), $certificateService, $importService
+        ), attempts: 3);
+    }
+
+    private function issueSelectedParticipants(Request $request, Activity $activity, CertificateService $certificateService, BeneficiaryImportService $importService): RedirectResponse
+    {
+        abort_unless($request->user()->canAccessOrganizationalUnit($activity->organizational_unit_id), 403);
+
         $validated = $request->validate([
             'beneficiary_ids' => ['required', 'array', 'min:1'],
             'beneficiary_ids.*' => ['exists:beneficiaries,id'],
@@ -380,9 +453,17 @@ class ActivityController extends Controller
             ?? $activity->certificateConfig?->certificate_template_id
             ?? null;
 
+        if ($activity->requires_payment) {
+            $result = $importService->issueCertificatesToActivityParticipants(
+                $activity, (int) $typeId, $templateId ? (int) $templateId : null,
+                $validated['issue_date'], $request->user(), $certificateService, $validated['beneficiary_ids']
+            );
+
+            return back()->with($result['issued_count'] > 0 ? 'success' : 'warning', $this->issuanceSummary($result));
+        }
+
         $certType = CertificateType::find($typeId);
-        $hasScoreRule = $certType && $certType->supportsScore();
-        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+        $minScore = $activity->passingScoreForIssuance($certType);
 
         $participants = $activity->participants()
             ->whereIn('beneficiaries.id', $validated['beneficiary_ids'])
@@ -396,7 +477,7 @@ class ActivityController extends Controller
             $alreadyExists = $activity->certificates()
                 ->where('beneficiary_id', $beneficiaryId)
                 ->where('certificate_type_id', $typeId)
-                ->whereNull('revoked_at')
+                ->notRevoked()
                 ->exists();
 
             if ($alreadyExists) {
@@ -412,7 +493,7 @@ class ActivityController extends Controller
             $pivotScoreLabel = $participant?->pivot?->score_label;
 
             // Omitir reprobados o sin nota cuando el tipo exige puntaje
-            if ($hasScoreRule) {
+            if ($minScore !== null) {
                 if ($pivotScore === null || $pivotScore < $minScore) {
                     $skipped++;
 
@@ -548,7 +629,7 @@ class ActivityController extends Controller
 
             session()->forget("activity_roster_preview_{$activity->id}");
 
-            $msg = $this->issuanceSummary($result, (int) $typeId);
+            $msg = $this->issuanceSummary($result);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -574,7 +655,7 @@ class ActivityController extends Controller
     public function downloadZip(Activity $activity, CertificatePdfService $pdfService)
     {
         $certificates = $activity->certificates()
-            ->whereNull('revoked_at')
+            ->notRevoked()
             ->with(['beneficiary', 'certificateType', 'certificateTemplate'])
             ->get();
 
@@ -667,7 +748,7 @@ class ActivityController extends Controller
     /**
      * Agrega manualmente a un beneficiario existente del padrón a la nómina de la actividad.
      */
-    public function addParticipantManual(Request $request, Activity $activity)
+    public function addParticipantManual(Request $request, Activity $activity): RedirectResponse
     {
         $validated = $request->validate([
             'beneficiary_id' => ['required', 'exists:beneficiaries,id'],
@@ -676,6 +757,14 @@ class ActivityController extends Controller
             'score_label' => ['nullable', 'string', 'max:100'],
         ]);
 
+        return DB::transaction(fn (): RedirectResponse => $this->enrollParticipantManually(
+            $request, Activity::query()->lockForUpdate()->findOrFail($activity->id), $validated
+        ), attempts: 3);
+    }
+
+    private function enrollParticipantManually(Request $request, Activity $activity, array $validated): RedirectResponse
+    {
+        abort_unless($request->user()->canAccessOrganizationalUnit($activity->organizational_unit_id), 403);
         $beneficiaryId = (int) $validated['beneficiary_id'];
         $beneficiary = Beneficiary::findOrFail($beneficiaryId);
 
@@ -685,6 +774,7 @@ class ActivityController extends Controller
 
         $hasCert = $activity->certificates()
             ->where('beneficiary_id', $beneficiaryId)
+            ->notRevoked()
             ->exists();
 
         if ($hasCert) {
@@ -692,22 +782,19 @@ class ActivityController extends Controller
         }
 
         $certType = $activity->certificateType;
-        $hasScoreRule = $certType && $certType->supportsScore();
-        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
+        $minScore = $certType?->supportsScore() ? $activity->min_passing_score : null;
         $score = isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null;
 
         $isAllowed = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
         $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
         $ineligibilityReason = $isAllowed ? null : "Carrera no autorizada ({$resText})";
 
-        $participantStatus = ! $isAllowed ? 'observado' : ($hasCert ? 'certificado' : (($hasScoreRule && $score !== null && $score < $minScore) ? 'reprobado' : 'inscrito'));
+        $participantStatus = ! $isAllowed ? 'observado' : ($hasCert ? 'certificado' : (($minScore !== null && $score !== null && $score < $minScore) ? 'reprobado' : 'inscrito'));
 
         $activity->participants()->attach($beneficiaryId, [
             'role' => $validated['role'] ?? 'Participante',
-            'score' => isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null,
             'score' => $score,
             'score_label' => $validated['score_label'] ?? null,
-            'status' => $hasCert ? 'certificado' : 'inscrito',
             'career_eligible' => $isAllowed,
             'ineligibility_reason' => $ineligibilityReason,
             'status' => $participantStatus,
@@ -723,67 +810,95 @@ class ActivityController extends Controller
     /**
      * Actualiza la información académica de un participante en la nómina (nota, mención, rol).
      */
-    public function updateParticipant(Request $request, Activity $activity, Beneficiary $beneficiary)
+    public function updateParticipant(Request $request, Activity $activity, Beneficiary $beneficiary): RedirectResponse
     {
-        abort_unless($activity->participants()->where('beneficiaries.id', $beneficiary->id)->exists(), 404);
-        if ($activity->certificates()->where('beneficiary_id', $beneficiary->id)->exists()) {
-            return back()->with('error', 'La calificación está bloqueada porque ya se emitió un certificado para este participante.');
-        }
-
         $validated = $request->validate([
             'role' => ['nullable', 'string', 'max:50'],
             'score' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'score_label' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $certType = $activity->certificateType;
-        $hasScoreRule = $certType && $certType->supportsScore();
-        $minScore = (float) ($certType?->min_passing_score ?? 51.0);
-        $score = isset($validated['score']) && $validated['score'] !== '' ? (float) $validated['score'] : null;
+        return DB::transaction(function () use ($request, $activity, $beneficiary, $validated): RedirectResponse {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
+            abort_unless($request->user()->canAccessOrganizationalUnit($activity->organizational_unit_id), 403);
+            abort_unless($activity->participants()->where('beneficiaries.id', $beneficiary->id)->exists(), 404);
+            if ($activity->certificates()->notRevoked()->where('beneficiary_id', $beneficiary->id)->exists()) {
+                return back()->with('error', 'La calificación está bloqueada mientras exista un certificado sin anular. Solicite la anulación al superadministrador antes de corregirla.');
+            }
 
-        $hasCert = $activity->certificates()
-            ->where('beneficiary_id', $beneficiary->id)
-            ->whereNull('revoked_at')
-            ->exists();
+            $participant = ActivityParticipant::where('activity_id', $activity->id)
+                ->where('beneficiary_id', $beneficiary->id)->firstOrFail();
+            $oldValues = $participant->only(['role', 'score', 'score_label']);
+            $certType = $activity->certificateType;
+            $score = isset($validated['score']) ? (float) $validated['score'] : null;
+            $minimum = $certType?->supportsScore() ? $activity->min_passing_score : null;
+            $isFailing = $minimum !== null && $score !== null && $score < $minimum;
+            $isAllowed = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
+            $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
 
-        $isAllowed = $activity->isCareerAllowed($beneficiary->primary_organizational_unit_id);
-        $resText = $activity->resolution_number ? "según Resolución {$activity->resolution_number}" : 'por restricción de unidad';
-        $ineligibilityReason = $isAllowed ? null : "Carrera no autorizada ({$resText})";
+            $activity->participants()->updateExistingPivot($beneficiary->id, [
+                'role' => $validated['role'] ?? 'Participante',
+                'score' => $score,
+                'score_label' => $validated['score_label'] ?? null,
+                'career_eligible' => $isAllowed,
+                'ineligibility_reason' => $isAllowed ? null : "Carrera no autorizada ({$resText})",
+                'status' => ! $isAllowed ? 'observado' : ($isFailing ? 'reprobado' : 'inscrito'),
+            ]);
 
-        $updateData = [
-            'role' => $validated['role'] ?? 'Participante',
-            'score' => $score,
-            'score_label' => $validated['score_label'] ?? null,
-            'career_eligible' => $isAllowed,
-            'ineligibility_reason' => $ineligibilityReason,
-        ];
+            AuditLog::log('participant_academic_record_updated', "Datos académicos de {$beneficiary->full_name} actualizados en '{$activity->name}'", $activity,
+                ['beneficiary_id' => $beneficiary->id, ...$oldValues],
+                ['beneficiary_id' => $beneficiary->id, 'score' => $score, 'score_label' => $validated['score_label'] ?? null, 'role' => $validated['role'] ?? 'Participante']);
 
-        if (! $hasCert) {
-            $updateData['status'] = ! $isAllowed ? 'observado' : (($hasScoreRule && $score !== null && $score < $minScore) ? 'reprobado' : 'inscrito');
-        }
-
-        $activity->participants()->updateExistingPivot($beneficiary->id, $updateData);
-
-        return redirect()->route('activities.show', $activity)->with('success', "Datos de {$beneficiary->full_name} actualizados en la nómina.");
+            return redirect()->route('activities.show', $activity)->with('success', "Datos de {$beneficiary->full_name} actualizados en la nómina.");
+        }, attempts: 3);
     }
 
     /**
-     * Quita a un participante de la nómina de la actividad (siempre que no tenga certificado emitido).
+     * Registra la confirmación manual del encargado antes de la emisión.
      */
-    public function removeParticipant(Activity $activity, Beneficiary $beneficiary)
+    public function updatePaymentConfirmation(Request $request, Activity $activity, Beneficiary $beneficiary): RedirectResponse
     {
-        $hasCert = $activity->certificates()
-            ->where('beneficiary_id', $beneficiary->id)
-            ->whereNull('revoked_at')
-            ->exists();
-
-        if ($hasCert) {
-            return redirect()->route('activities.show', $activity)->with('error', 'No se puede remover de la lista a un participante que ya tiene un certificado emitido.');
+        if (! $activity->requires_payment) {
+            throw ValidationException::withMessages(['payment_confirmed' => 'Esta actividad es sin costo y no requiere confirmación de pago.']);
         }
+        $validated = $request->validate(['payment_confirmed' => ['required', 'boolean']]);
 
-        $activity->participants()->detach($beneficiary->id);
+        return DB::transaction(function () use ($activity, $beneficiary, $validated): RedirectResponse {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
+            $participant = ActivityParticipant::where('activity_id', $activity->id)
+                ->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->firstOrFail();
+            if ($activity->certificates()->notRevoked()->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->value('id')) {
+                return back()->with('error', 'La confirmación está bloqueada porque este participante ya tiene un certificado emitido.');
+            }
+            $confirmed = (bool) $validated['payment_confirmed'];
+            $oldValue = $participant->payment_confirmed;
+            if ($oldValue !== $confirmed) {
+                $participant->update(['payment_confirmed' => $confirmed]);
+                AuditLog::log('participant_payment_confirmation_updated', "Confirmación manual de {$beneficiary->full_name}: ".($confirmed ? 'Completado' : 'Pendiente'), $activity,
+                    ['beneficiary_id' => $beneficiary->id, 'payment_confirmed' => $oldValue],
+                    ['beneficiary_id' => $beneficiary->id, 'payment_confirmed' => $confirmed]);
+            }
 
-        return redirect()->route('activities.show', $activity)->with('success', "Participante {$beneficiary->full_name} removido de la nómina de esta actividad.");
+            return redirect()->route('activities.show', $activity)->with('success', 'Confirmación del encargado actualizada: '.($confirmed ? 'Completado.' : 'Pendiente.'));
+        });
+    }
+
+    public function removeParticipant(Activity $activity, Beneficiary $beneficiary): RedirectResponse
+    {
+        return DB::transaction(function () use ($activity, $beneficiary): RedirectResponse {
+            $activity = Activity::query()->lockForUpdate()->findOrFail($activity->id);
+            $participant = ActivityParticipant::where('activity_id', $activity->id)
+                ->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->firstOrFail();
+            if ($activity->certificates()->notRevoked()->where('beneficiary_id', $beneficiary->id)->lockForUpdate()->value('id')) {
+                return redirect()->route('activities.show', $activity)->with('error', 'No se puede remover de la lista a un participante que ya tiene un certificado emitido.');
+            }
+
+            $oldValues = $participant->only(['beneficiary_id', 'status', 'payment_confirmed']);
+            $activity->participants()->detach($beneficiary->id);
+            AuditLog::log('activity_participant_removed', "Participante {$beneficiary->full_name} retirado de la nómina", $activity, $oldValues);
+
+            return redirect()->route('activities.show', $activity)->with('success', "Participante {$beneficiary->full_name} removido de la nómina de esta actividad.");
+        });
     }
 
     /**
@@ -824,7 +939,7 @@ class ActivityController extends Controller
                 $validated['beneficiary_ids'] ?? null
             );
 
-            $msg = $this->issuanceSummary($result, (int) $typeId);
+            $msg = $this->issuanceSummary($result);
 
             return redirect()->route('activities.show', $activity)->with($result['issued_count'] > 0 ? 'success' : 'warning', $msg);
         } catch (\Throwable $e) {
@@ -832,17 +947,18 @@ class ActivityController extends Controller
         }
     }
 
-    /** @param array<string, int> $result */
-    private function issuanceSummary(array $result, int $typeId): string
+    /** @param array<string, int|float|null> $result */
+    private function issuanceSummary(array $result): string
     {
         $message = $result['issued_count'] > 0
             ? "Emisión masiva completada: {$result['issued_count']} certificado(s) emitido(s)."
             : 'No se emitió ningún certificado nuevo.';
-        $minimum = (float) (CertificateType::find($typeId)?->min_passing_score ?? 51);
+        $minimum = $result['min_passing_score'] ?? null;
         $labels = [
             'failing_count' => "Reprobados (nota mínima: {$minimum} pts)",
             'unscored_count' => 'Sin calificación',
             'ineligible_count' => 'Carrera no habilitada o pendiente de identificación',
+            'payment_pending_count' => 'Confirmación de pago pendiente',
             'duplicate_count' => 'Duplicados o ya certificados',
             'invalid_count' => 'Datos no válidos',
         ];

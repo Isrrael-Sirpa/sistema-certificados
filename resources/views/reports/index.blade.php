@@ -8,7 +8,7 @@
 
     <!-- Filter Card -->
     <div class="ft-panel bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('reports.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <form method="GET" action="{{ route('reports.index') }}" class="ft-form-filter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
 
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Desde</label>

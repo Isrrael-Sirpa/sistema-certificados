@@ -8,13 +8,14 @@
 <div class="ft-form-page" x-data="{
     typesData: {{ Js::from($types->keyBy('id')) }},
     selectedTypeId: @js((string) old('certificate_type_id', $initialType?->id ?? '')),
-    targetAudienceMode: @js(old('target_audience_mode', 'own_unit')),
+    targetAudienceMode: @js(old('target_audience_mode', $organizerUnit ? 'own_unit' : 'all_faculty')),
+    requiresPayment: @js((string) old('requires_payment', '')),
     validityMode: @js(old('validity_mode', $initialType?->validity_mode === 'permanent' ? 'permanent' : 'temporal')),
     validityYears: @js((int) old('validity_years', $initialType?->default_validity_years ?? 3)),
     showScorePdf: {{ old('show_score_on_pdf', '1') == '1' ? 'true' : 'false' }},
     showScorePortal: {{ old('show_score_on_portal', '1') == '1' ? 'true' : 'false' }},
     selectedTemplateId: @js((string) old('certificate_template_id', '')),
-    organizerUnitId: @js((string) old('organizational_unit_id', auth()->user()->organizational_unit_id ?? $units->first()?->id ?? '')),
+    organizerUnitId: @js((string) $organizerUnit?->id),
     templateSearch: '', templateOrientation: '',
     templateData: @js($templates->keyBy('id')->map->only(['name', 'orientation', 'organizational_unit_id'])),
     templateVisible(id) {
@@ -185,34 +186,10 @@
                         <span class="w-5 h-5 rounded-md bg-brand/10 text-brand flex items-center justify-center text-[11px] font-bold">2</span>
                         <span>Marco Normativo y Carreras Habilitadas</span>
                     </h4>
-                    <p class="text-xs text-slate-500 mt-0.5">Defina el alcance de la resolución y las carreras que pueden certificar en esta actividad</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Indica quién organiza, qué estudiantes pueden participar y las condiciones de la actividad.</p>
                 </div>
 
-                @if(auth()->user()->isAdmin())
-                    <div>
-                        <label for="organizational_unit_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                            Carrera o Departamento Organizador <span class="text-red-500">*</span>
-                        </label>
-                        <select name="organizational_unit_id" id="organizational_unit_id" required x-model="organizerUnitId" @change="onOrganizerChange()"
-                                class="w-full py-2 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                            @foreach($units as $u)
-                                <option value="{{ $u->id }}" {{ old('organizational_unit_id', auth()->user()->organizational_unit_id) == $u->id ? 'selected' : '' }}>
-                                    [{{ $u->code }}] {{ $u->name }} ({{ $u->type_label }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                @else
-                    <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unidad Organizadora</span>
-                            <div class="text-xs font-bold text-brand mt-0.5">{{ auth()->user()->organizationalUnit->name ?? 'Mi Carrera' }}</div>
-                        </div>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-brand/10 text-brand">
-                            {{ auth()->user()->organizationalUnit->code ?? 'CARRERA' }}
-                        </span>
-                    </div>
-                @endif
+                @include('activities.organizer-field')
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -231,8 +208,8 @@
                         </label>
                         <div class="space-y-2 mt-1">
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-                                <input type="radio" name="target_audience_mode" value="own_unit" x-model="targetAudienceMode" class="text-brand focus:ring-brand">
-                                <span class="text-xs font-medium text-slate-800">Solo mi propia carrera / unidad</span>
+                                <input type="radio" name="target_audience_mode" value="own_unit" x-model="targetAudienceMode" :disabled="!organizerUnitId" class="text-brand focus:ring-brand">
+                                <span class="text-xs font-medium text-slate-800">Solo estudiantes de la unidad organizadora</span>
                             </label>
 
                             <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
@@ -266,6 +243,8 @@
                         * Estudiantes inscritos de otras carreras no autorizadas serán observados automáticamente según la resolución y no se emitirá su certificado.
                     </p>
                 </div>
+
+                @include('activities.cost-fields', ['activity' => null])
             </div>
 
             <!-- SECCIÓN 3: TIPO DE CERTIFICADO Y POLÍTICA DE VIGENCIA/NOTAS -->
@@ -361,7 +340,7 @@
                     </div>
 
                     <!-- Score and Evaluation Options (Shown if currentType?.has_score or user wants) -->
-                    <div x-show="currentType && currentType.has_score" class="pt-4 border-t border-slate-200 space-y-3">
+                    <div x-show="currentType && currentType.has_score" x-cloak class="pt-4 border-t border-slate-200 space-y-3">
                         <div class="flex items-center gap-2">
                             <span class="text-base">📊</span>
                             <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Configuración de Calificación y Puntajes</h5>
@@ -369,6 +348,8 @@
                         <p class="text-xs text-slate-500">
                             Esta actividad admite notas individuales. Al importar participantes por Excel, el sistema detectará automáticamente las columnas de calificación (ej. <code>NOTA</code>, <code>PUNTAJE</code>, <code>MENCION</code>).
                         </p>
+
+                        @include('activities.passing-score-field')
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <label class="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer">

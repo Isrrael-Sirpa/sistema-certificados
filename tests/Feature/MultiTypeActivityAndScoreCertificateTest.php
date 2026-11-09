@@ -57,6 +57,8 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $response = $this->actingAs($this->user)->post(route('activities.store'), [
             'name' => 'Taller Avanzado de Machine Learning 2026',
+            'min_passing_score' => 70,
+            'requires_payment' => '0',
             'activity_type' => 'Taller',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -85,6 +87,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Curso de Robótica e IoT',
+            'min_passing_score' => 51,
             'activity_type' => 'Curso',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -126,6 +129,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Seminario de Tecnologías Abiertas',
+            'min_passing_score' => 51,
             'activity_type' => 'Seminario',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -228,6 +232,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Diplomado en Ciberseguridad',
+            'min_passing_score' => 51,
             'activity_type' => 'Diplomado',
             'start_date' => now()->toDateString(),
             'end_date' => now()->addMonths(6)->toDateString(),
@@ -267,6 +272,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Coloquio de Informática 2026',
+            'min_passing_score' => 51,
             'activity_type' => 'Seminario',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -320,6 +326,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Taller de Python Avanzado',
+            'min_passing_score' => 51,
             'activity_type' => 'Taller',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -494,6 +501,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Diplomado en Inteligencia Artificial',
+            'min_passing_score' => 51,
             'activity_type' => 'Diplomado',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -546,6 +554,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Materia de Algoritmos Complejos',
+            'min_passing_score' => 51,
             'activity_type' => 'Curso',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -645,6 +654,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
     {
         $activity = Activity::create([
             'name' => 'Diplomado en Robótica',
+            'min_passing_score' => 51,
             'activity_type' => 'Diplomado',
             'certificate_type_id' => $this->aprobacionType->id,
             'start_date' => now()->toDateString(),
@@ -700,6 +710,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
         $template->update(['configuration' => $schema]);
         $activity = Activity::create([
             'name' => 'Evaluación con notas individuales', 'activity_type' => 'Curso',
+            'min_passing_score' => 80,
             'certificate_type_id' => $this->aprobacionType->id, 'status' => 'activa',
             'start_date' => '2026-10-01', 'end_date' => '2026-10-20', 'academic_hours' => 40,
         ]);
@@ -708,6 +719,7 @@ class MultiTypeActivityAndScoreCertificateTest extends TestCase
         ]);
         $otherActivity = Activity::create([
             'name' => 'Otra evaluación de los mismos estudiantes', 'activity_type' => 'Curso',
+            'min_passing_score' => 80,
             'certificate_type_id' => $this->aprobacionType->id, 'status' => 'activa',
             'start_date' => '2026-09-01', 'end_date' => '2026-09-20', 'academic_hours' => 40,
         ]);

@@ -29,7 +29,8 @@ class CertificateLayoutTest extends TestCase
     public function test_layout_refresh_preserves_previous_versions_and_certificates_and_is_idempotent(): void
     {
         $template = CertificateTemplate::firstOrFail();
-        $issued = app(CertificateService::class)->issueCertificate(['beneficiary_id' => Beneficiary::first()->id, 'activity_id' => Activity::first()->id, 'certificate_type_id' => CertificateType::first()->id, 'certificate_template_id' => $template->id], User::first());
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
+        $issued = app(CertificateService::class)->issueCertificate(['beneficiary_id' => Beneficiary::first()->id, 'activity_id' => Activity::first()->id, 'certificate_type_id' => $type->id, 'certificate_template_id' => $template->id], User::first());
         $snapshot = $issued->snapshot_data;
         $originalVersion = $template->versions()->first()->design_schema;
         $legacy = $template->configuration;

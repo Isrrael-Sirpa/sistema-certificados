@@ -4,11 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Activity;
 use App\Models\Beneficiary;
-use App\Models\Certificate;
 use App\Models\CertificateType;
 use App\Models\User;
 use App\Services\CertificateService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -34,7 +32,7 @@ class PublicVerificationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -44,7 +42,7 @@ class PublicVerificationTest extends TestCase
             'issue_date' => now()->toDateString(),
         ], $user);
 
-        $response = $this->get('/verificar/' . $certificate->verification_token);
+        $response = $this->get('/verificar/'.$certificate->verification_token);
         $response->assertStatus(200);
         $response->assertSee('Certificado Oficial Válido');
         $response->assertSee('VIGENTE');
@@ -57,7 +55,7 @@ class PublicVerificationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -67,7 +65,7 @@ class PublicVerificationTest extends TestCase
             'issue_date' => '2020-01-01',
         ], $user);
 
-        $response = $this->get('/verificar/' . $certificate->verification_token);
+        $response = $this->get('/verificar/'.$certificate->verification_token);
         $response->assertStatus(200);
         $response->assertSee('Certificado Expirado');
         $response->assertSee('EXPIRADO');
@@ -78,7 +76,7 @@ class PublicVerificationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -89,7 +87,7 @@ class PublicVerificationTest extends TestCase
 
         $service->revokeCertificate($certificate, $user, 'Certificado duplicado por error');
 
-        $response = $this->get('/verificar/' . $certificate->verification_token);
+        $response = $this->get('/verificar/'.$certificate->verification_token);
         $response->assertStatus(200);
         $response->assertSee('Certificado Revocado / Anulado');
         $response->assertSee('REVOCADO');
@@ -101,7 +99,7 @@ class PublicVerificationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -114,7 +112,7 @@ class PublicVerificationTest extends TestCase
             'certificate_code' => $certificate->certificate_code,
         ]);
 
-        $response->assertRedirect('/verificar/' . $certificate->verification_token . '?method=manual_code');
+        $response->assertRedirect('/verificar/'.$certificate->verification_token.'?method=manual_code');
     }
 
     public function test_non_existent_token_returns_404_view(): void

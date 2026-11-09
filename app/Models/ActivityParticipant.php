@@ -21,6 +21,7 @@ class ActivityParticipant extends Model
         'ineligibility_reason',
         'score',
         'score_label',
+        'payment_confirmed',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class ActivityParticipant extends Model
         return [
             'score' => 'float',
             'career_eligible' => 'boolean',
+            'payment_confirmed' => 'boolean',
         ];
     }
 
@@ -59,38 +61,34 @@ class ActivityParticipant extends Model
         return $this->score !== null ? ($this->score.' pts') : null;
     }
 
-    public function isPassing(?float $minScore = 51.0): bool
+    public function isPassing(?float $minScore = null): bool
     {
-        if ($this->score === null) {
-            return false;
-        }
+        $minScore ??= $this->activity?->min_passing_score;
 
-        return (float) $this->score >= ($minScore ?? 51.0);
+        return $minScore !== null && $this->score !== null && (float) $this->score >= $minScore;
     }
 
-    public function isFailing(?float $minScore = 51.0): bool
+    public function isFailing(?float $minScore = null): bool
     {
-        if ($this->score === null) {
-            return false;
-        }
+        $minScore ??= $this->activity?->min_passing_score;
 
-        return (float) $this->score < ($minScore ?? 51.0);
+        return $minScore !== null && $this->score !== null && (float) $this->score < $minScore;
     }
 
     /**
      * Determina si el participante está habilitado para recibir certificado
-     * (cumple carrera/resolución y nota mínima >= 51 si tiene evaluación).
+     * (cumple carrera/resolución, confirmación si tiene costo y nota mínima si tiene evaluación).
      */
-    public function isEligibleForCertificate(?float $minScore = 51.0): bool
+    public function isEligibleForCertificate(?float $minScore = null): bool
     {
         if (! $this->career_eligible) {
             return false;
         }
 
-        if ($this->hasScore() && $this->isFailing($minScore)) {
+        if ($this->activity?->requires_payment && ! $this->payment_confirmed) {
             return false;
         }
 
-        return true;
+        return ($minScore === null && ! $this->activity?->certificateType?->supportsScore()) || $this->isPassing($minScore);
     }
 }

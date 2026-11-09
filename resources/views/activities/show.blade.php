@@ -10,7 +10,8 @@
     issueRosterModal: false,
     editParticipantModal: false,
     editingParticipant: { id: null, name: '', doc: '', role: 'Participante', score: '', score_label: '', actionUrl: '' },
-    searchAdd: ''
+    searchAdd: '',
+    paymentFilter: 'all'
 }">
 
     <!-- Top Navigation & Breadcrumb -->
@@ -106,6 +107,7 @@
 
                 <h3 class="text-xl font-bold text-brand leading-snug">{{ $activity->name }}</h3>
                 <p class="text-xs text-slate-500 mt-2">{{ $activity->description ?? 'Sin descripción.' }}</p>
+                <p class="mt-3 text-sm font-semibold text-brand">{{ $activity->requires_payment ? 'Actividad con costo fijo: ' : '' }}{{ $activity->formatted_cost }}</p>
 
                 <div class="mt-4 flex flex-wrap gap-4 text-xs text-slate-600">
                     <div>📅 <strong>Fechas:</strong> {{ $activity->formatted_date_range }}</div>
@@ -293,7 +295,7 @@
                     </div>
 
                     <!-- Calificaciones y Notas (Visibilidad) -->
-                    <div x-show="currentType && currentType.has_score" class="pt-4 border-t border-slate-200 space-y-3">
+                    <div x-show="currentType && currentType.has_score" x-cloak class="pt-4 border-t border-slate-200 space-y-3">
                         <div class="flex items-center gap-2">
                             <span class="text-base">📊</span>
                             <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Configuración de Calificaciones y Puntajes</h5>
@@ -301,6 +303,8 @@
                         <p class="text-xs text-slate-500">
                             Esta actividad admite notas individuales asignadas por Excel o manualmente. Controle la visibilidad:
                         </p>
+
+                        @include('activities.passing-score-field', ['minimum' => $activity->min_passing_score])
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                             <label class="flex items-center gap-2.5 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer">
@@ -423,16 +427,16 @@
     <!-- Activity Participants Roster Section -->
     @php
         $hasScoreType = (bool) ($activity->certificateType?->has_score);
-        $minPassingScore = (float) ($activity->certificateType?->min_passing_score ?? 51.0);
+        $minPassingScore = $activity->min_passing_score;
 
         $totalCount = $participants->count();
-        $certifiedCount = $participants->filter(fn ($p) => $p->pivot->status === 'certificado' || isset($issuedCertificatesByBenId[$p->id]))->count();
+        $certifiedCount = $participants->filter(fn ($p) => isset($issuedCertificatesByBenId[$p->id]))->count();
 
         if ($hasScoreType) {
-            $failingParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score < $minPassingScore);
-            $unscoredParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score === null);
+            $failingParticipants = $participants->filter(fn ($p) => $minPassingScore !== null && ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score < $minPassingScore);
+            $unscoredParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->career_eligible && $p->pivot->score === null);
             $ineligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && ! $p->pivot->career_eligible);
-            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score >= $minPassingScore);
+            $eligibleParticipants = $participants->filter(fn ($p) => $minPassingScore !== null && ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->career_eligible && $p->pivot->score !== null && (float) $p->pivot->score >= $minPassingScore);
 
             $pendingCount = $eligibleParticipants->count();
             $failingCount = $failingParticipants->count();
@@ -440,15 +444,40 @@
             $ineligibleCount = $ineligibleParticipants->count();
         } else {
             $ineligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && ! $p->pivot->career_eligible);
-            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->status !== 'certificado' && $p->pivot->career_eligible);
+            $eligibleParticipants = $participants->filter(fn ($p) => ! isset($issuedCertificatesByBenId[$p->id]) && $p->pivot->career_eligible);
             $pendingCount = $eligibleParticipants->count();
             $failingCount = 0;
             $unscoredCount = 0;
             $ineligibleCount = $ineligibleParticipants->count();
         }
+        $paymentPendingCount = $activity->requires_payment ? $participants->filter(fn ($p) => ! $p->pivot->payment_confirmed)->count() : 0;
+        $paymentCompletedCount = $activity->requires_payment ? $totalCount - $paymentPendingCount : 0;
+        if ($activity->requires_payment) {
+            $eligibleParticipants = $eligibleParticipants->filter(fn ($p) => (bool) $p->pivot->payment_confirmed);
+            $pendingCount = $eligibleParticipants->count();
+        }
     @endphp
 
     <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+        @if($hasScoreType)
+            <div class="border-b border-border bg-brand-soft/35 px-5 py-4 text-sm text-brand">
+                @if($minPassingScore === null)
+                    Define la nota mínima en la configuración del certificado para habilitar la emisión con calificación.
+                @else
+                    Nota mínima de la actividad <strong>{{ $minPassingScore }} puntos</strong>
+                @endif
+            </div>
+        @endif
+        @if($activity->requires_payment)
+            <div class="p-5 bg-brand-soft/50 border-b border-border">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div><h4 class="text-sm font-bold text-brand">Confirmación manual del encargado · {{ $activity->formatted_cost }}</h4><p class="ft-field-help">Marca Completado cuando el encargado confirme el pago íntegro. Los abonos parciales permanecen pendientes. La emisión también verifica carrera y nota.</p></div>
+                    <div class="flex gap-2 text-xs font-semibold"><span class="rounded-full bg-amber-100 text-amber-800 px-3 py-2">{{ $paymentPendingCount }} pendientes</span><span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-2">{{ $paymentCompletedCount }} completados</span></div>
+                </div>
+                <div class="mt-4 max-w-xs"><label for="payment-filter" class="ft-field-label">Filtrar confirmaciones</label><select id="payment-filter" x-model="paymentFilter" class="ft-input"><option value="all">Todos los participantes</option><option value="pending">Pendientes</option><option value="completed">Completados</option></select></div>
+                <p x-show="(paymentFilter === 'pending' && {{ $paymentPendingCount }} === 0) || (paymentFilter === 'completed' && {{ $paymentCompletedCount }} === 0)" x-cloak class="ft-field-help mt-3">No hay participantes con esta confirmación.</p>
+            </div>
+        @endif
         <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
             <div>
                 <div class="flex items-center gap-2">
@@ -458,7 +487,7 @@
                 <p class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
                     <span>Total: <strong class="text-slate-800">{{ $totalCount }}</strong> participante(s) registrados</span> ·
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                        {{ $pendingCount }} {{ $hasScoreType ? 'aprobados pendientes' : 'pendientes de emitir' }}
+                        {{ $pendingCount }} {{ $activity->requires_payment ? 'habilitados para emitir' : ($hasScoreType ? 'aprobados pendientes' : 'pendientes de emitir') }}
                     </span> ·
                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                         {{ $certifiedCount }} certificados
@@ -501,7 +530,7 @@
                     <button type="button"
                             @click="issueRosterModal = true"
                             class="px-4 py-2 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 animate-pulse">
-                        <span>⚡ Emitir a {{ $hasScoreType ? 'Aprobados' : 'Pendientes' }} ({{ $pendingCount }})</span>
+                        <span>⚡ Emitir a {{ $activity->requires_payment ? 'Habilitados' : ($hasScoreType ? 'Aprobados' : 'Pendientes') }} ({{ $pendingCount }})</span>
                     </button>
                 @elseif($certifiedCount === $totalCount && $totalCount > 0)
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -524,6 +553,7 @@
                         <th class="px-5 py-3">Participante / Estudiante</th>
                         <th class="px-5 py-3">Carrera / Unidad</th>
                         <th class="px-5 py-3">Calificación / Nota</th>
+                        @if($activity->requires_payment)<th class="px-5 py-3">Confirmación del encargado</th>@endif
                         <th class="px-5 py-3">Estado del Certificado</th>
                         <th class="px-5 py-3 text-right">Acciones</th>
                     </tr>
@@ -532,12 +562,13 @@
                     @forelse($participants as $index => $part)
                         @php
                             $cert = $issuedCertificatesByBenId[$part->id] ?? null;
-                            $isCertified = $part->pivot->status === 'certificado' || $cert !== null;
+                            $isCertified = $cert !== null;
                             $hasScore = $part->pivot->score !== null || !empty($part->pivot->score_label);
-                            $isFailing = $hasScoreType && $part->pivot->score !== null && (float)$part->pivot->score < $minPassingScore;
+                            $isFailing = $hasScoreType && $minPassingScore !== null && ! $isCertified && $part->pivot->score !== null && (float) $part->pivot->score < $minPassingScore;
                             $isUnscored = $hasScoreType && $part->pivot->score === null;
                         @endphp
-                        <tr class="hover:bg-slate-50/80 transition-colors {{ $isFailing ? 'bg-red-50/30' : '' }}">
+                        <tr class="hover:bg-slate-50/80 transition-colors {{ $isFailing ? 'bg-red-50/30' : '' }}"
+                            @if($activity->requires_payment) x-show="paymentFilter === 'all' || paymentFilter === @js($part->pivot->payment_confirmed ? 'completed' : 'pending')" @endif>
                             <td class="px-5 py-3 text-center text-slate-400 font-mono text-[10px]">
                                 {{ $index + 1 }}
                             </td>
@@ -571,17 +602,34 @@
                                             <span>{{ $part->pivot->formatted_score }}</span>
                                             <span class="text-[9px] font-semibold text-red-600 ml-0.5">(Reprobado)</span>
                                         </div>
-                                    @else
+                                    @elseif($hasScoreType && $minPassingScore !== null && ! $isCertified)
                                         <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold text-xs" title="Aprobado (&ge; {{ $minPassingScore }} pts)">
                                             <span>✓</span>
                                             <span>{{ $part->pivot->formatted_score }}</span>
                                             <span class="text-[9px] font-semibold text-emerald-700 ml-0.5">(Aprobado)</span>
                                         </div>
+                                    @else
+                                        <span class="rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand">{{ $part->pivot->formatted_score }}</span>
                                     @endif
                                 @else
                                     <span class="text-slate-400 italic text-[11px]">Sin nota</span>
                                 @endif
                             </td>
+                            @if($activity->requires_payment)
+                                <td class="px-5 py-3 min-w-48">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $part->pivot->payment_confirmed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">{{ $part->pivot->payment_confirmed ? 'Completado' : 'Pendiente' }}</span>
+                                    @if(! $isCertified)
+                                        <form method="POST" action="{{ route('activities.participants.payment', [$activity, $part]) }}" class="mt-2" onsubmit="return confirm('¿Confirmas cambiar el estado de este participante a {{ $part->pivot->payment_confirmed ? 'Pendiente' : 'Completado' }} según el registro del encargado?')">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="payment_confirmed" value="{{ $part->pivot->payment_confirmed ? '0' : '1' }}">
+                                            <button type="submit" class="inline-flex items-center min-h-11 text-xs font-semibold text-brand underline underline-offset-4">{{ $part->pivot->payment_confirmed ? 'Volver a Pendiente' : 'Marcar Completado' }}</button>
+                                        </form>
+                                    @else
+                                        <p class="text-[11px] text-muted mt-2">Confirmación bloqueada</p>
+                                    @endif
+                                </td>
+                            @endif
                             <td class="px-5 py-3">
                                 @if($isCertified && $cert)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -605,7 +653,7 @@
                                     </span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                        🟡 PENDIENTE DE EMISIÓN
+                                        {{ $activity->requires_payment && ! $part->pivot->payment_confirmed ? 'PENDIENTE DE CONFIRMACIÓN' : '🟡 PENDIENTE DE EMISIÓN' }}
                                     </span>
                                 @endif
                             </td>
@@ -619,15 +667,7 @@
                                     </a>
                                 @else
                                     <button type="button"
-                                            @click="editingParticipant = {
-                                                id: {{ $part->id }},
-                                                name: '{{ addslashes($part->full_title_name) }}',
-                                                doc: '{{ $part->document_number }}',
-                                                role: '{{ addslashes($part->pivot->role ?? 'Participante') }}',
-                                                score: '{{ $part->pivot->score ?? '' }}',
-                                                score_label: '{{ addslashes($part->pivot->score_label ?? '') }}',
-                                                actionUrl: '{{ route('activities.participants.update', [$activity, $part]) }}'
-                                            }; editParticipantModal = true;"
+                                            x-on:click="editingParticipant = @js(['id' => $part->id, 'name' => $part->full_title_name, 'doc' => $part->document_number, 'role' => $part->pivot->role ?? 'Participante', 'score' => $part->pivot->score ?? '', 'score_label' => $part->pivot->score_label ?? '', 'actionUrl' => route('activities.participants.update', [$activity, $part])]); editParticipantModal = true;"
                                             class="p-1.5 text-slate-500 hover:text-brand hover:bg-slate-100 rounded inline-block"
                                             title="Editar Calificación / Rol">
                                         📝
@@ -644,7 +684,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-10 text-center text-slate-400">
+                            <td colspan="{{ $activity->requires_payment ? 8 : 7 }}" class="px-5 py-10 text-center text-slate-400">
                                 <div class="text-3xl mb-2">📋</div>
                                 <p class="font-semibold text-slate-600">No hay participantes registrados en la nómina de esta actividad.</p>
                                 <p class="text-xs text-slate-400 mt-1">Cargue un archivo Excel o agregue estudiantes desde el padrón para comenzar. Las columnas de notas se detectan automáticamente.</p>
@@ -754,22 +794,22 @@
     </div>
 
     <!-- Modal 1: Carga de Nómina por Excel / CSV -->
-    <div x-show="enrollExcelModal"
+    <div x-show="enrollExcelModal" role="dialog" aria-modal="true" aria-labelledby="enroll-roster-title" @keydown.escape.window="enrollExcelModal = false"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col" @click.away="enrollExcelModal = false">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="ft-form-dialog w-full max-w-xl space-y-5 p-4 sm:p-6" @click.away="enrollExcelModal = false">
+            <div class="ft-dialog-heading">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-bold">
                         📂
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Cargar Nómina a la Actividad</h3>
+                        <h3 id="enroll-roster-title">Cargar Nómina a la Actividad</h3>
                         <p class="text-xs text-slate-500">Importe estudiantes y calificaciones desde una planilla Excel o CSV.</p>
                     </div>
                 </div>
-                <button @click="enrollExcelModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" @click="enrollExcelModal = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
             <form method="POST" action="{{ route('activities.roster.enroll', $activity) }}" enctype="multipart/form-data" class="space-y-4">
@@ -804,11 +844,11 @@
                     </div>
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="enrollExcelModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="enrollExcelModal = false" class="ft-form-secondary">
                         Cancelar
                     </button>
-                    <button type="submit" class="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <button type="submit" class="ft-form-primary">
                         <span>📥 Cargar y Procesar Nómina</span>
                     </button>
                 </div>
@@ -817,22 +857,22 @@
     </div>
 
     <!-- Modal 2: Agregar Participante Manual desde el Padrón -->
-    <div x-show="manualAddModal"
+    <div x-show="manualAddModal" role="dialog" aria-modal="true" aria-labelledby="add-participant-title" @keydown.escape.window="manualAddModal = false"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col" @click.away="manualAddModal = false">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="ft-form-dialog w-full max-w-lg space-y-5 p-4 sm:p-6" @click.away="manualAddModal = false">
+            <div class="ft-dialog-heading">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-blue-100 text-brand flex items-center justify-center text-xl font-bold">
                         👤
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Agregar del Padrón a la Nómina</h3>
+                        <h3 id="add-participant-title">Agregar del Padrón a la Nómina</h3>
                         <p class="text-xs text-slate-500">Busque un participante y asigne opcionalmente su calificación.</p>
                     </div>
                 </div>
-                <button @click="manualAddModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" @click="manualAddModal = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
             <form method="POST" action="{{ route('activities.participants.add-manual', $activity) }}" class="space-y-4">
@@ -903,11 +943,11 @@
                     </select>
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="manualAddModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="manualAddModal = false" class="ft-form-secondary">
                         Cancelar
                     </button>
-                    <button type="submit" class="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <button type="submit" class="ft-form-primary">
                         <span>+ Agregar a la Nómina</span>
                     </button>
                 </div>
@@ -916,24 +956,24 @@
     </div>
 
     <!-- Modal 3: Emisión Masiva a la Nómina de Participantes -->
-    <div x-show="issueRosterModal"
+    <div x-show="issueRosterModal" role="dialog" aria-modal="true" aria-labelledby="issue-roster-title" @keydown.escape.window="issueRosterModal = false"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[calc(100dvh-2rem)] overflow-y-auto flex flex-col"
+        <div class="ft-form-dialog w-full max-w-lg space-y-5 p-4 sm:p-6"
              @click.away="issueRosterModal = false"
              x-data="{ showAdvancedOptions: false }">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="ft-dialog-heading">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-red-100 text-action flex items-center justify-center text-xl font-bold">
                         ⚡
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Emitir Certificados a la Nómina</h3>
+                        <h3 id="issue-roster-title">Emitir Certificados a la Nómina</h3>
                         <p class="text-xs text-slate-500">Se generarán los certificados con firma digital, QR y validez oficial.</p>
                     </div>
                 </div>
-                <button @click="issueRosterModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" @click="issueRosterModal = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
             <form method="POST" action="{{ route('activities.participants.issue-certificates', $activity) }}" class="space-y-4">
@@ -941,11 +981,11 @@
 
                 <div class="p-3.5 {{ $hasScoreType && $pendingCount === 0 ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-200 text-amber-800' }} border rounded-xl text-xs space-y-1.5">
                     @if($hasScoreType)
-                        <p><strong>Control de Aprobación Institucional:</strong> Se emitirán certificados digitales únicamente para los <strong class="text-slate-900">{{ $pendingCount }}</strong> participante(s) <strong>aprobados</strong> (calificación &ge; {{ $minPassingScore }} pts).</p>
+                        <p><strong>Aprobación de la actividad.</strong> Podrán recibir el certificado los participantes que alcancen {{ $minPassingScore }} puntos y cumplan los demás requisitos.</p>
                         @if($failingCount > 0)
                             <p class="text-[11px] text-red-700 font-semibold flex items-center gap-1.5">
                                 <span>🚫</span>
-                                <span>Se omitirán automáticamente <strong>{{ $failingCount }} estudiante(s) reprobados</strong> (nota menor a {{ $minPassingScore }} pts). Por ética y normativa facultativa, no se les otorgará certificado de aprobación.</span>
+                                <span>Se omitirán <strong>{{ $failingCount }} participantes</strong> con nota inferior al mínimo.</span>
                             </p>
                         @endif
                         @if($unscoredCount > 0)
@@ -1088,12 +1128,12 @@
                     </div>
                 @endif
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="issueRosterModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="issueRosterModal = false" class="ft-form-secondary">
                         Cancelar
                     </button>
                     @if($pendingCount > 0)
-                        <button type="submit" class="px-5 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer">
+                        <button type="submit" class="ft-form-primary">
                             <span>🚀 Confirmar y Emitir a {{ $hasScoreType ? 'Aprobados' : 'Todos' }} ({{ $pendingCount }})</span>
                         </button>
                     @else
@@ -1107,22 +1147,22 @@
     </div>
 
     <!-- Modal 4: Editar Calificación y Rol del Participante en la Nómina -->
-    <div x-show="editParticipantModal"
+    <div x-show="editParticipantModal" role="dialog" aria-modal="true" aria-labelledby="edit-participant-title" @keydown.escape.window="editParticipantModal = false"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
          style="display: none;">
 
-        <div class="ft-panel bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4" @click.away="editParticipantModal = false">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="ft-form-dialog w-full max-w-md space-y-5 p-4 sm:p-6" @click.away="editParticipantModal = false">
+            <div class="ft-dialog-heading">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-bold">
                         📝
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-slate-800">Calificación del Estudiante</h3>
+                        <h3 id="edit-participant-title">Calificación del Estudiante</h3>
                         <p class="text-xs text-slate-500" x-text="editingParticipant.name + ' (' + editingParticipant.doc + ')'"></p>
                     </div>
                 </div>
-                <button @click="editParticipantModal = false" class="text-slate-400 hover:text-slate-700 font-bold text-xl p-1">&times;</button>
+                <button type="button" @click="editParticipantModal = false" class="ft-dialog-close" aria-label="Cerrar">&times;</button>
             </div>
 
             <form method="POST" :action="editingParticipant.actionUrl" class="space-y-4">
@@ -1151,11 +1191,11 @@
                            class="w-full text-xs py-2 px-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                    <button type="button" @click="editParticipantModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                <div class="ft-dialog-actions">
+                    <button type="button" @click="editParticipantModal = false" class="ft-form-secondary">
                         Cancelar
                     </button>
-                    <button type="submit" class="px-5 py-2.5 bg-brand hover:bg-brand-deep text-white text-xs font-bold rounded-xl shadow-md transition-all">
+                    <button type="submit" class="ft-form-primary">
                         Guardar Calificación
                     </button>
                 </div>

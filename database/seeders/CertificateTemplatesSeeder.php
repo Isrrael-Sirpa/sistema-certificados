@@ -18,7 +18,7 @@ class CertificateTemplatesSeeder extends Seeder
         $layouts = app(CertificateLayoutService::class);
 
         foreach ($templates as $index => $tplData) {
-            $template = CertificateTemplate::updateOrCreate(
+            $template = CertificateTemplate::firstOrCreate(
                 ['slug' => $tplData['slug']],
                 [
                     'name' => $tplData['name'],
@@ -35,16 +35,15 @@ class CertificateTemplatesSeeder extends Seeder
             );
 
             // Registrar versión inicial 1 en certificate_template_versions
-            $template->versions()->updateOrCreate(
-                ['version_number' => 1],
-                [
+            if ($template->current_version === 1) {
+                $template->versions()->firstOrCreate(['version_number' => 1], [
                     'name' => 'Versión 1.0 (Lanzamiento Oficial)',
                     'orientation' => $template->orientation,
                     'design_schema' => $template->configuration,
                     'change_summary' => 'Plantilla inicial institucional preconfigurada para el Vicedecanato',
                     'created_by_user_id' => $admin?->id,
-                ]
-            );
+                ]);
+            }
         }
     }
 }

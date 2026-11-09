@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class Certificate extends Model
@@ -64,6 +65,12 @@ class Certificate extends Model
         ];
     }
 
+    public function scopeNotRevoked(Builder $query): Builder
+    {
+        return $query->whereNull($this->qualifyColumn('revoked_at'))
+            ->where($this->qualifyColumn('status'), '!=', self::STATUS_REVOCADO);
+    }
+
     public function scopeForListing(Builder $query): Builder
     {
         return $query->select(array_map(fn (string $column): string => $this->qualifyColumn($column), [
@@ -116,19 +123,33 @@ class Certificate extends Model
      */
     public static function generateUniqueCode(?string $issueDate = null): string
     {
-        $year = $issueDate ? Carbon::parse($issueDate)->format('Y') : now()->format('Y');
+        $year = (int) ($issueDate ? Carbon::parse($issueDate)->year : now()->year);
+        $prefix = sprintf('CERT-%04d-', $year);
 
-        // Obtener el conteo anual para la secuencia correlativa
-        $count = self::whereYear('issue_date', $year)->count() + 1;
-        $code = sprintf('CERT-%s-%06d', $year, $count);
+        return DB::transaction(function () use ($year, $prefix): string {
+            $sequences = DB::table('certificate_sequences');
+            $sequences->upsert([['year' => $year, 'last_number' => 0]], ['year'], ['year']);
+            $sequence = $sequences->where('year', $year);
+            $lastNumber = (int) (clone $sequence)->lockForUpdate()->value('last_number');
 
-        // Asegurar que no colisione
-        while (self::where('certificate_code', $code)->exists()) {
-            $count++;
-            $code = sprintf('CERT-%s-%06d', $year, $count);
-        }
+            if ($lastNumber === 0) {
+                $codes = self::where('certificate_code', 'like', $prefix.'%')->select('certificate_code')->cursor();
+                foreach ($codes as $certificate) {
+                    $suffix = substr($certificate->certificate_code, strlen($prefix));
+                    if (ctype_digit($suffix)) {
+                        $lastNumber = max($lastNumber, (int) $suffix);
+                    }
+                }
+            }
 
-        return $code;
+            do {
+                $code = sprintf('%s%06d', $prefix, ++$lastNumber);
+            } while (self::where('certificate_code', $code)->lockForUpdate()->value('id'));
+
+            $sequence->update(['last_number' => $lastNumber]);
+
+            return $code;
+        }, attempts: 3);
     }
 
     public function beneficiary(): BelongsTo

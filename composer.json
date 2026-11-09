@@ -39,14 +39,15 @@
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install --ignore-scripts",
+            "@php -r \"require 'vendor/autoload.php'; if (!getenv('APP_KEY') && empty(Dotenv\\Dotenv::parse(file_get_contents('.env'))['APP_KEY'])) { (new Symfony\\Component\\Process\\Process([PHP_BINARY, 'artisan', 'key:generate', '--no-interaction']))->mustRun(); }\"",
+            "@php artisan migrate --seed --force --no-interaction",
+            "@php artisan storage:link --no-interaction",
+            "npm ci",
             "npm run build"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan dev"
+            "@php artisan serve --host=127.0.0.1 --port=8000 --tries=1"
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",

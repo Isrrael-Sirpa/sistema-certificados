@@ -8,7 +8,7 @@
 
     <!-- Filters & Search Bar Card -->
     <div class="ft-panel bg-white rounded-2xl p-5 shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('certificates.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <form method="GET" action="{{ route('certificates.index') }}" class="ft-form-filter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
 
             <!-- Search -->
             <div class="lg:col-span-2">

@@ -7,11 +7,9 @@ use App\Models\Beneficiary;
 use App\Models\Certificate;
 use App\Models\CertificateTemplate;
 use App\Models\CertificateType;
-use App\Models\Role;
 use App\Models\User;
 use App\Services\CertificatePdfService;
 use App\Services\CertificateService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -30,7 +28,7 @@ class CertificateGenerationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $template = CertificateTemplate::first();
 
         $service = app(CertificateService::class);
@@ -46,7 +44,7 @@ class CertificateGenerationTest extends TestCase
         $this->assertStringStartsWith('CERT-2026-', $certificate->certificate_code);
         $this->assertNotEmpty($certificate->verification_token);
         $this->assertEquals('2026-09-15', $certificate->issue_date->format('Y-m-d'));
-        
+
         // Comprobar regla de 3 años de vigencia exacta
         $this->assertEquals('2029-09-15', $certificate->expiration_date->format('Y-m-d'));
         $this->assertEquals(Certificate::STATUS_VIGENTE, $certificate->calculated_status);
@@ -60,7 +58,7 @@ class CertificateGenerationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -80,7 +78,7 @@ class CertificateGenerationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
 
         $service = app(CertificateService::class);
         $certificate = $service->issueCertificate([
@@ -101,7 +99,7 @@ class CertificateGenerationTest extends TestCase
         $user = User::first();
         $beneficiary = Beneficiary::first();
         $activity = Activity::first();
-        $type = CertificateType::first();
+        $type = CertificateType::where('code', 'asistencia')->firstOrFail();
         $template = CertificateTemplate::first();
 
         $originalPrimaryColor = $template->configuration['primary_color'];

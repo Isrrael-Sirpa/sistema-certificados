@@ -154,7 +154,7 @@ class InstitutionalAssetsSeeder extends Seeder
 
         foreach ($assets as $assetData) {
             $assetData['created_by_user_id'] = $admin?->id;
-            InstitutionalAsset::updateOrCreate(
+            InstitutionalAsset::firstOrCreate(
                 ['name' => $assetData['name'], 'type' => $assetData['type']],
                 $assetData
             );

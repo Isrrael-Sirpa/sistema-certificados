@@ -187,8 +187,7 @@ Se generaron los siguientes documentos y archivos de respaldo técnico de la bas
      - Matriz de claves foráneas con reglas de borrado (`CASCADE`, `RESTRICT`, `SET NULL`).
      - Especificación de los esquemas JSON (`design_schema`, `snapshot_data`, `metadata`).
 2. **Exportación Física DDL (Script SQL):**
-   - Archivo: [`database/schema_dump.sql`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/database/schema_dump.sql)
-   - Contenido: Estructura DDL completa exportada desde MySQL 8.4 con todas las tablas, índices, claves foráneas y codificación UTF-8 MB4.
+   - Se generó una exportación de MySQL 8.4 para revisión. Se retiró del repositorio al quedar desactualizada. Las migraciones contienen el esquema vigente.
 
 ---
 
@@ -265,7 +264,6 @@ Para acceder al sistema en el entorno local (`http://127.0.0.1:8000`):
 ### Documentación y Base de Datos
 - [`docs/avances.md`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/docs/avances.md): Este informe integral de progreso y estado del proyecto.
 - [`docs/BASE_DE_DATOS.md`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/docs/BASE_DE_DATOS.md): Documento técnico en línea con diagrama Mermaid y diccionario de datos.
-- [`database/schema_dump.sql`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/database/schema_dump.sql): Exportación física de la estructura SQL de la base de datos.
 - [`tests/Feature/CertificateTemplateDesignerTest.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/CertificateTemplateDesignerTest.php): Suite de 14 pruebas de integración del diseñador y plantillas.
 
 ---
@@ -357,8 +355,7 @@ Se realizó una auditoría completa de todos los módulos del sistema (servicios
      - Navegación nula segura `?->id` en resolución de plantillas predeterminadas.
 
 7. **Normalización de Codificación de `schema_dump.sql`**:
-   - **Archivo:** [`database/schema_dump.sql`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/database/schema_dump.sql)
-   - **Solución:** Se convirtió el volcado SQL de UTF-16LE a UTF-8 estándar sin BOM, permitiendo su correcta lectura e inspección en cualquier editor o herramienta.
+   - El volcado histórico se convirtió de UTF-16LE a UTF-8. El esquema actual se genera con las migraciones del proyecto.
 
 8. **Batería de Pruebas Automatizadas de Auditoría**:
    - **Archivo:** [`tests/Feature/GeneralSystemAuditFixesTest.php`](file:///c:/Users/WINDOWS/OneDrive/Escritorio/inf-2026/sistema-certificado/tests/Feature/GeneralSystemAuditFixesTest.php)

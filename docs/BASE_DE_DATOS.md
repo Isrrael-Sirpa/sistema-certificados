@@ -39,7 +39,7 @@ La base de datos `sistema_certificados` implementa un modelo de datos robusto en
 3. **Control Normativo por Resolución Facultativa**:
    Las actividades académicas registran su número de resolución (`resolution_number`) y su modo de audiencia (`target_audience_mode`), restringiendo la certificación solo a las carreras autorizadas mediante la tabla intermedia `activity_allowed_units`.
 4. **Regla Ética de Aprobación Reglamentaria**:
-   La tabla pivot `activity_participants` almacena calificaciones numéricas y flags de elegibilidad (`career_eligible`), asegurando que ningún participante con nota menor a 51 pts reciba certificación en actividades evaluadas.
+   La tabla `activity_participants` almacena calificaciones y elegibilidad por carrera. La emisión con calificación usa el mínimo registrado en la actividad.
 5. **Inmutabilidad y Sellado Criptográfico (Regla 40)**:
    Cada certificado emitido congela su representación exacta en un snapshot JSON (`snapshot_data`) y un hash criptográfico SHA-256 (`integrity_hash`), haciéndolo inmune a futuros cambios de autoridades, nombres o plantillas.
 
@@ -177,6 +177,7 @@ Eventos, talleres, seminarios y cursos organizados por la Facultad o por carrera
 | `description` | `TEXT` | YES | | `NULL` | Descripción y objetivos del evento |
 | `activity_type` | `VARCHAR(80)` | NO | | `'Seminario'` | Categoría: `Curso`, `Seminario`, `Taller`, `Congreso`, etc. |
 | `certificate_type_id` | `BIGINT UNSIGNED` | YES | FK | `NULL` | Tipo de certificado por defecto (`certificate_types.id`) |
+| `min_passing_score` | `DECIMAL(5,2)` | YES | | `NULL` | Nota mínima definida para la actividad |
 | `start_date` | `DATE` | NO | | | Fecha de inicio del evento |
 | `end_date` | `DATE` | NO | | | Fecha de culminación del evento |
 | `academic_hours` | `INT UNSIGNED` | NO | | `0` | Carga horaria académica certificada |
@@ -272,7 +273,7 @@ Catálogo de modalidades de certificación y sus reglas de aprobación y vigenci
 | `slug` | `VARCHAR(100)` | NO | UK | | Slug URL |
 | `description` | `TEXT` | YES | | `NULL` | Descripción y alcance institucional |
 | `has_score` | `TINYINT(1)` | NO | | `0` | ¿Requiere calificación numérica? (`1` = Sí, `0` = No) |
-| `min_passing_score` | `DECIMAL(5,2)` | NO | | `51.00` | Calificación mínima aprobatoria requerida |
+| `min_passing_score` | `DECIMAL(5,2)` | YES | | `51.00` | Referencia de muestras y verificación de certificados históricos |
 | `validity_mode` | `VARCHAR(20)` | NO | | `'permanent'` | Modo de vigencia: `permanent` o `temporal` |
 | `default_validity_years`| `INT UNSIGNED` | YES | | `3` | Años de validez por defecto si es temporal |
 | `is_active` | `TINYINT(1)` | NO | | `1` | Estado activo |
@@ -298,7 +299,7 @@ Registro oficial de certificados emitidos, sellados criptográficamente con copi
 | `expiration_date` | `DATE` | YES | | `NULL` | Fecha de vencimiento (`NULL` si es permanente) |
 | `validity_type` | `VARCHAR(20)` | NO | | `'permanent'` | Tipo: `permanent`, `years`, `custom_date` |
 | `status` | `VARCHAR(20)` | NO | | `'VIGENTE'` | Estado: `VIGENTE`, `EXPIRADO`, `REVOCADO` |
-| `score` | `DECIMAL(5,2)` | YES | | `NULL` | Calificación del estudiante ($\ge 51$ pts) |
+| `score` | `DECIMAL(5,2)` | YES | | `NULL` | Calificación registrada en el certificado |
 | `score_label` | `VARCHAR(100)` | YES | | `NULL` | Mención cualitativa de la calificación |
 | `integrity_hash` | `CHAR(64)` | NO | | | Hash criptográfico SHA-256 de autenticidad |
 | `snapshot_data` | `JSON` | NO | | | Snapshot documental completo 100% inmutable |

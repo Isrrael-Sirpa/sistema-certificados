@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class Activity extends Model
 {
@@ -19,6 +20,11 @@ class Activity extends Model
     public const AUDIENCE_ALL_FACULTY = 'all_faculty';
 
     public const AUDIENCE_SPECIFIC_UNITS = 'specific_units';
+
+    protected $attributes = [
+        'requires_payment' => false,
+        'cost_amount' => '0.00',
+    ];
 
     protected $fillable = [
         'name',
@@ -34,7 +40,10 @@ class Activity extends Model
         'responsible_authority',
         'organizational_unit_id',
         'certificate_type_id',
+        'min_passing_score',
         'status',
+        'requires_payment',
+        'cost_amount',
     ];
 
     protected function casts(): array
@@ -43,7 +52,24 @@ class Activity extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'academic_hours' => 'integer',
+            'min_passing_score' => 'float',
+            'requires_payment' => 'boolean',
+            'cost_amount' => 'decimal:2',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (Activity $activity): void {
+            if ($activity->isDirty(['requires_payment', 'cost_amount'])) {
+                throw ValidationException::withMessages(['cost_amount' => 'La modalidad y el monto quedan definidos al crear la actividad y no se pueden modificar.']);
+            }
+        });
+    }
+
+    public function getFormattedCostAttribute(): string
+    {
+        return $this->requires_payment ? 'Bs '.number_format((float) $this->cost_amount, 2, '.', ',') : 'Sin costo';
     }
 
     public function organizationalUnit(): BelongsTo
@@ -70,7 +96,7 @@ class Activity extends Model
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(Beneficiary::class, 'activity_participants')
-            ->withPivot(['id', 'role', 'status', 'score', 'score_label', 'career_eligible', 'ineligibility_reason'])
+            ->withPivot(['id', 'role', 'status', 'score', 'score_label', 'career_eligible', 'ineligibility_reason', 'payment_confirmed'])
             ->withTimestamps();
     }
 
@@ -79,8 +105,8 @@ class Activity extends Model
      */
     public function isCareerAllowed(?int $unitId): bool
     {
-        // Si la actividad no tiene asignada una carrera/unidad organizadora o está configurada para toda la facultad
-        if (empty($this->organizational_unit_id) || $this->target_audience_mode === self::AUDIENCE_ALL_FACULTY) {
+        if ($this->target_audience_mode === self::AUDIENCE_ALL_FACULTY
+            || ($this->organizational_unit_id === null && $this->target_audience_mode !== self::AUDIENCE_SPECIFIC_UNITS)) {
             return true;
         }
 
@@ -110,14 +136,28 @@ class Activity extends Model
         return $this->hasOne(ActivityCertificateConfig::class);
     }
 
-    public function refreshParticipantEligibility(): void
+    public function passingScoreForIssuance(?CertificateType $type): ?float
+    {
+        if (! $type?->supportsScore()) {
+            return null;
+        }
+
+        return $this->min_passing_score ?? throw ValidationException::withMessages([
+            'min_passing_score' => 'Define la nota mínima de aprobación de la actividad antes de emitir certificados con calificación.',
+        ]);
+    }
+
+    public function refreshParticipantEligibility(?int $beneficiaryId = null): void
     {
         $this->load(['certificateType', 'allowedUnits']);
-        $issuedIds = $this->certificates()->pluck('beneficiary_id')->flip();
-        $hasScore = $this->certificateType?->supportsScore() ?? false;
-        $minimum = (float) ($this->certificateType?->min_passing_score ?? 51);
+        $issuedIds = $this->certificates()->notRevoked()->pluck('beneficiary_id')->flip();
+        $minimum = $this->certificateType?->supportsScore() ? $this->min_passing_score : null;
 
-        foreach ($this->participants()->get() as $participant) {
+        $participants = $this->participants()
+            ->when($beneficiaryId !== null, fn ($query) => $query->where('beneficiaries.id', $beneficiaryId))
+            ->get();
+
+        foreach ($participants as $participant) {
             if ($issuedIds->has($participant->id)) {
                 continue;
             }
@@ -128,7 +168,7 @@ class Activity extends Model
                 : 'Carrera no autorizada'.($this->resolution_number ? " según Resolución {$this->resolution_number}" : ' por el alcance del evento').'.');
             $score = $participant->pivot->score;
             $status = ! $allowed ? 'observado'
-                : ($hasScore && $score !== null && (float) $score < $minimum ? 'reprobado' : 'inscrito');
+                : ($minimum !== null && $score !== null && (float) $score < $minimum ? 'reprobado' : 'inscrito');
 
             $this->participants()->updateExistingPivot($participant->id, [
                 'career_eligible' => $allowed,

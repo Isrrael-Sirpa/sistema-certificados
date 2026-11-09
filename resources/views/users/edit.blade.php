@@ -1,102 +1,112 @@
 @extends('layouts.app')
 
-@section('page-title', 'Editar Usuario')
-@section('page-subtitle', 'Actualización de datos y roles de personal')
+@section('page-title', 'Editar usuario')
+@section('page-subtitle', 'Actualización de datos, permisos y acceso institucional')
 
 @section('content')
-<div class="max-w-2xl mx-auto">
-    <div class="ft-panel bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+<div class="ft-form-page">
+    <header class="ft-form-hero">
+        <div class="min-w-0">
+            <span class="ft-form-kicker">Administración de accesos</span>
+            <h2 class="wrap-break-word">{{ $user->name }}</h2>
+            <p>Actualiza la identidad, la unidad de trabajo y el acceso de esta cuenta.</p>
+        </div>
+        <a href="{{ route('users.index') }}" class="ft-form-back">← Volver a usuarios</a>
+    </header>
 
-        <div class="p-6 bg-brand text-white flex items-center justify-between">
-            <h3 class="text-base font-bold truncate">Editar: {{ $user->name }}</h3>
-            <a href="{{ route('users.index') }}" class="text-xs text-slate-300 hover:text-white">&larr; Volver</a>
+    <form method="POST" action="{{ route('users.update', $user) }}">
+        @csrf
+        @method('PUT')
+
+        <div class="ft-form-grid">
+            <div>
+                <section class="ft-form-section">
+                    <div class="ft-section-heading">
+                        <span class="ft-section-number">01</span>
+                        <div><h3>Datos de la persona</h3><p>Nombre y correo que identifican la cuenta.</p></div>
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label for="name" class="ft-field-label">Nombre completo <span class="text-action">*</span></label>
+                            <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" required autocomplete="name"
+                                   class="ft-input" @error('name') aria-invalid="true" aria-describedby="edit-user-name-error" @enderror>
+                            @error('name')<p id="edit-user-name-error" class="ft-field-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="email" class="ft-field-label">Correo institucional <span class="text-action">*</span></label>
+                            <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required autocomplete="email"
+                                   class="ft-input" @error('email') aria-invalid="true" aria-describedby="edit-user-email-error" @enderror>
+                            @error('email')<p id="edit-user-email-error" class="ft-field-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ft-form-section">
+                    <div class="ft-section-heading">
+                        <span class="ft-section-number">02</span>
+                        <div><h3>Rol y unidad de trabajo</h3><p>Define qué funciones y actividades puede gestionar la cuenta.</p></div>
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label for="role_id" class="ft-field-label">Rol del usuario <span class="text-action">*</span></label>
+                            <select name="role_id" id="role_id" required class="ft-input"
+                                    @error('role_id') aria-invalid="true" aria-describedby="edit-user-role-error" @enderror>
+                                @foreach($roles as $role)
+                                    <option value="{{ $role->id }}" @selected(old('role_id', $user->role_id) == $role->id)>{{ $role->display_name }}</option>
+                                @endforeach
+                            </select>
+                            @error('role_id')<p id="edit-user-role-error" class="ft-field-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="organizational_unit_id" class="ft-field-label">Carrera o departamento</label>
+                            <select name="organizational_unit_id" id="organizational_unit_id" class="ft-input"
+                                    aria-describedby="edit-user-unit-help{{ $errors->has('organizational_unit_id') ? ' edit-user-unit-error' : '' }}"
+                                    @error('organizational_unit_id') aria-invalid="true" @enderror>
+                                <option value="">Sin unidad específica</option>
+                                @foreach($units as $unit)
+                                    <option value="{{ $unit->id }}" @selected(old('organizational_unit_id', $user->organizational_unit_id) == $unit->id)>{{ $unit->name }} ({{ $unit->type_label }})</option>
+                                @endforeach
+                            </select>
+                            <p id="edit-user-unit-help" class="ft-field-help">La asignación de una unidad es obligatoria para jefaturas de carrera y secretarías.</p>
+                            @error('organizational_unit_id')<p id="edit-user-unit-error" class="ft-field-error">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="ft-form-section">
+                    <div class="ft-section-heading">
+                        <span class="ft-section-number">03</span>
+                        <div><h3>Contraseña</h3><p>Completa ambos campos si deseas cambiarla.</p></div>
+                    </div>
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <div>
+                            <label for="password" class="ft-field-label">Nueva contraseña</label>
+                            <input type="password" name="password" id="password" autocomplete="new-password" class="ft-input"
+                                   @error('password') aria-invalid="true" aria-describedby="edit-user-password-error" @enderror>
+                            @error('password')<p id="edit-user-password-error" class="ft-field-error">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="password_confirmation" class="ft-field-label">Confirmar contraseña</label>
+                            <input type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" class="ft-input">
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="ft-form-aside">
+                <h3>Estado del acceso</h3>
+                <p class="ft-field-help">La cuenta puede iniciar sesión mientras esté activa.</p>
+                <label class="mt-4 flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-border bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-brand">
+                    <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $user->is_active)) class="size-4 accent-brand">
+                    Cuenta activa
+                </label>
+            </aside>
         </div>
 
-        <form method="POST" action="{{ route('users.update', $user) }}" class="p-6 sm:p-8 space-y-5">
-            @csrf
-            @method('PUT')
-
-            <div>
-                <label for="name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Nombre Completo <span class="text-red-500">*</span>
-                </label>
-                <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" required
-                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-            </div>
-
-            <div>
-                <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Correo Institucional <span class="text-red-500">*</span>
-                </label>
-                <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
-                       class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-            </div>
-
-            <div>
-                <label for="role_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Rol y Nivel de Acceso <span class="text-red-500">*</span>
-                </label>
-                <select name="role_id" id="role_id" required
-                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                    @foreach($roles as $r)
-                        <option value="{{ $r->id }}" {{ old('role_id', $user->role_id) == $r->id ? 'selected' : '' }}>
-                            {{ $r->display_name }} ({{ $r->description }})
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div>
-                <label for="organizational_unit_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Carrera o Departamento Asignado
-                </label>
-                <select name="organizational_unit_id" id="organizational_unit_id"
-                        class="w-full py-2.5 px-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand">
-                    <option value="">-- Sin Unidad Específica (Administración Central / Dpto. Cómputo) --</option>
-                    @foreach($units as $u)
-                        <option value="{{ $u->id }}" {{ old('organizational_unit_id', $user->organizational_unit_id) == $u->id ? 'selected' : '' }}>
-                            [{{ $u->code }}] {{ $u->name }} ({{ $u->type_label }})
-                        </option>
-                    @endforeach
-                </select>
-                <p class="text-[11px] text-slate-400 mt-1">Obligatorio para Jefes de Carrera y Secretarias para delimitar su espacio de emisión.</p>
-            </div>
-
-            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-                <span class="text-xs font-bold text-slate-700 block">Cambiar Contraseña (opcional)</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="password" class="block text-[11px] font-medium text-slate-600 mb-1">Nueva Contraseña</label>
-                        <input type="password" name="password" id="password"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand bg-white"
-                               placeholder="Dejar vacío para mantener">
-                    </div>
-
-                    <div>
-                        <label for="password_confirmation" class="block text-[11px] font-medium text-slate-600 mb-1">Confirmar</label>
-                        <input type="password" name="password_confirmation" id="password_confirmation"
-                               class="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand bg-white"
-                               placeholder="Confirmar nueva">
-                    </div>
-                </div>
-            </div>
-
-            <div class="pt-2">
-                <label class="flex items-center text-xs text-slate-700 cursor-pointer">
-                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} class="w-4 h-4 text-brand border-slate-300 rounded-sm">
-                    <span class="ml-2 font-medium">Cuenta activa y habilitada</span>
-                </label>
-            </div>
-
-            <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <a href="{{ route('users.index') }}" class="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
-                    Cancelar
-                </a>
-                <button type="submit" class="px-6 py-2.5 bg-action hover:bg-action-hover text-white text-xs font-bold rounded-xl shadow-xs transition-all">
-                    Guardar Cambios
-                </button>
-            </div>
-        </form>
-    </div>
+        <div class="ft-form-actions">
+            <a href="{{ route('users.index') }}" class="ft-form-secondary">Cancelar</a>
+            <button type="submit" class="ft-form-primary">Guardar cambios</button>
+        </div>
+    </form>
 </div>
 @endsection

@@ -51,12 +51,20 @@ class CertificateScoreAndQuerySafetyTest extends TestCase
 
     public static function scores(): array
     {
-        return ['cero' => [0.0, false], 'cincuenta' => [50.0, false], 'debajo del límite' => [50.99, false], 'límite aprobado' => [51.0, true], 'cien' => [100.0, true], 'sin nota' => [null, false]];
+        return [
+            'cero' => [60.0, 0.0, false],
+            'debajo del mínimo' => [70.0, 69.99, false],
+            'igual al mínimo' => [80.0, 80.0, true],
+            'mínimo por debajo de 51' => [40.5, 40.5, true],
+            'por encima del mínimo' => [90.0, 100.0, true],
+            'sin nota' => [70.0, null, false],
+        ];
     }
 
     #[DataProvider('scores')]
-    public function test_individual_issuance_respects_boundary_and_keeps_nonpassing_students(?float $score, bool $issued): void
+    public function test_individual_issuance_respects_boundary_and_keeps_nonpassing_students(float $minimum, ?float $score, bool $issued): void
     {
+        $this->activity->update(['min_passing_score' => $minimum]);
         $student = $this->makeStudent('100001', $this->unit);
         $response = $this->actingAs($this->admin)->post(route('certificates.store'), $this->issuanceData($student, $score))->assertRedirect();
         if ($issued) {
@@ -86,12 +94,55 @@ class CertificateScoreAndQuerySafetyTest extends TestCase
         $this->actingAs($this->admin)->get(route('activities.show', $this->activity))->assertOk()->assertSee('100010')->assertSee('100013')->assertSee('100014');
     }
 
-    public function test_legacy_lower_threshold_cannot_allow_failing_grades(): void
+    public function test_certificate_type_reference_does_not_override_the_activity_minimum(): void
     {
-        $this->type->update(['min_passing_score' => 10]);
+        $this->type->update(['min_passing_score' => 60]);
+        $this->activity->update(['min_passing_score' => 75]);
         $student = $this->makeStudent('100020', $this->unit);
-        $this->actingAs($this->admin)->post(route('certificates.store'), $this->issuanceData($student, 50))->assertSessionHas('error');
+        $this->actingAs($this->admin)->post(route('certificates.store'), $this->issuanceData($student, 70))->assertSessionHas('error');
         $this->assertDatabaseCount('certificates', 0);
+    }
+
+    public function test_scored_activity_requires_its_own_minimum_when_created(): void
+    {
+        $data = [
+            'name' => 'Evento con criterio propio', 'activity_type' => 'Taller', 'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(), 'academic_hours' => 20, 'status' => 'activa', 'requires_payment' => false,
+            'certificate_type_id' => $this->type->id, 'organizational_unit_id' => $this->unit->id,
+        ];
+        $this->actingAs($this->admin)->post(route('activities.store'), $data)->assertSessionHasErrors('min_passing_score');
+        $this->post(route('activities.store'), $data + ['min_passing_score' => '70.25'])->assertSessionHas('success');
+
+        $this->assertDatabaseHas('activities', ['name' => $data['name'], 'min_passing_score' => 70.25]);
+    }
+
+    public function test_individual_issuance_uses_the_grade_registered_in_the_roster(): void
+    {
+        $this->activity->update(['min_passing_score' => 70]);
+        $student = $this->makeStudent('100024', $this->unit);
+        $this->activity->participants()->attach($student, ['score' => 69, 'career_eligible' => true, 'status' => 'reprobado']);
+
+        $this->actingAs($this->admin)->post(route('certificates.store'), $this->issuanceData($student, 90))->assertSessionHas('error');
+
+        $this->assertDatabaseCount('certificates', 0);
+        $this->assertDatabaseHas('activity_participants', ['beneficiary_id' => $student->id, 'score' => 69]);
+    }
+
+    public function test_import_confirmation_uses_the_current_minimum_and_keeps_it_in_the_issued_certificate(): void
+    {
+        $this->activity->update(['min_passing_score' => 80]);
+        $file = UploadedFile::fake()->createWithContent('nomina.csv', "CI,NOMBRES,APELLIDOS,CARRERA,NOTA\n100022,Uno,Límite,QUI,70\n100023,Dos,Reprobado,QUI,69");
+        $this->actingAs($this->admin)->postJson(route('activities.roster.preview', $this->activity), ['file' => $file])
+            ->assertOk()->assertJsonPath('rows.0.status', 'failing_student');
+
+        $this->post(route('activities.certificate-config', $this->activity), ['min_passing_score' => 70])->assertSessionHas('success');
+        $this->postJson(route('activities.roster.confirm', $this->activity), ['issue_date' => now()->toDateString()])
+            ->assertOk()->assertJsonPath('result.issued_count', 1)->assertJsonPath('result.failing_count', 1);
+
+        $certificate = Certificate::sole();
+        $this->assertEquals(70, $certificate->snapshot_data['min_passing_score']);
+        $this->post(route('activities.certificate-config', $this->activity), ['min_passing_score' => 90])->assertSessionHas('success');
+        $this->get(route('verification.show', $certificate->verification_token))->assertOk()->assertSee('Evaluación Oficial Aprobada');
     }
 
     public function test_service_cannot_issue_scored_certificate_without_grade(): void
@@ -185,7 +236,7 @@ class CertificateScoreAndQuerySafetyTest extends TestCase
 
     private function makeActivity(OrganizationalUnit $unit): Activity
     {
-        return Activity::create(['name' => 'Evento '.$unit->code, 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $unit->id, 'certificate_type_id' => $this->type->id, 'target_audience_mode' => 'own_unit']);
+        return Activity::create(['name' => 'Evento '.$unit->code, 'activity_type' => 'Taller', 'start_date' => now(), 'end_date' => now(), 'academic_hours' => 20, 'status' => 'activa', 'organizational_unit_id' => $unit->id, 'certificate_type_id' => $this->type->id, 'min_passing_score' => 51, 'target_audience_mode' => 'own_unit']);
     }
 
     private function makeStudent(string $document, OrganizationalUnit $unit): Beneficiary

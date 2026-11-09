@@ -21,7 +21,7 @@
    - [7.1 Registro de Actividades con N° de Resolución](#71-registro-de-actividades-con-n-de-resolución)
    - [7.2 Delimitación de Audiencia (Propia Carrera, Toda la Facultad o Inter-Carreras)](#72-delimitación-de-audiencia-propia-carrera-toda-la-facultad-o-inter-carreras)
    - [7.3 Detección Automática de Estudiantes No Autorizados](#73-detección-automática-de-estudiantes-no-autorizados)
-8. [Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)](#8-regla-ética-de-calificaciones-y-aprobación-obligatoria--51-pts)
+8. [Nota de aprobación por actividad](#8-nota-de-aprobación-por-actividad)
 9. [Catálogo y Diseñador Visual de Plantillas (WYSIWYG)](#9-catálogo-y-diseñador-visual-de-plantillas-wysiwyg)
    - [9.1 Herramientas y Elementos del Diseñador](#91-herramientas-y-elementos-del-diseñador)
    - [9.2 Diccionario de Variables Interpolables](#92-diccionario-de-variables-interpolables)
@@ -43,7 +43,7 @@ El **Sistema de Certificados de la Facultad de Tecnología de la UMSA** es una p
 
 - **Aislamiento Seguro por Carrera**: Cada una de las 9 carreras oficiales de la Facultad y sus departamentos cuentan con su propio espacio de trabajo sin interferir en los registros de las demás carreras.
 - **Rigor Normativo por Resolución**: Ningún certificado se emite sin respaldo institucional y delimitación estricta de las carreras participantes.
-- **Ética Institucional en Calificaciones**: Se impide la emisión de certificados de aprobación a participantes reprobados (< 51 puntos).
+- Los certificados de aprobación se emiten a quienes alcanzan el mínimo de su actividad y cumplen los demás requisitos.
 - **Validez Legal Permanente con Código QR**: Verificación instantánea e infalsificable desde cualquier dispositivo móvil o navegador web.
 
 ---
@@ -147,12 +147,12 @@ Si un estudiante perteneciente a una carrera no autorizada intenta ser agregado 
 
 ---
 
-## 8. Regla Ética de Calificaciones y Aprobación Obligatoria (>= 51 pts)
+## 8. Nota de aprobación por actividad
 
 Para actividades asociadas a un **Certificado de Aprobación** (o que tengan activada la opción de calificación):
-1. **Nota Mínima Aprobatoria**: Es obligatoriamente de **51 puntos** sobre 100.
-2. **Comportamiento ante Reprobados o Sin Nota**:
-   - En la nómina de participantes, el estudiante con nota $< 51$ pts queda marcado como **`Reprobado`** con un distintivo rojo.
+1. Al crear el evento, indica la **nota mínima de aprobación** en la escala que uses para evaluarlo.
+2. La nómina compara la nota registrada con el mínimo del evento.
+   - Quien queda por debajo del mínimo aparece como **`Reprobado`**.
    - El estudiante sin calificación registrada queda marcado como **`Observado`**.
    - Al ejecutar la emisión masiva de certificados, **el sistema omite automáticamente a los reprobados y a los no calificados**, emitiendo certificados **única y exclusivamente para los estudiantes aprobados**.
    - En pantalla se presenta un resumen indicando cuántos certificados fueron emitidos y cuántos reprobados fueron omitidos éticamente.
@@ -199,7 +199,7 @@ En el panel de Firmas se pueden insertar los sellos y firmas digitales con el no
 2. En la pestaña **"Importar Nómina"**, suba el archivo `.xlsx` o `.csv`.
 3. El sistema realizará un diagnóstico previo indicando:
    - Cuántos alumnos están listos para ser certificados.
-   - Cuántos estudiantes están aprobados ($\ge 51$ pts) y cuántos reprobados ($< 51$ pts).
+   - Cuántos estudiantes alcanzan el mínimo de la actividad y cuántos quedan por debajo.
    - Cuántos estudiantes pertenecen a carreras no autorizadas por la resolución (`observados`).
 4. Presione **"Emitir Certificados a la Nómina"**: el sistema emitirá en lote solo a los aprobados y habilitados por resolución, descartando reprobados y observados.
 
@@ -256,7 +256,10 @@ La desactivación impide que sus usuarios emitan nuevos certificados. Sin embarg
 **No.** El sistema aplica aislamiento estricto por unidad organizativa (`isUnitScoped`). Las secretarias y jefes solo tienen acceso a los registros de su respectiva carrera.
 
 ### ¿Se le puede emitir un certificado de aprobación a un alumno con nota 50?
-**No.** Por estricta normativa universitaria y ética institucional, la nota mínima aprobatoria es de **51 puntos**. El sistema lo clasifica automáticamente como *Reprobado* y omite la emisión de su certificado.
+Depende del mínimo definido para la actividad. El sistema omite la emisión cuando la nota del participante queda por debajo de ese valor.
+
+### ¿Cómo se corrige una nota después de emitir el certificado?
+La nota permanece bloqueada mientras el participante tenga un certificado sin anular en esa actividad. Solo el superadministrador puede anularlo, indicando el motivo. Si existen varios certificados del participante en la misma actividad, deben anularse todos antes de cambiar la nota. Después se puede corregir desde la nómina o una nueva planilla y emitir otro certificado, siempre que se cumplan el mínimo del evento, las carreras habilitadas y la confirmación manual cuando la actividad tiene costo. Los certificados anulados conservan su nota original e historial y siguen apareciendo como revocados al verificarlos.
 
 ### ¿Puede una carrera emitir certificados para estudiantes de otra carrera?
-Solo si la actividad cuenta con una **Resolución Facultativa** expresa y se ha configurado la audiencia en modo `specific_units` o `all_faculty` autorizando a esa carrera. De lo contrario, los estudiantes no autorizados son bloqueados automáticamente como *Observados*.
+Según el alcance configurado para la actividad. La carrera organizadora siempre está habilitada y puede agregar carreras invitadas o habilitar toda la facultad. La resolución se registra cuando existe. Los estudiantes de carreras no autorizadas quedan como *Observados*, sin certificado, y pueden retirarse manualmente de la nómina sin eliminar su registro del padrón.

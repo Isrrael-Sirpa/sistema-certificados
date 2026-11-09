@@ -8,7 +8,7 @@
 
     <!-- Filters and Create Button -->
     <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-xs border border-slate-200/80">
-        <form method="GET" action="{{ route('activities.index') }}" class="flex min-w-0 flex-wrap items-center gap-3 flex-1">
+        <form method="GET" action="{{ route('activities.index') }}" class="ft-form-filter flex min-w-0 flex-wrap items-center gap-3 flex-1">
             <div class="relative w-full sm:w-auto sm:min-w-[220px]">
                 <input type="text" name="search" value="{{ request('search') }}"
                        placeholder="Buscar por nombre o lugar..."

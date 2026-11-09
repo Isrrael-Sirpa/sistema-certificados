@@ -7,6 +7,7 @@ use App\Models\Beneficiary;
 use App\Models\CertificateTemplate;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureOrganizationalUnitAccess
@@ -19,6 +20,14 @@ class EnsureOrganizationalUnitAccess
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        if ($user && ! $user->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors(['email' => 'Su cuenta se encuentra desactivada por la administración.']);
+        }
 
         if (! $user?->isUnitScoped() || $request->routeIs('certificates.download', 'certificates.preview', 'activities.download-zip')) {
             return $next($request);
